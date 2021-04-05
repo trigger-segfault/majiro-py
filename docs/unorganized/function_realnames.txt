@@ -1,0 +1,92 @@
+7A7B6ED4:    -1    -1  [ 0]    SetHashTable4Seed?
+10DB0A43:    -1    -1  [ 0]    ExecuteScript
+1295BBDA:  cd3f  ce1b  [ 4]    CreateFunction                                               [void $event_hook_after(_str, _func)]
+078A756E:  cc94  cdb8  [ 9]    CreateFunctionAndInsertLast                                  [void $event_hook(_str, _func)]
+266A3C79:  c76c  c905  [ 2]    MakeUpperCase                                                [func $strupr$(_str)]
+E4E3B40D:    -1    -1  [ 0]    FileOpen
+D6333B3C:    -1    -1  [ 0]    FileClose
+55232561:    -1    -1  [ 0]    FileReadString
+2539D212:    -1    -1  [ 0]    FileReadInt
+098399F2:    -1    -1  [ 0]    LoadFont
+4694366A:    -1    -1  [ 0]    HashFuctionName
+DF644F85:  4471  4471  [ 1]    maybe display an error message? load_sysdata:10FF            [void $dialog_error_ok(_1, _2, _3)] vargs?               // $dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません");
+8D8FB32E:    -1    -1  [ 0]    maybe halt the engine? load_sy1c4f93a7sdata:110B
+83D81F59:  beb1  c44e  [12]    [page_create]                                                [     $page_create]
+F94B3586:  1eef  c5ce  [ 3]    [page_create_withalfa]                                       [     $page_create_withalfa]
+DAD96289:  c4fe  c528  [ 2]    [page_create_file]                                           [     $page_create_file]
+57EFA275:  465b  c24c  [ 7]    [page_create_file_withalfa]                                  [     $page_create_file_withalfa]
+C50DFD06:  20d5  c4e4  [ 8]    [page_release]                                               [     $page_release]
+56BBBA3A:  10ec  c3fc  [17]    [grp_copy]                                                   [     $grp_copy]
+6E83677A:    -1    -1  [ 0]    [get_variable]
+F9A3B675:    -1    -1  [ 0]    GetIntVariable
+86294BFE:    -1    -1  [ 0]    GetStringVariable
+160176BE:    -1    -1  [ 0]    [get_variable$]? GetGlobalStringVariable
+CD290AEF:    -1    -1  [ 0]    [set_variable]
+EDEFB0B0:    -1    -1  [ 0]    CallFunction
+76EE6C90:  60ca  bcaf  [ 9]    StartThread                                                  [void $do_event(_str)]
+29F1AC40:    -1    -1  [ 0]    CallFunctionInThread
+A93C9856:    -1    -1  [ 0]    DeleteFunction?
+99A5DE25:    -1    -1  [ 0]    IsFlagSet
+EB5CC468:    -1    -1  [ 0]    SetFlag
+
+34 9C 67 F3  03 00
+
+F3679C34:  44cf  44cf  [ 1]    [void $debugout(_1, _2, _3)] vargs?               // $debugout("フェース画像[ ", _name$, " ]が存在しません");
+A62AA5EB:   75e  9da0  [14]    [func $is_fast_mode()]
+C21F8B49:  5fdf  9dba  [ 4]    [func $is_auto_mode()]
+619DE833:  4423  4423  [ 1]    [func $is_report_no_pic()]
+4B5AC64B:  4481  4481  [ 1]    [func $is_log_no_pic()]
+6E6C641A:  442b  4489  [ 2]    [func $is_testplay()]
+5B87A41D:  27c5  9add  [13]    [func $console_is_on()]
+B5A1E3C9:  342d  ce27  [ 5]    [void $console_cls()]
+F1097A07:  8bb3  9dd8  [ 6]    [func $voice_stat()]
+D1F672C7:  8bd1  9dea  [ 2]    [void $voice_wait()]
+EE154520:  8bdd  9e26  [ 6]    [func $get_autospeed()]                           // $wait($get_autospeed()*3*2)
+CF35F0E3:   790  9e3e  [31]    [void $wait(_int?)] (float cast to int?)          // $wait($get_autospeed()*0.8*2)
+661AFB43:  5e6e  6360  [ 5]    [void $sprite_rotate(_1, _int2)]                  // $sprite_rotate(#skip_spr@SYSTEM, 0)
+E119D5BA:  1b18  935e  [46]    [void $sprite_move(_1, _int2, _int3)]             // $sprite_move(#skip_spr@SYSTEM, 10000, 10000)
+4A02D664:  5486  cc34  [ 8]    [void $sprite_priority_high(_1)]                  // $sprite_priority_high(#skip_spr@SYSTEM)
+FF7C52E6:  1e36  cc74  [28]    [void $sprite_alfa_set(_spr, _int)]               // $sprite_alfa_set(#name_spr, 255)
+EF4581DC:  545a  cbcc  [11]    [func $sprite_create(_1)]                         // #name_spr = $sprite_create(#name_page)
+
+33 E8 9D 61  00 00
+4B C6 5A 4B  00 00
+1A 64 6C 6E  00 00
+
+07 7A 09 F1  00 00
+C7 72 F6 D1  00 00
+20 45 15 EE  00 00
+E3 F0 35 CF  01 00
+
+
+C9 E3 A1 B5  00 00
+
+
+
+64 D6 02 4A  01 00
+E6 52 7C FF  02 00
+DC 81 45 EF  01 00
+
+
+#name_spr = $sprite_create(#name_page)
+
+1295BBDA:  cd3f  ce1b  [ 4]    CreateFunction                  [void $event_hook_after(_str, _func)]       // $event_hook_after("HOT_RESET", $hot_reset)
+078A756E:  cc94  cdb8  [ 9]    CreateFunctionAndInsertLast     [void $event_hook(_str, _func)]             // $event_hook("X_CONTROL", $x_catch)
+266A3C79:  c76c  c905  [ 2]    MakeUpperCase                   [func $strupr$(_str)]                       // if ($strupr$(#wink_file2$@SYSTEM)!="NULL")
+DF644F85:  4471  4471  [ 1]    maybe display an error message  [void $dialog_error_ok(_1, _2, _3)] vargs?  // $dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません")
+76EE6C90:  60ca  bcaf  [ 9]    StartThread                     [void $do_event(_str)]                      // $do_event("RECOVER_FAST")
+
+
+($is_report_no_pic())&&($is_testplay())) {
+			$dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		if (($is_log_no_pic())&&($is_testplay())) {
+			$debugout("フェース画像[ ", _name$, " ]が存在しません");
+		}
+
+if (($is_report_no_pic())&&($is_testplay())) {
+			$dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		if (($is_log_no_pic())&&($is_testplay())) {
+			$debugout("フェース画像[ ", _name$, " ]が存在しません");
+		}

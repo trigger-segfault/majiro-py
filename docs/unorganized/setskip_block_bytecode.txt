@@ -1,0 +1,110 @@
+
+//void $pause_nodisp(void) {
+//  ...
+
+/*-line:2080-*/ if ($is_auto_mode()) {  //push syscall<$C21F8B49>, jmp82e>0xAA (0x9e70)
+                  setskip {  //jmp83b>0x80 (0x9e4c), jmp83d>0x7C (0x9e4e)
+/*-line:2082-*/     if ($voice_stat()) {  //push syscall<$F1097A07>, jmp82e>0x3C (0x9e20)
+/*-line:2083-*/       $voice_wait();  //syscall<$D1F672C7>
+/*-line:2084-*/       $wait($get_autospeed()*0.8*2.0);  //syscall<$CF35F0E3>((op83e)(push syscall<$EE154520> op101* op803(0.8) op101* op803(2)))
+/*-line:2085-*/     } else {  //goto>0x28 (0x9e48)
+/*-line:2086-*/       $wait($get_autospeed()*3*2);    //{-off:0x9e20-}, syscall<$CF35F0E3>(push syscall<$EE154520> op100* op800(3) op100* op800(2))
+/*-line:2087-*/     }
+/*-line:2088-*/   }  //{-off:0x9e48-}, {-off:0x9e4c-}op844 (jmp83b), {-off:0x9e4e-}op844 (jmp83d)  (setup for something like try/catch/finally block?)
+/*-line:2089-*/   $reset_fast_disp();  //call<$AB6FEC48>   
+/*-line:2090-*/   return;  //return(0);
+/*-line:2091-*/ }  //{-off:0x9e70-}
+
+/*-line:2093-*/ // ...
+
+//FLOATS:
+// 0x3F4CCCCD = 0.8
+// 0x40000000 = 2.0
+//
+//OPCODES:
+// op101 = mult (float * float)
+// op83e = cast<int> (cast to int?)
+// op100 = mult (int * int)
+
+	if ($is_auto_mode()) {							// オートモードだ
+		setskip {
+			if ($voice_stat()) {
+				$voice_wait();
+				$wait($get_autospeed()*0.8*2);	// 標準で.5秒待つ。
+			} else {
+				$wait($get_autospeed()*3*2);		// 標準で1.5秒待つ。
+			}
+		}
+		$reset_fast_disp();
+		return;					// 戻る
+	}
+
+[StructLayout(LayoutKind.Sequential, Pack = 1, Size = 8, CharSet = CharSet.Ansi)]
+internal struct KIFHDR {
+    /// <summary>The expected value of <see cref="Signature"/>.</summary>
+    public const string ExpectedSignature = "KIF";
+
+    /// <summary>The raw character array signature of the file.</summary>
+    [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 4)]
+    public char[] SignatureRaw; // "KIF\0"
+    /// <summary>The number of <see cref="KIFENTRY"/>s in the KIFINT archive.</summary>
+    public int EntryCount;
+
+    /// <summary>Gets the signature of the file.</summary>
+    public string Signature => SignatureRaw.ToNullTerminatedString(); // custom extension
+}
+
+/// <summary>The entry structure for a KIFINT archive file.</summary>
+[StructLayout(LayoutKind.Explicit, Pack = 1, Size = 72, CharSet = CharSet.Ansi)]
+internal struct KIFENTRY {
+
+    /// <summary>The raw character array filename of the entry.</summary>
+    [FieldOffset(0)]
+    [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 64)]
+    public byte[] FileNameRaw;
+
+    /// <summary>The file offset to the entry's data.</summary>
+    [FieldOffset(64)]
+    public uint Offset;
+    /// <summary>The file length to the entry's data.</summary>
+    [FieldOffset(68)]
+    public int Length;
+
+    /// <summary>Gets the filename of the entry.</summary>
+    public string FileName => FileNameRaw.ToNullTerminatedString();
+}
+
+0x3F4CCCCD = 0.8
+0x40000000 = 2.0
+
+op101 = mult (float * float)
+op83e = cast<int> (cast to int?)
+op100 = mult (int * int)
+
+F1097A07:
+D1F672C7:
+
+                     |3A 08 20 08|34 08 49 8B 1F C2 00 00|   ..+.:...4.I..B..
+00009dc0:|2E 08 AA 00 00 00|3B 08 80 00 00 00|3D 08 7C 00    ..*...;.....=.|.
+00009dd0: 00 00|
+               |3A 08 22 08|34 08 07 7A 09 F1 00 00|2E 08    ..:.".4..z.q....
+00009de0: 3C 00 00 00|
+                     |3A 08 23 08|35 08 C7 72 F6 D1 00 00|   <...:.#.5.GrvQ..
+00009df0: 
+         |3A 08 24 08|34 08 20 45 15 EE 00 00|03 08 CD CC    :.$.4..E.n....ML
+00009e00: 4C 3F|01 01|03 08 00 00 00 40|01 01|3E 08|35 08    L?.......@..>.5.
+00009e10: E3 F0 35 CF 01 00|
+                           |3A 08 25 08|2C 08 28 00 00 00|   cp5O..:.%.,.(...
+00009e20:
+         |3A 08 26 08|34 08 20 45 15 EE 00 00|00 08 03 00    :.&.4..E.n......
+00009e30: 00 00|00 01|00 08 02 00 00 00|00 01|35 08 E3 F0    ............5.cp
+00009e40: 35 CF 01 00|
+                     |3A 08 27 08|
+		                               |3A 08 28 08|44 08|44 08|   5O..:.'.:.(.D.D.
+00009e50: 
+         |3A 08 29 08|10 08 48 EC 6F AB 00 00 00 00 00 00|   :.)...Hlo+......
+00009e60: 
+         |3A 08 2A 08|00 08 00 00 00 00|2B 08|
+		                                           |3A 08 2B 08|   :.*.......+.:.+.
+00009e70: 
+         |3A 08 2D 08|

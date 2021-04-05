@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+## Majiro data files
+
+# bytecode script
+*.mjo
+
+
 # C extensions
 *.so
 

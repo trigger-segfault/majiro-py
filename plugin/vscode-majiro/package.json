@@ -1,0 +1,47 @@
+{
+  "name": "vscode-majiro",
+  "displayName": "Majiro Script Types",
+  "description": "Majiro Script languages support for VS Code",
+  "version": "0.1.0",
+	"publisher": "trigger_segfault",
+  "license": "LICENSE.md",
+  "readme": "README.md",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.30.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+	"galleryBanner": {
+		"color": "#003d4c",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/AtomCrafty/MajiroTools/wiki",
+  "author": {
+    "name": "trigger_segfault",
+    "email": "triggerstools@gmail.com",
+    "url": "https://trigger-segfault.github.io"
+  },
+	"keywords": [
+    "vscode",
+    "majiro",
+    "vn",
+		"visual-novel",
+    "scenario",
+    "il"
+	],
+  "contributes": {
+    "languages": [{
+      "id": "majiro-mjil",
+      "aliases": ["Majiro IL Instructions", "mjil"],
+      "extensions": [".mjil"],
+      "configuration": "./majiro-mjil-language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "majiro-mjil",
+      "scopeName": "source.majiro.mjil",
+      "path": "./syntaxes/majiro-mjil.tmLanguage.json"
+    }]
+  }
+}

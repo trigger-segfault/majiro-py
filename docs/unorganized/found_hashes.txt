@@ -1,0 +1,115 @@
+
+
+#================================================================
+# float   : found 73 hashes in 3 scripts
+# 
+hashlist_r = [0x6dc863db, 0xc0c6eb61, 0x9e271b60, 0x1bd0ee3d, 0xd77aeea3, 0x444fa64a, 0x69c671ed, 0x71236e40, 0x76e76877, 0x77250240, 0x7ffd9113, 0xd88b897a, 0xbfaa930e]
+
+hashmap_r = {
+    0x6dc863db: {  'pic.mjo': 6  },
+    0xc0c6eb61: {  'pic.mjo': 6  },
+    0x9e271b60: {  'pic.mjo': 4  },
+    0x1bd0ee3d: {  'pic.mjo': 2  },
+    0xd77aeea3: {  'pic.mjo': 2  },
+    0x444fa64a: {  'pic.mjo': 1, 'transit_top.mjo': 7, 'yazlib.mjo': 3  },
+    0x69c671ed: {  'transit_top.mjo': 4  },
+    0x71236e40: {  'yazlib.mjo': 22  },
+    0x76e76877: {  'yazlib.mjo': 5  },
+    0x77250240: {  'yazlib.mjo': 1  },
+    0x7ffd9113: {  'yazlib.mjo': 5  },
+    0xd88b897a: {  'yazlib.mjo': 4  },
+    0xbfaa930e: {  'yazlib.mjo': 1  }
+}
+
+
+unhash2 0xFEF981D4 "$sprite_len_y@" "" 8 1 "!-z"
+unhash2 0x63F660A2 "$sprite_len_x@" "" 8 1 "!-z"
+
+```yaml
+0x6dc863db: "_l%@"
+0xc0c6eb61: "_ol%@"
+0x9e271b60: "_rate%@"
+0x1bd0ee3d: "_xratio%@"
+0xd77aeea3: "_yratio%@"
+0x444fa64a: "_zoom%@"
+0x76e76877: "_x%@"
+0x77250240: "_y%@"
+0x7ffd9113: "_t%@"
+0xd88b897a: "_fix%@"
+0xbfaa930e: "_zz%@"
+
+0x4a6e0632: "_title$#@"
+0xe317daa0: "_files$#@"
+0xff12cf9a: "_str$#@"
+```
+
+set post=%
+set maxlen=6
+set "charset=a-z_0-9"
+:: "_l%@"
+unhash2 0x6dc863db "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_ol%@"
+unhash2 0xc0c6eb61 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_rate%@"
+unhash2 0x9e271b60 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_xratio%@"
+unhash2 0x1bd0ee3d "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_yratio%@"
+unhash2 0xd77aeea3 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_zoom%@"
+unhash2 0x444fa64a "_" "%post%@" %maxlen% 1 "%charset%"
+unhash2 0x69c671ed "_" "%post%@" %maxlen% 1 "%charset%"
+unhash2 0x71236e40 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_x%@"
+unhash2 0x76e76877 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_y%@"
+unhash2 0x77250240 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_t%@"
+unhash2 0x7ffd9113 "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_fix%@"
+unhash2 0xd88b897a "_" "%post%@" %maxlen% 1 "%charset%"
+:: "_zz%@"
+unhash2 0xbfaa930e "_" "%post%@" %maxlen% 1 "%charset%"
+
+unhash2 0xXXXXXXXX "_" "%post%@" %maxlen% 1 "%charset%"
+
+
+#================================================================
+# str[]   : found 14 hashes in 4 scripts
+# 
+hashlist_sarr = [0x4a6e0632, 0xe317daa0, 0xa438b448, 0x7c20f15c, 0x630c6de1, 0xa70690bf, 0xc3d5083a, 0xff12cf9a, 0x5a1d63e0]
+
+hashmap_sarr = {
+    0x4a6e0632: {  'cgmode.mjo': 1  },
+    0xe317daa0: {  'cgmode.mjo': 1  },
+    0xa438b448: {  'cgmode.mjo': 1  },
+    0x7c20f15c: {  'history.mjo': 1  },
+    0x630c6de1: {  'history.mjo': 1  },
+    0xa70690bf: {  'history.mjo': 1  },
+    0xc3d5083a: {  'menu.mjo': 2  },
+    0xff12cf9a: {  'menu.mjo': 5  },
+    0x5a1d63e0: {  'yazlib.mjo': 1  }
+}
+
+:: "_title$#@"
+unhash2 0x4a6e0632 "_" "$#@" 7 1 "a-z_0-9"
+:: "_files$#@"
+unhash2 0xe317daa0 "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0xa438b448 "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0x7c20f15c "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0x630c6de1 "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0xa70690bf "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0xc3d5083a "_" "$#@" 7 1 "a-z_0-9"
+:: "_str$#@"
+unhash2 0xff12cf9a "_" "$#@" 7 1 "a-z_0-9"
+unhash2 0x5a1d63e0 "_" "$#@" 7 1 "a-z_0-9"
+
+unhash2 0x4a6e0632 "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0xe317daa0 "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0xa438b448 "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0x7c20f15c "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0x630c6de1 "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0xa70690bf "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0xc3d5083a "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0xff12cf9a "_" "#$@" 7 1 "a-z_0-9"
+unhash2 0x5a1d63e0 "_" "#$@" 7 1 "a-z_0-9"

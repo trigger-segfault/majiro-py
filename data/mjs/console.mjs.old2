@@ -1,0 +1,2926 @@
+//=====================================================================
+// console.hgs マジロ"ノベル環境"用console
+// 
+// *現在に次の症状を確認しています。
+// ・セーブデータが名前表示直後にCLSされていた場合、ロード直後に名前だけ出る
+// 
+// 040626 Yashorii 作成開始
+//=====================================================================
+#include "includes\stdio.mjh"
+#include "includes\adv.mjh"
+#group "CONSOLE"
+
+#define WARITUKE			0		// 名前を等間隔割付するか
+#define DIRECTMENU 		1		// SPACEでコンソールを消去
+#define CHIRATUKI_SUKUNAKU	1		// 名前ステータスのちらつきを少なく
+#define NONAMEDISP		0		// 述べるなどで名前を出さない
+#define ALTWINKATLASTLINE	1		// 最終行になると強制的にALTWINK
+#define ASKYESNO_ON_QSAVE	0		// QSAVEの時にyes/no menu.mjsにも有ります
+#define ASKYESNO_ON_QLOAD	1		// QLOADの時にyes/no menu.mjsにも有ります
+#define CONSOLE_MOZI_KAGE	@kmk		// 0通常 128なし 1袋 2:拡張袋 4:はぴぷり拡張
+#define CON3_OFS_X		48
+
+#define FACEPARTS			"facebase"
+#define FACEPARTS_NAME		"faceparts"
+#define FACE_POS_START		0,312
+#define FACE_POS_LEN		234,288
+#define USEFACE_SPR		1
+#define USEFACE_PASTE		0
+#define NOTUSEPICFIX		0
+//=====================================================================
+// @CONSOLEの変数表
+
+
+var #console;		// コンソールのデータ
+var #console_;		// コンソールのαデータ
+var #spr;			// コンソールのスプライト
+var #spr_low;
+var #con_draw;		// コンソールのDraw側のページ
+var #con_draw_;		// コンソールのDraw側のページαデータ
+var #con_disp;		// コンソールのDraw側のページ
+var #con_disp_;		// コンソールのDraw側のページαデータ
+var #optmsg;		// オプションのメッセージ
+var #optmsg_;		// オプションのメッセージ
+var #optmsg_spr;		// オプションのメッセージ用のspr
+
+var @fn_console_off$, @fn_console_on$, @fn_console_push$;		// 現在のコンソールのファイル名
+
+var @con_ofs_x, @con_ofs_y;	// コンソールのオフセット
+var @con_mode;			// コンソールモード 0:通常 2:全画面
+
+var #but_on, #but_on_;		// コマンドのボタンがＯＮの状態
+var #but_push, #but_push_;	// コマンドのボタンがＰＵＳＨの状態
+
+var #name_org, #name_org_;				// 名前枠のデータ
+var #name_page, #name_page_, #name_spr;		// 名前のスプライト関係
+var @name$;							// 名前文字列
+var @name_mode;						// 名前sprの現在の状況 0:出現無し 1:表示中 2:消去中
+var @name_disp$;						// 表示した名前の素の状態
+
+var #wink_spr, #wink_spr2;		// ウインクデータ
+var #wink_spr3, #wink_spr4;		// ウインクデータ(2)
+var #wink_spr5, #wink_spr6;		// ウインクデータ(2)
+
+var @is_select, @ret, @selsel_cur_dic;
+
+var @timemax_fixed;	// 固定時間で進行する場合の時間 timemax
+var @last_fastdisp_mode;				// 現在の高速モード
+var @altwink;						// ウインクカーソル変形
+
+var @no, @lx, @ly, @lxl, @lyl;			// ウインク用の変数
+
+var @last_font_name$;					// 最後にコンソールに出力した文字フォント
+var @last_font_skip;					// 最後にスキップsitaka
+var @kmk;
+
+var @novel_alfa;						// ノベールモードアルファ
+
+var @face_fn$;			// 顔のFN
+var @last_face_fn$;		// ちょい以前の顔
+var #face_spr;			// 顔のスプライト
+
+var @game_mode;						// ゲームモード 0:ナギサの 1:ナツメグ 2:レコンキスタ
+var @last_sysdata$;					// 最後に読んだsysdata$
+
+var @ucon_x, @ucon_y, @ucon_xl, @ucon_yl;		// ユーザコンソールね(mode99)
+
+var #conhalf@CONFIG;
+
+var @nameofs_y;
+
+var @fc@KOEKOE;
+var @dc@KOEKOE;
+
+var #face_org_page;
+var #face_alfaseed_page;
+var @face_erase_time;
+
+var @do_skip_lastmoji;
+var @spr2@PIC;
+
+//---------------------------------------------------------------------
+// スカーレットのコンソールか
+//---------------------------------------------------------------------
+func $is_sca(void) {
+	if (@con_mode!=0) return(0);
+	if (@last_sysdata$=="sysdata.cfg") return(1);
+	if (@last_sysdata$=="guratan.cfg") return(1);
+	
+//	if ($strstr(@fn_console_off$@CONSOLE, "console_off")==0) return(1);
+	return(0);
+}
+
+//---------------------------------------------------------------------
+// コンソールの基本状態を設定する
+//---------------------------------------------------------------------
+var #con_draw@CONSOLE;
+
+void $set_default_color(_name$) {
+	
+	$set_user_color(_name$);
+	
+	@dc@KOEKOE = @fc@KOEKOE;
+	$console_color(@dc@KOEKOE, CONSOLE_KAGE_COL|(CONSOLE_MOZI_KAGE<<24));
+}
+void $set_concon(void) {
+	$histbuff_disable();
+	
+	// コンソールの土台の状態によって、コンソールの設定を買える場合はここで変更してください
+	$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM, #confont_xl@SYSTEM, #confont_ystep@SYSTEM, #confont_isproportional@SYSTEM);
+	$console_set(#con_draw, #conarea_x@SYSTEM-#conall_x@SYSTEM, #conarea_y@SYSTEM-#conall_y@SYSTEM, #conarea_xl@SYSTEM, #conarea_yl@SYSTEM);
+
+	$console_color(@dc@KOEKOE, CONSOLE_KAGE_COL|(CONSOLE_MOZI_KAGE<<24));
+	$console_locate_force(#conarea_x@SYSTEM-#conall_x@SYSTEM, #conarea_y@SYSTEM-#conall_y@SYSTEM+(#confont_ystep@SYSTEM-#confont_yl@SYSTEM)/2);
+	
+	$histbuff_enable();
+}
+
+//---------------------------------------------------------------------
+// 強制見るだけモードに移行
+//---------------------------------------------------------------------
+var @last_auto, @last_moji, @last_effect;
+var @force_play;						// 強制見るだけモード
+
+void $set_force_play(_autospd, _mojispd, _effectspd) {
+	if (@force_play==0) {
+		@last_auto = $get_effectspeed();
+		@last_moji = $get_mojispeed();
+		@last_effect = $get_effectspeed();
+	}
+	@force_play = 1;
+	$set_autospeed(_autospd);
+	$set_mojispeed(_mojispd);
+	$set_effectspeed(_effectspd);
+	
+	$save_menu_disable();
+	$fast_mode_disable();
+	$mouse_disable();
+}
+
+void $reset_force_play(void) {
+	if (!@force_play) return;
+
+	$set_autospeed(@last_auto);
+	$set_mojispeed(@last_moji);
+	$set_effectspeed(@last_effect);
+	
+	$save_menu_enable();
+	$fast_mode_enable();
+	$mouse_enable();
+
+	@force_play = 0;
+	$mk_unwait();
+}
+
+//---------------------------------------------------------------------
+// conosle_picfix コンソール状態に画像を無理やり合わす
+//---------------------------------------------------------------------
+void $conosle_picfix(_page[, _xin, _yin]) {
+	var _x, _y;
+	_x = 0; _y = 0;
+	
+	if (__SYS__NumParams>=3) {
+		_x = _xin;
+		_y = _yin;
+	}
+	
+	if ($get_alfapage(_page)) {
+		var _ap;
+		
+		_ap = $get_alfapage(_page);
+		switch(@con_mode) {
+		case 1:	// シネマモード
+		case 3:unbreak;
+		case 4:
+			$grp_boxfill(_ap, 0-_x, 480-_y, 9999, 9999, 255);
+		case 5:
+			$grp_boxfill(_ap, 0-_x, 0-_y, 9999, 75, 255);
+			$grp_boxfill(_ap, 0-_x, 505-_y, 9999, 9999, 255);
+		case 8:
+			$grp_boxfill(_ap, 0-_x, 0-_y, 9999, 142, 255);
+			$grp_boxfill(_ap, 0-_x, 402-_y, 9999, 9999, 255);
+		}
+	} else {
+		switch(@con_mode) {
+		case 1:	// シネマモード
+		case 3:unbreak;
+		case 4:
+			$grp_boxfill(_page, 0-_x, 480-_y, 800, 9999, 0);
+		case 5:
+			$grp_boxfill(_page, -_x, 0-_y, 800, 75, 0);
+			$grp_boxfill(_page, -_x, 505-_y, 800, 9999, 0);
+		case 8:
+			$grp_boxfill(_page, -_x, 0-_y, 800, 142, 0);
+			$grp_boxfill(_page, -_x, 402-_y, 800, 9999, 0);
+		}
+	}
+}
+//---------------------------------------------------------------------
+// next_beep ファミコンの文字出力エミュレータ(スタクルとも言う)
+//---------------------------------------------------------------------
+var @next_beep$;
+
+void $set_beep(_fn$) {
+	@next_beep$ = _fn$;
+}
+//---------------------------------------------------------------------
+// consoleの on / off / wipe
+//---------------------------------------------------------------------
+void $cb_console_cls(void) {
+	@fc@KOEKOE = @dc@KOEKOE;	// 色直し
+	$histbuff_disable();
+
+	if (!$is_fast_mode()) {
+		if (!($is_history())) {
+			$wait(0);
+		}
+	}
+
+
+	// コンソールとかをセットして
+	switch (@con_mode) {
+	case 0:
+		$set_concon();
+		break;
+	case 1:
+		$console_set(#con_draw, 90, 514+5, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		//$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM, #confont_xl@SYSTEM, #confont_ystep@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-4), #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+		
+	case 2:
+		$console_set(#con_draw, #conarea_all_x@SYSTEM, #conarea_all_y@SYSTEM, #conarea_all_xl@SYSTEM, #conarea_all_yl@SYSTEM);
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM, #confont_xl@SYSTEM, #confont_ystep@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+		break;
+	case 3:
+		$console_set(#con_draw, 90+CON3_OFS_X, 514, 690-CON3_OFS_X, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$console_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-2), #confont_xl@SYSTEM-1, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 4:
+		//$console_set(#con_draw, 90, 514, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$console_set(#con_draw, 90, 514-24, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl// 上げた
+		
+		$console_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-4), #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 5:
+		$console_set(#con_draw, 90, 514+5, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM-4, #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 6:
+		//$console_set(#con_draw, 90, 514, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		//$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM, #confont_xl@SYSTEM, #confont_ystep@SYSTEM, #confont_isproportional@SYSTEM);
+		//$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+		
+		$console_set(#con_draw, 176, 356, 560, 150);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM-4, #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 7:
+		$console_set(#con_draw, 90, 514, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$console_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-4), #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 8:
+		//$console_set(#con_draw, 90, 402+14, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$console_set(#con_draw, 90, 402+14-40, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl// 上げた
+		
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM-4, #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 9:
+		$console_set(#con_draw, 90, 402+14, 690, 88);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM-4, #confont_xl@SYSTEM-2, #confont_yl@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	case 99:
+		$console_set(#con_draw, @ucon_x, @ucon_y, @ucon_xl, @ucon_yl);
+		$console_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM, #confont_xl@SYSTEM, #confont_ystep@SYSTEM, #confont_isproportional@SYSTEM);
+		$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	}
+	
+	// draw画面、disp画面共に消去
+	// 必要な部材をコピーします
+	switch (@con_mode) {
+	case 0:
+		// draw画面、disp画面共に種をcopy
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, $rgb(0, 0, 0));		// 黒
+		$grp_boxfill(#con_disp_, 0, 0,  9999, 9999, 255);			// 出力側透明
+		
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);			// 黒
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);		// 表示側透明
+		
+		$grp_copy(#console, 0, 0, $page_len_x(#console), $page_len_y(#console), #con_disp, 0, 0);
+		//n$grp_copy(#console, 0, 0, $page_len_x(#console), $page_len_y(#console), #con_draw, 0, 0);
+		
+		break;
+	case 1:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		break;
+	case 2:
+		if ($is_history()) {
+			$grp_boxfill(#con_draw, 0, 0, 9999, 9999, $rgb(0, 0, 0));		// 黒
+			$grp_boxfill(#con_draw_, 0, 0,  9999, 9999, 255);			// 透明
+		} else {
+			$grp_boxfill(#con_draw, 0, 0, 9999, 9999, $rgb(0, 0, 0));		// 黒
+			$grp_boxfill(#con_draw_, 0, 0,  9999, 9999, @novel_alfa);			// 透明
+			$grp_boxfill(#con_disp, 0, 0, 9999, 9999, $rgb(0, 0, 0));		// 黒
+			$grp_boxfill(#con_disp_, 0, 0,  9999, 9999, @novel_alfa);		// 透明
+		}
+		break;
+	case 3:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		break;
+	case 4:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$grp_boxfill(#con_disp_, 0, 480, 800, 9999, 0);
+		break;
+	case 5:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$grp_boxfill(#con_disp, 0, 0, 9999, 75, 0);
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 75, 0);
+		$grp_boxfill(#con_disp, 0, 505, 9999, 9999, 0);
+		$grp_boxfill(#con_disp_, 0, 505, 9999, 9999, 0);
+
+		break;
+	case 6:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		break;
+	case 7:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$grp_boxfill(#con_disp_, 0, 505, 800, 95, 128);
+		break;
+		
+	case 8:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		$grp_boxfill(#con_disp, 0, 0, 9999, 142, 0);
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 142, 0);
+		$grp_boxfill(#con_disp, 0, 402, 9999, 9999, 0);
+		$grp_boxfill(#con_disp_, 0, 402, 9999, 9999, 0);
+
+		break;
+		
+	case 9:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		break;
+	case 99:
+		$grp_boxfill(#con_draw, 0, 0, 9999, 9999, 0);		// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_draw_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp, 0, 0, 9999, 9999, 0);		// シネマコンソールの文字だし部分 x, y, xl, yl
+		$grp_boxfill(#con_disp_, 0, 0, 9999, 9999, 255);	// シネマコンソールの文字だし部分 x, y, xl, yl
+		
+		break;
+	}
+	$histbuff_enable();
+}
+void $cb_console_on(_fast, _nowait) {
+	if ($is_fast_mode()) {
+		_fast = 1;
+	} else {
+//		$wait(0);									// 内部時間を進める
+	}
+	switch(@con_mode) {
+	case 0:
+		$sprite_move(#spr, #conall_x@SYSTEM+@con_ofs_x, #conall_y@SYSTEM+@con_ofs_y);
+		//$sprite_move(#name_spr, #nameall_x@SYSTEM+@con_ofs_x, #nameall_y@SYSTEM+@con_ofs_y+@nameofs_y);
+		
+		if ($is_sca()) {
+			$sprite_move(#spr_low, FACE_POS_START);
+			$sprite_move(#face_spr, FACE_POS_START);
+		} else {
+			$sprite_move(#face_spr, 9999, 9999);
+		}
+	case 1:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 2:
+//		$trans_wait_top();
+		if ($is_history@HISTORY()) {
+			$sprite_move(#spr, 0, 0);
+		} else {
+			$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+		}
+	case 3:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 4:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 5:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 6:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 7:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 8:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 99:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	}
+	if (_fast) {
+		$sprite_alfa_set(#spr, 0);					// 出てくる
+		$sprite_alfa_set(#spr_low, 0);					// 出てくる
+//		$sprite_alfa_set(#face_spr, 0);					// 出てくる
+	} else {
+		$sprite_alfa_define(#spr_low, 255, 0, 0, 250, 0, -1);	// 出てくる
+		$sprite_alfa_define(#spr, 255, 0, 0, 250, 0, -1);	// 出てくる
+//		$sprite_alfa_define(#face_spr, 255, 0, 0, 250, 0, -1);	// 出てくる
+		if (!_nowait) {
+			$sprite_alfa_wait(#spr);
+			//$draw_wait();	// sprite～waitでは確実にdraw後に来ていました。
+		}
+	}
+	$reset_fast_disp();
+}
+//-------------------------------------------------------------
+// コンソールをoffするスレッド
+//-------------------------------------------------------------
+var @thread_base;
+
+void $thread_consoleoff_base3(void) {
+	var _page_from, _spr;
+	var _timer;
+	
+	constructor {
+		// テンポラリ用ページ作成
+		_page_from = $page_create_withalfa($client_width(), 230);
+		_spr = $sprite_create_ext(_page_from);
+		
+		$grp_boxfill($get_alfapage(_page_from), 0, 0, 9999, 9999, 255);
+		$grp_boxfill(_page_from, 0, 0, 9999, 9999, $rgb(255, 255, 255));
+		
+		// フェースもコピー
+		$sprite_paste(#spr_low, _page_from, 0, 230-368);
+		$sprite_paste(#face_spr, _page_from, 0, 230-368);
+		
+		// 現在のコンソールをコピー
+		$grp_extcopy(#con_disp, 0, 0, 1204, 230, _page_from, 0, 0);
+		
+		// 名前もコピー
+		if (@name_mode==1) {
+			$grp_extcopy(#name_page, 0, 0, 9999, 9999, _page_from, 0, 18);
+		}
+		
+		$sprite_alfa_set(_spr, 0);
+		$sprite_move(_spr, $client_width()/2, ($client_height()-230)+(230/2));
+	}
+	destructor {
+		$sprite_release(_spr);
+		$page_release(_page_from);
+		@thread_base = 0;
+	}
+	
+	// 名前sprを強制消去
+	$sprite_alfa_set(#name_spr, 255);
+
+	// 出てくる
+	$sprite_alfa_set(_spr, 255, 200);
+	$sprite_xmodify_define(_spr, 1.0, 0, 2.0, 200, 3.0, -1);
+	$sprite_ymodify_define(_spr, 1.0, 0, 0, 200, 0, -1);
+
+	$wait(220);
+}
+void $thread_consoleoff_base2(void) {
+	var _page_from, _spr;
+	var _timer;
+	
+	constructor {
+		// テンポラリ用ページ作成
+		_page_from = $page_create_withalfa(800, 180);
+		_spr = $sprite_create_ext(_page_from);
+		
+		$grp_boxfill($get_alfapage(_page_from), 0, 0, 9999, 9999, 255);
+		$grp_boxfill(_page_from, 0, 0, 9999, 9999, $rgb(255, 255, 255));
+		
+		// フェースもコピー
+		$grp_copy($sprite_get_page(#face_spr), 0, 0, 9999, 9999, _page_from, 0, -40);
+		
+		// 現在のコンソールをコピー
+		$grp_extcopy(#con_disp, 0, 0, 800, 600, _page_from, 0, 0);
+		
+		// 名前もコピー
+		if (@name_mode==1) {
+			$grp_extcopy(#name_page, 0, 0, 9999, 9999, _page_from, 0, 0);
+		}
+		
+		$sprite_alfa_set(_spr, 0);
+		$sprite_move(_spr, 400, 420+(180/2));
+	}
+	destructor {
+		$sprite_release(_spr);
+		$page_release(_page_from);
+		@thread_base = 0;
+	}
+	
+	// 名前sprを強制消去
+	$sprite_alfa_set(#name_spr, 255);
+
+	// 出てくる
+	$sprite_alfa_set(_spr, 255, 200);
+	$sprite_xmodify_define(_spr, 1.0, 0, 2.0, 200, 3.0, -1);
+	$sprite_ymodify_define(_spr, 1.0, 0, 0, 200, 0, -1);
+
+	$wait(220);
+}
+
+void $console_off_oya(void) {
+	if (@last_sysdata$=="guratan.cfg") @thread_base = $thread_begin($thread_consoleoff_base3);
+	if (@last_sysdata$=="sysdata.cfg") @thread_base = $thread_begin($thread_consoleoff_base2);
+	$wait(-2); $wait(-2);	$wait(-2); $wait(-2);
+	$wait(-2); $wait(-2);	$wait(-2); $wait(-2);
+	$wait(-2); $wait(-2);	$wait(-2); $wait(-2);
+	$wait(-2); $wait(-2);	$wait(-2); $wait(-2);
+}
+void $cb_console_off(_fast, _nowait) {
+	if ($is_fast_mode()) _fast = 1;
+	
+	$sprite_move(#optmsg_spr, 10000, 10000);				// optmsgスプライトも消します
+	
+	switch(@con_mode) {
+	case 0:
+		// コンソール消去スレッドを発生させる
+		if ($is_sca()) {
+			if (!_fast)	$console_off_oya();
+			
+			$sprite_move(#spr, 9999, 9999);
+			$sprite_move(#spr_low, 9999, 9999);
+			$sprite_move(#face_spr, 9999, 9999);
+			$sprite_move(#name_spr, 9999, 9999);
+			$sprite_alfa_set(#name_spr, 255);
+			$sprite_alfa_set(#face_spr, 255);
+			$sprite_alfa_set(#spr_low, 255);
+			$sprite_alfa_set(#name_spr, 255);
+		} else {
+			$sprite_move(#spr, #conall_x@SYSTEM+@con_ofs_x, #conall_y@SYSTEM+@con_ofs_y);
+		}
+	case 1:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 2:
+		if ($is_history()) {
+			$sprite_move(#spr, 0, 0);
+		} else {
+			$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+		}
+	case 3:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 4:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 5:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 6:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 7:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	case 99:
+		$sprite_move(#spr, @con_ofs_x, @con_ofs_y);
+	}
+	if (_fast) {
+		$sprite_alfa_set(#spr, 255);					// 消える
+		$sprite_alfa_set(#spr_low, 255);				// 消える
+		$sprite_alfa_set(#face_spr, 255);				// 消える
+		$sprite_alfa_set(#name_spr, 255);				// 消える
+	} else {
+		if ((@con_mode==0)&&($is_sca())) {
+			if (!_nowait) {
+				while (@thread_base) $wait(5);
+			}
+		} else {
+			$sprite_alfa_define(#spr, 0, 0, 255, 250, 255, -1);		// 透明へ
+			$sprite_alfa_define(#spr_low, 0, 0, 255, 250, 255, -1);	// 透明へ
+			if (!_nowait) {
+				$sprite_alfa_wait(#spr);
+				//$draw_wait();	// sprite～waitでは確実にdraw後に来ていました。
+			}
+		}
+	}
+	$reset_fast_disp();
+}
+void $console_offset([_x, _y]) {
+	if ($console_is_on()) $console_off();	// コンソールを消して
+	
+	@con_ofs_x = 0;
+	@con_ofs_y = 0;			// コンソールのオフセット
+	if (__SYS__NumParams>=1) @con_ofs_x = _x;
+	if (__SYS__NumParams>=2) @con_ofs_y = _y;
+	
+}
+void $console_mode([_mode_in]) {
+	var _mode;
+
+	_mode = 0;
+	if (__SYS__NumParams>=1) _mode= _mode_in;	// モード設定
+	
+	if (@con_mode==_mode) return;
+	
+	if ($console_is_on()) $console_off();	// コンソールを消して
+	@con_mode = _mode;
+	$cb_console_cls();					// 替える
+}
+void $user_console(_x, _y, _xl, _yl) {
+	@ucon_x = _x;
+	@ucon_y = _y;
+	@ucon_xl = _xl;
+	@ucon_yl = _yl;
+	
+	$console_mode(99);
+	$cb_console_cls();
+}
+//---------------------------------------------------------------------
+// 文字の描画
+// (#confont_yl@SYSTEM/2)のところはルビ関係
+//---------------------------------------------------------------------
+func $check_font_change_only(void);
+var #is_dash_ar@CONFIG;
+var @pausecancel@KOEKOE;
+var @catch_x$;
+var @in_rubi;
+void $x_catch(_str$) {
+	@catch_x$ = _str$;
+	
+	switch($strleft$(_str$, 2)) {
+	case "#0":	// normal
+		@in_rubi = 0;
+	case "#1":	// rubi
+		$console_font("ＭＳ ゴシック", #confont_yl@SYSTEM/2, #confont_yl@SYSTEM/4, #confont_ystep@SYSTEM/2, #confont_isproportional@SYSTEM);
+		@in_rubi = 1;
+	}
+}
+void $cb_console_wrote(_page, _x, _y, _xl, _yl, _zerotime) {
+	var _skip, _px, _tx, _timer, _timemax, _cx$, _txo;
+
+	if ($is_history()) return;			// ヒストリーで面倒見ます
+
+	_skip = 1;
+	_px = 0;						// 現在の場所
+	
+	_txo = 0;						// 転送先オフセット(x)
+	if (@con_mode==3) {
+		_txo = ($client_width()-_xl)/2;
+		_y+=(#confont_yl@SYSTEM*6/4);		// 凄いパッチ^^;
+	}
+	
+	_cx$ = @catch_x$;
+	@catch_x$ = "";		// 毎回リセットしないと！
+	
+	if (@in_rubi) return;	// ルビスキップ
+	
+	// ルビ文字 - はみ出した手前分をコピー
+	if ($strleft$(_cx$, 2)=="#0") {
+		var _len1;
+		_len1 = $atoi($strsplit$(_cx$, 1));
+		if (_len1<0) {
+			$grp_extcopy(_page, _x+_len1, _y-20, -_len1, _yl+20, #con_disp, _x+_len1, _y-20);	// #con_dispにコピー
+		}
+	}
+	if ($check_font_change_only()) goto skip;	// フォントが変更になったり、高速化から戻った
+	
+	$reset_fast_disp();				// 速度表示状態を戻す
+	
+	if (_zerotime) goto skip;			// 一瞬で表示でした。
+	if ($is_fast_mode()) goto skip;		// 高速化された
+
+//	if ((#is_dash_ar@CONFIG)&&($is_read_marked())) goto skip;	// ユーザ指定で既読スキップ開始
+
+	if (@next_beep$) $sound2(@next_beep$, 1);			// ぺろぺろサウンド(スタクル音)
+	
+	@do_skip_lastmoji = 1;
+	setskip {
+		_timer = $timer();
+		do {
+			if ($mk_read() & (16+8)) goto skip;								// なんか入力あった
+			if ($is_fast_mode()) goto skip;								// 高速化された
+			
+			if (@timemax_fixed==0) {
+				_timemax = (_xl*$get_mojispeed())*3/2/1000;
+			} else {
+				_timemax = (_xl*@timemax_fixed)*3/2/1000;
+			}
+			if (_timemax<=5) break;			// スキップでは無いが、ブレーク
+			$wait(10);					// 処理後がいいか…
+			_tx = $timer_progress(_timer, _timemax, _xl);						// _timemax秒で_xl幅
+			if ((_px)!=(_tx)) {
+				$grp_extcopy(_page, _x+_px, _y-(#confont_yl@SYSTEM/2)-1, _tx-_px, _yl+(#confont_yl@SYSTEM/2)+1, #con_disp, _x+_px+_txo, _y-(#confont_yl@SYSTEM/2)-1);	// #con_dispにコピー
+				_px = _tx;
+			}
+			$reset_fast_disp();				// 表示を入れ替え
+			
+		} while(_tx<_xl);
+		_skip = 0;					// 辛抱強く待ちました。
+		@do_skip_lastmoji = 0;
+	}
+skip:
+
+	$grp_extcopy(_page, _x+_px, _y-(#confont_yl@SYSTEM/2)-1, _xl-_px, _yl+(#confont_yl@SYSTEM/2)+1, #con_disp, _x+_px+_txo, _y-(#confont_yl@SYSTEM/2)-1);	// #con_dispにコピー
+	
+	if (_skip) $console_setzerotime();		// スキップされました。次回もスキップでよろしく
+	if (!$is_fast_mode()) $wait(0);		// 画面更新
+}
+func $is_skip_last_message(void) {
+	return(@do_skip_lastmoji);
+}
+
+
+//---------------------------------------------------------------------
+// フォント変更を受け取る
+//---------------------------------------------------------------------
+func $check_font_change_only(void) {
+	var _ret;
+	
+	if (!$console_is_on()) return(0);
+	if ($is_fast_mode()) return(0);
+	
+	_ret = 0;
+	// 変更発見
+	if (@last_font_name$!=$get_font_name$()) {
+		_ret = 1;
+	}
+	return(_ret);
+}
+void $check_font_change(void) {
+	// フォント名が違えばリドロウ！
+	if ($check_font_change_only()) {
+	
+		// 次回は発見しなくて良いよ！
+		@last_font_name$ = $get_font_name$();
+		
+		$histbuff_disable();
+		\w
+		$console_off(1, 1);
+		$console_on(1, 1);
+		$console_redraw(-1);
+		
+		$histbuff_enable();
+	}
+	@last_font_skip = $is_fast_mode();
+}
+
+
+
+//---------------------------------------------------------------------
+// 名前関係 on
+//---------------------------------------------------------------------
+void $namedisp(_name$) {
+	var _fast;
+	var _fixname$;
+	
+//	$console_on();
+
+	_fixname$ = _name$;					// 名前をコピー
+	if ($strleft$(_fixname$, 1)=="＠") {		// 最初の"＠"を削除
+		_fixname$ = $strmid$(_fixname$, 1, 99);
+	}
+	if ($strstr(_fixname$, "：")!=-1) {			// "："を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "："));		// "（"以降を削除
+	}
+	if ($strstr(_fixname$, "＠")!=-1) {			// "＠"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "＠"));		// "（"以降を削除
+	}
+	if ($strstr(_fixname$, "（")!=-1) {			// "（"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "（"));		// "（"以降を削除
+	}
+	if ($strstr(_fixname$, "／")!=-1) {			// "／"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "／"));		// "／"以降を削除
+	}
+	if ($strstr(_fixname$, "[")!=-1) {			// "["を発見	'['以降に
+		_fixname$ = $strmid$(_fixname$, $strstr(_fixname$, "[")+1, 99);
+	}
+	if ($strstr(_fixname$, "]")!=-1) {			// "]"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "]"));		// "]"以降を削除
+	}
+	if ($strstr(_fixname$, "［")!=-1) {			// "["を発見	'['以降に
+		_fixname$ = $strmid$(_fixname$, $strstr(_fixname$, "［")+1, 99);
+	}
+	if ($strstr(_fixname$, "］")!=-1) {			// "］"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "］"));		// "］"以降を削除
+	}
+	if ($strstr(_fixname$, "【")!=-1) {			// "【"を発見	'【'以降に
+		_fixname$ = $strmid$(_fixname$, $strstr(_fixname$, "【")+1, 99);
+	}
+	if ($strstr(_fixname$, "】")!=-1) {			// "】"を発見
+		_fixname$ = $strleft$(_fixname$, $strstr(_fixname$, "】"));		// "】"以降を削除
+	}
+	
+#if WARITUKE							// 等間隔割付
+	switch ($strlen(_fixname$)) {				// 名前の文字数により空白を入れる
+	case 2:
+		_fixname$ = $strleft$(_fixname$, 1)+"　"+$strright$(_fixname$, 1);
+	case 3:
+		_fixname$ = $strleft$(_fixname$, 1)+" "+$strmid$(_fixname$, 1, 1)+" "++$strright$(_fixname$, 1);
+	}
+#endif
+	// ＋＋＋スカーレットonly？
+	if ($strlen(_fixname$)==2) _fixname$ = $strleft$(_fixname$, 1)+"　"+$strright$(_fixname$, 1);
+	
+	@name_disp$ = _fixname$;
+#if NONAMEDISP
+	@name$ = _name$;			// 名前を保存
+	@name_mode = 0;			// 出現中では無い！
+	return;
+#endif
+	// コンソール色の設定
+	$histbuff_disable();
+	if (!$is_history()) {
+		if (@con_mode==0) {
+			$set_user_color(_name$);
+			$console_color(@fc@KOEKOE, CONSOLE_KAGE_COL|(CONSOLE_MOZI_KAGE<<24));
+		} else {
+			$set_user_color(_name$);
+			$console_color(@fc@KOEKOE, (CONSOLE_MOZI_KAGE<<24));
+		}
+	}
+	$histbuff_enable();
+
+	if (!$is_history()) {
+		// 空白は出さずに戻る
+		if ((@name_disp$=="")||(@name_disp$=="　")) {
+			@name$ = _name$;			// 名前を保存
+			@name_mode = 0;			// 出現中では無い！
+			return;
+		}
+	}
+	
+	$histbuff_disable();
+	//$fontout_font(#namefont_name$@SYSTEM, #namefont_yl@SYSTEM, #namefont_xl@SYSTEM, #namefont_isproportional@SYSTEM);
+	$fontout_font(#confont_name$@SYSTEM, #namefont_yl@SYSTEM, #namefont_xl@SYSTEM, #namefont_isproportional@SYSTEM);
+	
+	if ($is_history()) {
+//		$fontout_color($rgb(255, 255, 180), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+		$fontout_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+	} else {
+		if (@con_mode==0) {
+			$fontout_color(@fc@KOEKOE, CONSOLE_KAGE_COL|(CONSOLE_MOZI_KAGE<<24));
+		} else {
+			$fontout_color(@fc@KOEKOE, (CONSOLE_MOZI_KAGE<<24));
+		}
+	}
+	$histbuff_enable();
+
+	switch(@con_mode) {
+	case 1:
+		goto exit_func;
+	case 2:
+		$fontout_locate(#con_draw, $console_curpos_x(), $console_curpos_y());
+		$fontout(_fixname$);
+		
+		// disp側はhistoryで面倒見ます
+		if (!($is_history())) {
+			$fontout_locate(#con_disp, $console_curpos_x(), $console_curpos_y());
+			$fontout(_fixname$);
+		}
+		$console_locate_force($console_curpos_x(), $console_curpos_y()+#confont_ystep@SYSTEM);
+		goto exit_func;
+	case 3:
+//		$fontout_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-2), #confont_xl@SYSTEM-1, #confont_yl@SYSTEM);
+		$fontout_font(#confont_name$@SYSTEM, (#confont_yl@SYSTEM-2), #confont_xl@SYSTEM-1, #confont_isproportional@SYSTEM);
+		$fontout_locate(#con_draw, 20+CON3_OFS_X, 514);
+		$fontout(_fixname$, 70, #confont_yl@SYSTEM-2);
+		$fontout_locate(#con_disp, 20+CON3_OFS_X, 514);
+		$fontout(_fixname$, 70, #confont_yl@SYSTEM-2);
+		goto exit_func;
+	case 4:
+		goto exit_func;
+	case 5:
+		goto exit_func;
+		
+		$fontout_font(#confont_name$@SYSTEM, #confont_yl@SYSTEM-4, #confont_xl@SYSTEM-2, #confont_isproportional@SYSTEM);
+		$fontout_locate(#con_draw, $console_curpos_x(), $console_curpos_y());
+		$fontout(_fixname$);
+	// disp側はhistoryで面倒見ます
+		if (!($is_history())) {
+			$fontout_locate(#con_disp, $console_curpos_x(), $console_curpos_y());
+			$fontout(_fixname$);
+		}
+		$console_locate_force($console_curpos_x(), $console_curpos_y()+#confont_yl@SYSTEM);
+		goto exit_func;
+	case 6:
+		goto exit_func;
+	case 7:
+		goto exit_func;
+	case 8:
+		goto exit_func;
+	case 9:
+		goto exit_func;
+	}
+	
+	// ここからオリジナル
+	// $grp_boxfill(#name_page, 0, 0, 999, 999, $rgb(255, 255, 255));
+	$grp_boxfill(#name_page, 0, 0, 999, 999, 0);
+	$grp_boxfill(#name_page_, 0, 0, 999, 999, 255);
+	
+	$grp_copy(#name_org, 0, 0, #nameall_xl@SYSTEM, #nameall_yl@SYSTEM, #name_page, 0, 0);	// 生をコピー
+	$grp_extboxfill(#name_page_, 0, 0, 9999, 9999, 255, #conhalf@CONFIG);
+	$fontout_locate(#name_page, #namearea_x@SYSTEM-#nameall_x@SYSTEM, #namearea_y@SYSTEM-#nameall_y@SYSTEM);
+	$fontout(_fixname$, #namearea_xl@SYSTEM, #namearea_yl@SYSTEM);
+	
+	// ＋＋＋現在常に即時
+	// _fast = 1;
+	if ($is_fast_mode()) _fast = 1;			// 即時出現
+	if ($get_mojispeed()<500) _fast = 1;		// 即時出現
+	if (@name_mode) {						// 表示中/消去中の場合はパッチあり。
+		#if CHIRATUKI_SUKUNAKU
+			_fast = 1;					// ちらつきを抑制する
+		#else 
+			if (@name$==_name$) _fast = 1;	// 名前同じなら即時(名前をチェックする場合)
+		#endif
+	}
+//	@nameofs_y = (@face_fn$=="")?(-112):(0);
+	@nameofs_y = 0;
+	if (_fast) {	// 即時出現
+		$sprite_move(#name_spr, #nameall_x@SYSTEM+@con_ofs_x, #nameall_y@SYSTEM+@con_ofs_y+@nameofs_y);
+		if ($console_is_on()) $sprite_alfa_set(#name_spr, 0);
+	} else {
+		$sprite_alfa_set(#name_spr, 255);		// じん割り出し
+		$sprite_move(#name_spr, #nameall_x@SYSTEM+@con_ofs_x, #nameall_y@SYSTEM+@con_ofs_y+@nameofs_y);
+		if ($console_is_on()) {
+			$sprite_alfa_set(#name_spr, 0, 200);
+		}
+	}
+exit_func:
+	@name$ = _name$;			// 名前を保存
+	@name_mode = 1;			// 出現中に
+}
+//---------------------------------------------------------------------
+// フェースon
+//---------------------------------------------------------------------
+var @pic_top_bak$#@PIC;
+var @sepia_mode@PIC, @sepia_low@PIC, @sepia_high@PIC;
+
+func $get_face_center_x_in(_fn$) {
+	if ($strstr(_fn$, "akik_c")>=0) return(0);
+	if ($strstr(_fn$, "fury")>=0) return(0);
+	if ($strstr(_fn$, "ckiri")>=0) return(0);
+	if ($strstr(_fn$, "kiri")>=0) return(574);
+	if ($strstr(_fn$, "sizu")>=0) return(569);
+	if ($strstr(_fn$, "misa")>=0) return(585);
+	if ($strstr(_fn$, "mino")>=0) return(560);
+	if ($strstr(_fn$, "maki")>=0) return(574);
+	if ($strstr(_fn$, "masa")>=0) return(535);
+	return(570);
+}
+func $get_face_center_x(_fn$) {
+	return($get_face_center_x_in(_fn$)*800/1024);
+}
+func $get_face_center_y_in(_fn$) {
+	if ($strstr(_fn$, "akik_c")>=0) return(0);
+	if ($strstr(_fn$, "fury")>=0) return(0);
+	if ($strstr(_fn$, "ckiri")>=0) return(0);
+	if ($strstr(_fn$, "kiri")>=0) return(177);
+	if ($strstr(_fn$, "sizu")>=0) return(197);
+	if ($strstr(_fn$, "misa")>=0) return(197);
+	if ($strstr(_fn$, "mino")>=0) return(173);
+	if ($strstr(_fn$, "maki")>=0) return(176);
+	if ($strstr(_fn$, "masa")>=0) return(76);
+	return(175);
+}
+func $get_face_center_y(_fn$) {
+	return($get_face_center_y_in(_fn$)*800/1024);
+}
+
+func $picpic_shortfix$@PIC(_fn$);
+func $picpic_longfix$@PIC(_fn$);
+void $pic_unpack_zyouzan@PIC(_to, _fn$[, _xin, _yin]);
+func $picpic_is_exist@PIC(_fn$);
+func $picpic_getmainname$@PIC(_fn$);
+func $picpic_longlongfix$@PIC(_fn$);
+
+void $facedisp_gura(_name$, [_is_recover]) {
+	var _isr, _alfa;
+	
+	
+	if (!$is_sca()) return;
+	
+	_isr = (__SYS__NumParams>=2)?(_is_recover):(0);
+	
+	if (_isr) @face_fn$ = @last_face_fn$;
+	
+	#if 0
+	if (!$picpic_is_exist(_name$)) {
+		if (($is_report_no_pic())&&($is_testplay())) {
+			$dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		if (($is_log_no_pic())&&($is_testplay())) {
+			$debugout("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		_name$ = "face_dummy";
+	}
+	#endif
+	
+#if USEFACE_SPR
+	var _fast;
+	var _chk$, _i;
+	var _pg, _tmp;
+	var _x, _y;
+	
+	_alfa = $do_get_pic_top_alfa@PIC(_name$);
+	//if (_alfa) @face_erase_time = 0;
+	//if (_alfa) $dialog_ok(_alfa);
+	
+	// 今の画像をコピー
+	if ($abs($timer()-@face_erase_time)<100) {
+		// 下に今の画像をコピー
+		$grp_copy($sprite_get_page(#face_spr), 0, 0, FACE_POS_LEN, $sprite_get_page(#face_spr), 0, $sprite_len_y(#face_spr));
+		
+		// 内容をクリア(上)
+		$grp_boxfill($sprite_get_page(#face_spr), 0, 0, FACE_POS_LEN, $rgb(128, 128, 128));
+		$grp_boxfill($get_alfapage($sprite_get_page(#face_spr)), 0, 0, FACE_POS_LEN, 255);
+	} else {
+		// 内容をクリア(全部)
+		$grp_boxfill($sprite_get_page(#face_spr), 0, 0, 9999, 9999, $rgb(128, 128, 128));
+		$grp_boxfill($get_alfapage($sprite_get_page(#face_spr)), 0, 0, 9999, 99999, 255);
+	}
+	// 現在の内容を上に作成
+	if (_name$) {
+	
+		_x = $get_face_center_x(_name$);
+		_y = $get_face_center_y(_name$);
+		
+		if (_x!=0) {
+			var _fn_ho$;
+			
+			_pg = $page_create_file_withalfa_clip($picpic_getmainname$("b_"+_name$), _x-(600/2), _y-(700/2), 600, 700);
+			_fn_ho$ = $picpic_longfix$("b_"+_name$);
+			if (_fn_ho$) {
+				// 頬染め拡張
+				if ($strright$(_fn_ho$, 1)=="h") {
+					$pic_unpack_zyouzan(_pg, _fn_ho$, -(_x-(600/2)), -(_y-(700/2)));// 乗算差分
+				} else {
+					$pic_unpack(_pg, _fn_ho$, -(_x-(600/2)), -(_y-(700/2)));// 通常差分
+				}
+			}
+			_fn_ho$ = $picpic_longlongfix$("b_"+_name$);
+			if (_fn_ho$) {
+				// 頬染め拡張
+				if ($strright$(_fn_ho$, 1)=="h") {
+					$pic_unpack_zyouzan(_pg, _fn_ho$, -(_x-(600/2)), -(_y-(700/2)));// 乗算差分
+				} else {
+					$pic_unpack(_pg, _fn_ho$, -(_x-(600/2)), -(_y-(700/2)));// 通常差分
+				}
+			}
+			
+			$do_pic_top_filter(_pg);
+			if (@sepia_mode@PIC) $grp_sepia(_pg, 0, 0, 9999, 9999, @sepia_low@PIC, @sepia_high@PIC, 256-@sepia_mode@PIC);		// 指定範囲をclow->chighのセピア調に変換
+			
+			// $grp_modify_copy(_pg, 0, 0, 314, 410, $sprite_get_page(#face_spr), 0, 0, FACE_POS_LEN, 0, 0.9, 0.9);// 小から
+			
+			_tmp = $page_create_withalfa(600, 700);
+			$grp_boxfill($get_alfapage(_tmp), 0, 0, 99999, 9999, 255);
+			$grp_modify_copy(_pg, 0, 0, 600, 700, _tmp, 1, 1, 600, 700, 0, 0.9, 0.9);
+			$grp_modify_copy(_tmp, 0, 0, 600, 700, $sprite_get_page(#face_spr), 0, 0, FACE_POS_LEN, 0, 0.6, 0.6);// 結果的に0.54倍に
+			$grp_revmulcopy(#face_alfaseed_page, 0, 0, FACE_POS_LEN, $get_alfapage($sprite_get_page(#face_spr)), 0, 0);
+			$page_release(_tmp);
+			$page_release(_pg);
+		} else {
+			
+			_pg = $sprite_get_page(#face_spr);
+			$pic_unpack(_pg, $picpic_getmainname$("f_"+_name$), 0, 0);
+			
+			_fn_ho$ = $picpic_longfix$("f_"+_name$);
+			if (_fn_ho$) {
+				// 頬染め拡張
+				if ($strright$(_fn_ho$, 1)=="h") {
+					//if ($pic_is_exist(_fn_ho$)) 
+					$pic_unpack_zyouzan(_pg, _fn_ho$);// 乗算差分
+				} else {
+					$pic_unpack(_pg, _fn_ho$);// 乗算差分
+				}
+			}
+			_fn_ho$ = $picpic_longlongfix$("f_"+_name$);
+			if (_fn_ho$) {
+				// 頬染め拡張
+				if ($strright$(_fn_ho$, 1)=="h") {
+					$pic_unpack_zyouzan(_pg, _fn_ho$);// 乗算差分
+				} else {
+					$pic_unpack(_pg, _fn_ho$);// 乗算差分
+				}
+			}
+			
+			$do_pic_top_filter(_pg);
+			if (@sepia_mode@PIC) $grp_sepia(_pg, 0, 0, FACE_POS_LEN, @sepia_low@PIC, @sepia_high@PIC, 256-@sepia_mode@PIC);		// 指定範囲をclow->chighのセピア調に変換
+			
+			$grp_revmulcopy(#face_alfaseed_page, 0, 0, FACE_POS_LEN, $get_alfapage($sprite_get_page(#face_spr)), 0, 0);
+		}
+	}
+	
+	if ($is_fast_mode()) _fast = 1;			// 即時出現
+	if ($get_mojispeed()<500) _fast = 1;		// 即時出現
+	
+	$sprite_move(#face_spr, FACE_POS_START);
+	
+	if ((@con_mode==0)&&($console_is_on())) {
+		if (_fast) {
+			$sprite_animate_define(#face_spr, 0, 0, 0, -1);
+			$sprite_alfa_set(#face_spr, _alfa);
+		} else {
+			$sprite_animate_define(#face_spr, 1, 0, 1, 200, 0, 0, 0, -1);
+			$sprite_alfa_set(#face_spr, _alfa);
+		}
+	} else {
+		$sprite_alfa_set(#face_spr, 255);
+	}
+
+	
+	@last_face_fn$ = @face_fn$;
+	@face_fn$ = _name$;			// 名前を保存
+	
+	// /人物を入れ替える！
+//	if (__SYS__NumParams==1) {
+//		\x(@face_fn$)			// ヒストリ用に名前を保存
+//	}
+	
+#endif
+}
+void $facedisp(_name$, [_is_recover]) {
+	if (@con_mode!=0) return;
+	if (@last_sysdata$=="guratan.cfg") {
+		if (__SYS__NumParams==2) {
+			$facedisp_gura(_name$, _is_recover);
+		} else {
+			$facedisp_gura(_name$);
+		}
+		return;
+	}
+	if (@last_sysdata$!="sysdata.cfg") return;
+
+	if (!$console_is_on()) $console_on();
+
+	if (!$pic_is_exist(_name$)) {
+		if (($is_report_no_pic())&&($is_testplay())) {
+			$dialog_error_ok("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		if (($is_log_no_pic())&&($is_testplay())) {
+			$debugout("フェース画像[ ", _name$, " ]が存在しません");
+		}
+		_name$ = "face_dummy";
+	}
+	
+#if USEFACE_SPR
+	var _fast;
+	var _chk$, _i;
+	
+	// 内容を下にコピー(人物がいたときはそのまま)
+	if (@last_face_fn$=="") {
+		$grp_copy($sprite_get_page(#face_spr), 0, 0, $sprite_len_x(#face_spr), $sprite_len_y(#face_spr), $sprite_get_page(#face_spr), 0, $sprite_len_y(#face_spr));
+	}
+	
+	// 内容をクリア
+	$grp_boxfill($sprite_get_page(#face_spr), 0, 0, FACE_POS_LEN, $rgb(128, 128, 128));
+	$grp_boxfill($get_alfapage($sprite_get_page(#face_spr)), 0, 0, FACE_POS_LEN, 255);
+	
+	// ベースコピー
+	//$grp_extcopy(#face_org_page, 0, 0, FACE_POS_LEN, $sprite_get_page(#face_spr), 0, 0);
+	//$grp_extboxfill($get_alfapage($sprite_get_page(#face_spr)), 0, 0, FACE_POS_LEN, 255, 255-#conhalf@CONFIG);
+	
+	if (_name$) {
+		var _pg;
+	
+		_pg = $page_create_file_withalfa(_name$);
+		$do_pic_top_filter(_pg);
+		if (@sepia_mode@PIC) $grp_sepia(_pg, 0, 0, 9999, 9999, @sepia_low@PIC, @sepia_high@PIC, 256-@sepia_mode@PIC);		// 指定範囲をclow->chighのセピア調に変換
+		
+		$grp_extcopy(_pg, 0, 0, 9999, 9999, $sprite_get_page(#face_spr), 0, 0);
+		$page_release(_pg);
+	}
+	
+	if ($is_fast_mode()) _fast = 1;			// 即時出現
+	if ($get_mojispeed()<500) _fast = 1;		// 即時出現
+	
+//	if (@face_fn$) {						// 表示中/消去中の場合はパッチあり。
+//		_fast = 1;						// ちらつきを抑制する
+//	}
+	
+	_fast=1;
+	$sprite_move(#face_spr, FACE_POS_START+100);
+
+	if ((@con_mode==0)&&($console_is_on())) {
+		if (_fast) {
+			$sprite_animate_define(#face_spr, 0, 0, 0, -1);
+			$sprite_alfa_set(#face_spr, 0);
+		} else {
+			$sprite_animate_define(#face_spr, 1, 200, 0, 0, 0, -1);
+			$sprite_alfa_set(#face_spr, 0);
+		}
+	} else {
+		$sprite_alfa_set(#face_spr, 255);
+	}
+	
+	@face_fn$ = _name$;			// 名前を保存
+	
+	// /人物を入れ替える！
+	if (__SYS__NumParams==1) {
+		\x(@face_fn$)			// ヒストリ用に名前を保存
+	}
+#endif
+#if USEFACE_PASTE
+	var @re_enter_in_face_disp;
+	var _fast;
+	var _chk$, _i;
+	var _pg;
+	
+	// 再起禁止
+	if (@re_enter_in_face_disp) return;
+	@re_enter_in_face_disp ++;
+	destructor {
+		// 内部変数-人物を入れ替える！
+		@face_fn$ = _name$;			// 名前を保存
+		if (__SYS__NumParams==1) {
+			\x(@face_fn$)			// ヒストリ用に名前を保存
+		}
+		@re_enter_in_face_disp--;
+	}
+	
+	// @face_fn$があれば実際に消去しないといけない
+	if (@face_fn$) {
+		// ちらつきを抑えて
+		$invalidate_disable();
+		
+		// コンソール再描画
+		$histbuff_disable();
+		$console_cls();
+		$console_redraw(-1);
+		$histbuff_enable();
+		
+		// ちら月を戻して
+		$invalidate_enable();
+		$invalidate_rect(#con_disp, 0, 0, FACE_POS_LEN);
+	}
+	
+	// 明示的な消去
+	if (_name$=="") return;
+	
+	_pg = $page_create_file_withalfa(_name$);
+	
+	if (@filter_color@PIC) $grp_mulboxfill(_pg, 0, 0, 99999, 99999, @filter_color@PIC);
+	if (@sepia_mode@PIC) $grp_sepia(_pg, 0, 0, 9999, 9999, @sepia_low@PIC, @sepia_high@PIC, 256-@sepia_mode@PIC);		// 指定範囲をclow->chighのセピア調に変換
+	
+	// フェース出力、場所は直値です(汗
+	$grp_extcopy(_pg, 0, 0, 9999, 9999, #con_disp, 80-($pic_len_x(_name$)/2), 250-$pic_len_y(_name$));
+	$grp_extcopy(_pg, 0, 0, 9999, 9999, #con_draw, 80-($pic_len_x(_name$)/2), 250-$pic_len_y(_name$));
+	$page_release(_pg);
+#endif
+}
+
+
+//---------------------------------------------------------------------
+// 名前関係 off
+//---------------------------------------------------------------------
+void $facedisp_off(void) {
+	var _fast, _alfa;
+	
+	// フェース
+	if (@face_fn$) {								// 顔出現中
+		if ($is_fast_mode()) _fast = 1;
+		if ($get_mojispeed()<500) _fast = 1;			// 即時出現
+		
+		if (_fast) {
+			$sprite_alfa_set(#face_spr, 255);
+		} else {
+			$sprite_alfa_define(#face_spr, 255, 200, 255, -1); // 時間をかけてけし
+		}
+		
+		@last_face_fn$ = @face_fn$;
+		@face_fn$ = "";
+		@face_erase_time = $timer();
+	}
+}
+void $namedisp_off(void) {
+	var _fast, _alfa;
+	
+	if (@con_mode!=0) return;
+	
+	$facedisp_off();
+	
+	// 本来の名前
+	switch(@name_mode) {
+	case 0:	// 出ていない
+		return;
+	case 2:	// 消去中
+		@name_mode = 0;		// 消したことにする
+		return;
+	case 1:	// 出現中
+		if ($is_fast_mode()) _fast = 1;
+		if ($get_mojispeed()<500) _fast = 1;			// 即時出現
+		
+		if (_fast) {
+			$sprite_alfa_set(#name_spr, 255);			// 瞬時けし
+			@name_mode = 0;
+		} else {
+			$sprite_alfa_define(#name_spr, 0, 0, 0, 50, 255, 200, 255, -1); // 時間をかけてけし
+			$sprite_move(#name_spr, #nameall_x@SYSTEM+@con_ofs_x, #nameall_y@SYSTEM+@con_ofs_y);
+			@name_mode = 2;						// 消去中
+		}
+	}
+}
+//---------------------------------------------------------------------
+// 名前関係 recover
+//---------------------------------------------------------------------
+void $namerecover(void) {
+	switch(@con_mode) {
+	case 0:
+		if (@face_fn$) {
+			$facedisp(@face_fn$, 1);
+		}
+		if (@name_mode!=0) {		// 出現中ですよ～
+			@name_mode = 0;		// パッチ当てないで～
+			$namedisp(@name$);
+		}
+		break;
+	case 1:	break;
+	case 2:	break;
+	case 3:	break;
+	case 4:	break;
+	case 5:	break;
+	case 6:	break;
+	case 7:	break;
+	}
+	
+}
+void $namedisp_pause(_fast, _nowait) {
+	// ＋＋＋現在常に即時
+	_fast = 1;
+	switch (@con_mode) {
+	case 0:
+		//	_fast = 0;
+		if ($is_fast_mode()) _fast = 1;
+		if ($get_mojispeed()<500) _fast = 1;			// 即時出現
+		if ((@con_mode==0)&&(!$is_sca())) _fast = 1;
+		
+		if (@face_fn$) {
+			#if 0
+			if (_fast) {
+				$sprite_alfa_set(#face_spr, 255);
+			} else {
+				$sprite_alfa_define(#face_spr, 0, 0, 0, 50, 255, 200, 255, -1); // 時間をかけてけし
+			}
+			#endif
+		}
+		switch(@name_mode) {
+		case 0:	// 出ていない
+			return;
+		case 2:	// 消去中
+			@name_mode = 0;		// 消したことにする
+			return;
+		case 1:	// 出現中
+			if (_fast) {
+				$sprite_alfa_set(#name_spr, 255);			// 瞬時けし
+			} else {
+				$sprite_move(#name_spr, #nameall_x@SYSTEM+@con_ofs_x, #nameall_y@SYSTEM+@con_ofs_y);
+				$sprite_alfa_define(#name_spr, 0, 0, 0, 50, 255, 200, 255, -1); // 時間をかけてけし
+			}
+		}
+	case 1:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 2:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 3:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 4:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 5:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 6:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	case 7:
+		@name_mode = 0;		// 消したことにする
+		return;			// con3だと知らない
+	}
+}
+void $namedisp_dispose(void) {
+	$sprite_alfa_set(#name_spr, 255);			// 瞬時けし
+	@name_mode = 0;
+	
+	@face_fn$ = "";
+}
+
+void $facedisp_pic_back_hikkake(void) {
+	// $facedisp_off();
+	@face_fn$ = "";
+	@last_face_fn$ = "";	
+}
+
+//---------------------------------------------------------------------
+// 文字の描画を強制速度に
+//---------------------------------------------------------------------
+void $set_console_draw_speed(_time) {
+	@timemax_fixed = _time;
+}
+#if 1
+//---------------------------------------------------------------------
+// ポーズ中のメニューです。
+//---------------------------------------------------------------------
+#define MENU_WAIT_TIME	550
+
+var @page_back@PIC;
+var #kaisou_modori@GLOBAL;
+func $pause_menu() {
+	var _sel;
+	var _svd;
+	var _con;
+	
+	if ($is_cgmode()) {
+		if ($askyesno("アルバムメニューに戻りますか？", 0)) {
+			$fade_out("black", 500);
+			#kaisou_modori@GLOBAL = 1;
+			$exit();
+		}
+		return(0);
+	}
+	
+	
+re_select:
+	$select_mode_set(3);			// 右、左クリックは戻る
+	
+	$select_save_notsave();
+	_svd = $is_save_menu_disable();
+	$save_menu_disable();
+	_sel = $select_ex("セーブする", 1, "ロードする", 1, "メッセージログ", 1, "コンフィグレーション", 1, "ゲームに戻る", 1, "タイトルに戻る", 1, "ゲームを終了する", 0);
+	if (!_svd) $save_menu_enable();
+	
+	switch(_sel) {
+	case -1:		// 右クリック
+		return(0);
+	case 1:
+		$wait(MENU_WAIT_TIME);
+		if ($is_save_menu_disable()) {
+			$message("セーブできません");
+			return(0);
+		}
+		$save_menu();
+		return(0);			// セーブしたら戻る
+	case 2:	
+		$wait(MENU_WAIT_TIME);
+		$load_menu();
+		return(0);			// 戻る
+	case 3:
+		$wait(MENU_WAIT_TIME);
+#if 0
+		if ($is_save_menu_disable()) {
+			//$message("現在は使用できません");
+			$message("Can't use this now");
+			return(0);
+		}
+#endif
+		$history();
+		return(1);			// 戻る
+		goto re_select;
+	case 4:
+		$wait(MENU_WAIT_TIME);
+		$config_menu();
+		return(0);			// 戻る
+		goto re_select;
+	case 5:		// 戻る
+		return(0);
+	case 6:
+		$wait(MENU_WAIT_TIME);
+		//if ($askyesno("タイトルに戻ります。よろしいですか？", 0)==1) {
+		if ($askyesno("Return to title?", 0)==1) {
+			$wait(300);
+			$exit();
+		}
+		return(0);			// 戻る
+		goto re_select;
+		// return(0);
+	case 7:
+		$wait(MENU_WAIT_TIME);
+		//if ($askyesno("ゲームを終了します。よろしいですか？", 0)==1) {
+		if ($askyesno("Exit game?", 0)==1) {
+			$guide_voice("quit");
+			$console_off();
+			$pic_back("black");
+			$trans(500);
+			$guide_voice_wait();
+			$system_end();
+		}
+		return(0);			// 戻る
+		goto re_select;
+		//return(0);
+	}
+	return(0);
+}
+#endif
+//---------------------------------------------------------------------
+// メニュー内部関数
+//---------------------------------------------------------------------
+var @menuspr;
+void $on(_n, _x, _y, _xl, _yl) {
+	@no = _n;
+	@lx = _x;
+	@ly = _y;
+	@lxl = _xl;
+	@lyl = _yl;
+	
+	_x-=@con_ofs_x;
+	_y-=@con_ofs_y;
+	
+	@menuspr = $sprite_create(#but_on, _x-#butall_x@SYSTEM, _y-#butall_y@SYSTEM, _xl, _yl);
+	
+	$sprite_priority_high(@menuspr, #spr);
+	$sprite_move(@menuspr, _x, _y);
+	$sprite_alfa_define(@menuspr, 192, 0, 0, 600, 255, 800, 192, 200);
+
+	$sprite_priority_high(#optmsg_spr);
+	$sprite_animate_define(#optmsg_spr, _n, 10000, _n, 10000);
+//	$sprite_alfa_define(#optmsg_spr, 255, 0, 255, 500, 0, 300, 0, -1);
+	$sprite_alfa_define(#optmsg_spr, 255, 0, 255, 500, 64, 300, 64, -1);
+	$sprite_move(#optmsg_spr, #setumei_x@SYSTEM+@con_ofs_x, #setumei_y@SYSTEM+@con_ofs_y);
+
+	$sound3("on");
+}
+void $off(_n, _x, _y, _xl, _yl) {
+	_x-=@con_ofs_x;
+	_y-=@con_ofs_y;
+	
+	$sprite_move(#optmsg_spr, 10000, 10000);
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+}
+void $push(_n, _x, _y, _xl, _yl) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+
+	_x-=@con_ofs_x;
+	_y-=@con_ofs_y;
+	
+	@menuspr = $sprite_create(#but_push, _x-#butall_x@SYSTEM, _y-#butall_y@SYSTEM, _xl, _yl);
+	$sprite_priority_high(@menuspr, #spr);
+	$sprite_move(@menuspr, _x, _y);
+}
+void $click(_n, _x, _y, _xl, _yl) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+	
+	@is_select = 1;
+	@ret = _n;
+}
+void $rclick(_x, _y) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+	
+	if (@con_mode==0) $off(0, @lx, @ly, @lxl, @lyl);
+	@is_select = 2;
+	@ret = -2;
+}
+void $lclick(_x, _y) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+	
+	@is_select = 2;
+	@ret = -1;
+}
+void $mclick(_x, _y) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+	
+	@is_select = 2;
+	@ret = -1;
+}
+void $mroll(_x, _y, _stat) {
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+	
+	if (_stat&4) {		// ＡＬＴＳＰＡＣＥだ！
+		#if DIRECTMENU
+			@is_select = 2;
+			@ret = -4;
+		#endif
+		return;
+	}
+	if (_stat&2) {		// Escape
+		@is_select = 2;
+		@ret = -1;
+		return;
+	}
+	
+	// ココから下はPGDNとか
+	@is_select = 2;
+	@ret = 6;
+//	$sound3("push");
+}
+
+//---------------------------------------------------------------------
+// fastモードの表示をリセットです
+//---------------------------------------------------------------------
+var @fast_disp_last_console;
+void $reset_fast_disp(void) {
+	var _mode;
+	
+	_mode = 0;					// 通常
+	if ($is_fast_mode()) _mode = 2;	// 拘束
+	if ($is_auto_mode()) _mode = 1;	// オートモードだ
+	
+	if (@con_mode!=0)		_mode = 0;		// ０以外は無理やり無しに
+	if (!$console_is_on())	_mode = 0;		// コンソール無しでも無理やり無しに
+	
+	// モードが変化しないときはコンソール変化のみ見ます
+	if (@last_fastdisp_mode==_mode) {
+		if (@fast_disp_last_console==$console_is_on()) return;		// コンソール状況は変化せず
+	}
+	
+	// 高速モードからリカバーしました。
+	if (@last_fastdisp_mode==2) $do_event("RECOVER_FAST");
+	
+	// 最終モードを設定
+	@last_fastdisp_mode = _mode;				// 最終モード
+	
+	// スプライトを消して
+	if (#skipmode@SYSTEM==1) $sprite_rotate(#skip_spr@SYSTEM, 0);
+	$sprite_move(#skip_spr@SYSTEM, 10000, 10000);			// スプライトを消す
+	if (#skipmode@SYSTEM==1) $sprite_rotate(#auto_spr@SYSTEM, 0);
+	$sprite_move(#auto_spr@SYSTEM, 10000, 10000);			// スプライトを消す
+
+	if (@con_mode==0) {
+		// モード割にあわせて色々
+		switch(_mode) {
+		case 0:	// 通常モードへ
+			break;
+		case 1:
+			// １はオートモード
+			
+			if (#skipmode@SYSTEM==1) $sprite_rotate(#auto_spr@SYSTEM, -360, 5000, 1);
+			//$sprite_priority_high(#auto_spr@SYSTEM);
+			//$sprite_move(#auto_spr@SYSTEM, #autoskip_pos_x@SYSTEM, #autoskip_pos_y@SYSTEM);			// スプライトを出す
+			//$sprite_move(#auto_spr@SYSTEM, #butauto_x@SYSTEM+@con_ofs_x, #butauto_y@SYSTEM+@con_ofs_y);			// スプライトを出す
+			
+			// $sprite_alfa_set(#auto_spr@SYSTEM, #conhalf@CONFIG);
+			//$sprite_alfa_define(#auto_spr@SYSTEM, 0, 0, 255, 1000, #conhalf@CONFIG, 1000);
+			
+			break;
+		case 2:
+			// ２は高速モード
+			
+			if (#skipmode@SYSTEM==1) $sprite_rotate(#skip_spr@SYSTEM, -360, 1000, 1);
+			//$sprite_move(#skip_spr@SYSTEM, #autoskip_pos_x@SYSTEM, #autoskip_pos_y@SYSTEM);			// スプライトを出す
+			//$sprite_move(#skip_spr@SYSTEM, #butskip_x@SYSTEM+@con_ofs_x, #butskip_y@SYSTEM+@con_ofs_y);			// スプライトを出す
+			// $sprite_alfa_set(#skip_spr@SYSTEM, #conhalf@CONFIG);
+			//$sprite_alfa_define(#skip_spr@SYSTEM, 0, 0, 255, 300, #conhalf@CONFIG, 300);
+			break;
+		}
+	}
+	@fast_disp_last_console = $console_is_on();
+}
+//---------------------------------------------------------------------
+// ポーズ中のボタン関係
+//---------------------------------------------------------------------
+void $set_pausebutton_menu(void) {
+	var _i;
+	
+	@selsel_cur_dic = 0;
+	if (($console_is_on())&&(@con_mode==0)) {
+		$areaevent_set(0, #butsave_x@SYSTEM+@con_ofs_x, #butsave_y@SYSTEM+@con_ofs_y, #butsave_xl@SYSTEM, #butsave_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(1, #butload_x@SYSTEM+@con_ofs_x, #butload_y@SYSTEM+@con_ofs_y, #butload_xl@SYSTEM, #butload_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(2, #butauto_x@SYSTEM+@con_ofs_x, #butauto_y@SYSTEM+@con_ofs_y, #butauto_xl@SYSTEM, #butauto_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(3, #butskip_x@SYSTEM+@con_ofs_x, #butskip_y@SYSTEM+@con_ofs_y, #butskip_xl@SYSTEM, #butskip_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(4, #butsystem_x@SYSTEM+@con_ofs_x, #butsystem_y@SYSTEM+@con_ofs_y, #butsystem_xl@SYSTEM, #butsystem_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(5, #buterase_x@SYSTEM+@con_ofs_x, #buterase_y@SYSTEM+@con_ofs_y, #buterase_xl@SYSTEM, #buterase_yl@SYSTEM, $on, $off, $click);
+		$areaevent_set(6, #butback_x@SYSTEM+@con_ofs_x, #butback_y@SYSTEM+@con_ofs_y, #butback_xl@SYSTEM, #butback_yl@SYSTEM, $on, $off, $click);
+		
+		$areaevent_set(7, #butconfig_x@SYSTEM+@con_ofs_x, #butconfig_y@SYSTEM+@con_ofs_y, #butconfig_xl@SYSTEM, #butconfig_yl@SYSTEM, $on, $off, $click);	// ボタンコンフィグ
+		$areaevent_set(8, #butqsave_x@SYSTEM+@con_ofs_x, #butqsave_y@SYSTEM+@con_ofs_y, #butqsave_xl@SYSTEM, #butqsave_yl@SYSTEM, $on, $off, $click);		// qsave
+		$areaevent_set(9, #butqload_x@SYSTEM+@con_ofs_x, #butqload_y@SYSTEM+@con_ofs_y, #butqload_xl@SYSTEM, #butqload_yl@SYSTEM, $on, $off, $click);		// qload
+		
+//		$areaevent_set(10, 529, 572, 84, 28, $on, $off, $click); // 一つ前
+		$areaevent_set(11, #buttitle_x@SYSTEM+@con_ofs_x, #buttitle_y@SYSTEM+@con_ofs_y, #buttitle_xl@SYSTEM, #buttitle_yl@SYSTEM, $on, $off, $click); // タイトルへ
+		
+//		$areaevent_set(12, 617, 572, 84, 28, $on, $off, $click); // ボイス再生
+	}
+	@menuspr = 0;
+	@is_select = 0;
+	@ret = 0;
+}
+void $catch_pausebutton_menu(void) {
+	if (@selsel_cur_dic) {
+		$sprite_release(@selsel_cur_dic);
+		@selsel_cur_dic = 0;
+	}
+	if (@menuspr) {
+		$sprite_release(@menuspr);
+		@menuspr = 0;
+	}
+	if (($console_is_on())&&(@con_mode==0)) {
+		if (@ret>=0) {
+			$off(@no, @lx, @ly, @lxl, @lyl);				// 消す
+		}
+		$sprite_move(#optmsg_spr, 10000, 10000);
+	}
+}
+//---------------------------------------------------------------------
+// ポーズカーソル関係
+//---------------------------------------------------------------------
+void $pause_cursor_disp(void) {
+	var _cx, _cy;
+	var _ct, _wspr, _wspr2, _wkoma;
+	
+	_wspr = 0;
+	if (@altwink) {						// ウインクカーソルが変化していれば(主にwipe)
+		_ct = #wink_speed3@SYSTEM;
+		_wspr = #wink_spr5;
+		_wspr2 = #wink_spr6;
+		_wkoma = #wink_koma3@SYSTEM;
+	}
+	if (_wspr==0) {
+		switch (@con_mode) {
+		case 1:	unbreak;
+		case 2:	unbreak;
+		case 4:	unbreak;
+		case 5:	unbreak;
+		case 6:	unbreak;
+		case 7:
+			// ノベルコンソールモード
+			_ct = #wink_speed2@SYSTEM;
+			_wspr = #wink_spr3;
+			_wspr2 = #wink_spr4;
+			_wkoma = #wink_koma2@SYSTEM;
+		default:
+			// 通常のコンソールモード		
+			_ct = #wink_speed@SYSTEM;
+			_wspr = #wink_spr;
+			_wspr2 = #wink_spr2;
+			_wkoma = #wink_koma@SYSTEM;
+		}
+	}
+	if (_wspr==0) {
+		_ct = #wink_speed@SYSTEM;
+		_wspr = #wink_spr;
+		_wspr2 = #wink_spr2;
+		_wkoma = #wink_koma@SYSTEM;
+	}
+	if ($console_is_on()) {
+		switch (@con_mode) {
+		case 1:	unbreak;
+		case 2:	unbreak;
+		case 4:	unbreak;
+		case 5:	unbreak;
+		case 6:	unbreak;
+		case 7:
+			// ノベルコンソールモード
+			if (@altwink) {						// ウインクカーソルが変化していれば(主にwipe)
+				_cx = $console_curpos_x()+@con_ofs_x+#winkpos3_x@SYSTEM;
+				_cy = $console_curpos_y()+@con_ofs_y+#winkpos3_y@SYSTEM+#confont_yl@SYSTEM-$page_len_y($sprite_get_page(_wspr));
+			} else {
+				_cx = $console_curpos_x()+@con_ofs_x+#winkpos2_x@SYSTEM;
+				_cy = $console_curpos_y()+@con_ofs_y+#winkpos2_y@SYSTEM+#confont_yl@SYSTEM-$page_len_y($sprite_get_page(_wspr));
+			}
+		case 3:
+			_cx = 9999;
+			_cy = 9999;
+		default:
+			_cx = #winkpos_x@SYSTEM+@con_ofs_x;
+			_cy = #winkpos_y@SYSTEM+@con_ofs_y;			// カーソル位置
+			if (@fn_console_off$=="waku_mh") {
+				_cx = #conarea_x@SYSTEM+#conarea_xl@SYSTEM+4+@con_ofs_x;
+				_cy = #conarea_y@SYSTEM+#conarea_yl@SYSTEM+@con_ofs_y;			// カーソル位置
+			}
+			if (@fn_console_off$=="issyo_waku") {
+				_cx = 670;
+				_cy = 494;			// カーソル位置
+			}
+		}
+	} else {
+		_cx = #winkpos_off_x@SYSTEM+@con_ofs_x;
+		_cy = #winkpos_off_y@SYSTEM+@con_ofs_y;			// カーソル位置
+	}
+	
+	switch(_wkoma) {
+	case -1:
+		$sprite_alfa_define(_wspr, 0, 0, 0, _ct, 255, _ct, 0, _ct, 0, _ct);
+	case 1:
+		$sprite_alfa_define(_wspr, 0, 0, 0, _ct, 0, _ct, 255, _ct, 0, _ct);
+	case 2: $sprite_animate_define(_wspr, 0, _ct, 1, _ct);
+	case 3: $sprite_animate_define(_wspr, 0, _ct, 1, _ct, 2, _ct);
+	case 4: $sprite_animate_define(_wspr, 0, _ct, 1, _ct, 2, _ct, 3, _ct);
+	case 5: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct);
+	case 6: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct);
+	case 7: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct);
+	case 8: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct);
+	case 9: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct);
+	case 10: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct);
+	case 11: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct);
+	case 12: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct, 11, _ct);
+	case 13: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct, 11, _ct, 12, _ct);
+	case 14: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct, 11, _ct, 12, _ct, 13, _ct);
+	case 15: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct, 11, _ct, 12, _ct, 13, _ct, 14, _ct);
+	case 16: $sprite_animate_define(_wspr, 
+			0, _ct, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+			5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+			10, _ct, 11, _ct, 12, _ct, 13, _ct, 14, _ct, 
+			15, _ct);
+	}
+	if ($is_auto_mode()) _cx = 9999;	// オートモードだ
+	$sprite_move(_wspr, _cx, _cy);	// カーソル
+
+	
+	if (_wspr2) {
+		switch(_wkoma) {
+		case -1:
+			$sprite_alfa_define(_wspr2, 0, 0, 0, _ct, 255, _ct, 0, _ct, 0, _ct);
+		case 2: $sprite_animate_define(_wspr2, 0, _ct/2, 1, _ct, 0, _ct/2);
+		case 3: $sprite_animate_define(_wspr2, 0, _ct/2, 1, _ct, 2, _ct, 0, _ct/2);
+		case 4: $sprite_animate_define(_wspr2, 0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 0, _ct/2);
+		case 5: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 0, _ct/2);
+		case 6: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 0, _ct/2);
+		case 7: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 0, _ct/2);
+		case 8: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 0, _ct/2);
+		case 9: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 0, _ct/2);
+		case 10: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 0, _ct/2);
+		case 11: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 0, _ct/2);
+		case 12: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 11, _ct, 0, _ct/2);
+		case 13: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 11, _ct, 12, _ct, 0, _ct/2);
+		case 14: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 11, _ct, 12, _ct, 13, _ct, 0, _ct/2);
+		case 15: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 11, _ct, 12, _ct, 13, _ct, 14, _ct, 0, _ct/2);
+		case 16: $sprite_animate_define(_wspr2, 
+				0, _ct/2, 1, _ct, 2, _ct, 3, _ct, 4, _ct, 
+				5, _ct, 6, _ct, 7, _ct, 8, _ct, 9, _ct, 
+				10, _ct, 11, _ct, 12, _ct, 13, _ct, 14, _ct, 
+				15, _ct, 0, _ct/2);
+		}
+		$sprite_move(_wspr2, _cx, _cy);	// カーソル
+	}
+}
+void $pause_cursor_erase(void) {
+	$sprite_move(#wink_spr, 10000, 10000);			// カーソルを画面外へ
+	if (#wink_spr2) $sprite_move(#wink_spr2, 10000, 10000);			// カーソルを画面外へ
+	if (#wink_spr3) $sprite_move(#wink_spr3, 10000, 10000);			// カーソルを画面外へ
+	if (#wink_spr4) $sprite_move(#wink_spr4, 10000, 10000);			// カーソルを画面外へ
+	if (#wink_spr5) $sprite_move(#wink_spr5, 10000, 10000);			// カーソルを画面外へ
+	if (#wink_spr6) $sprite_move(#wink_spr6, 10000, 10000);			// カーソルを画面外へ
+}
+//---------------------------------------------------------------------
+// ポーズです。
+//---------------------------------------------------------------------
+var @save_title$;
+void $save_title(_title$) {
+	@save_title$ = _title$;
+}
+void $pause_inter(void) {
+	var _r, _sel, _sou, _i, _vs;
+	var _saveinfo$;
+	
+	if (@force_play) {				// フォースプレイだ
+		//$pause_cursor_disp();			// カーソル出す
+		if ($voice_stat()) {
+			setskip {
+				$voice_wait();
+				$wait($get_autospeed()*0.8);	// 標準で.5秒待つ。
+			}
+		} else {
+			$wait_skip($get_autospeed()*3);	// 標準で1.5秒待つ。
+		}
+		//$pause_cursor_erase();			// カーソル消す
+		
+		$do_event("VOICE_END");
+		return;					// 戻る
+	}
+	
+	// セーブ用の文字列を取る
+	if (@name_mode==1) {
+		_saveinfo$ = @name_disp$+$get_last_msg$();
+	} else {
+		_saveinfo$ = $get_last_msg$();
+	}
+	// 長いと修正
+	if ($strlen(_saveinfo$)>16) {
+		_saveinfo$ = $strleft$(_saveinfo$, 15)+"…";
+	}
+	if (@save_title$) {
+		_saveinfo$ = _saveinfo$+"㊥"+@save_title$;
+	}
+	$save_point(_saveinfo$);				// ここがセーブポイント
+	var #save_info$@BOSSMODE;
+	#save_info$@BOSSMODE = _saveinfo$;
+	
+	$do_autosave();		// オートセーブ
+	
+	while ($mk_read() & (16+8)) {			// 上下の場合はちょっとまとう
+		$wait(100);
+	}
+	
+	$reset_fast_disp();				// 表示状態を反映
+	if ($is_auto_mode()) {				// オートモードだ
+		var _poipoi, _cs;
+		
+		_cs = 0;
+		$pause_cursor_disp();			// カーソル出す
+		setskip {
+			if ($voice_stat()) {
+				while ($voice_stat()) {
+					switch ($mk_read() & (16+8)) {
+					case 8:	_cs = 1;	$do_event("VOICE_END"); goto auto_skipped;
+					case 16:	_cs = 2;	$do_event("VOICE_END"); goto auto_skipped;
+					}
+					$wait(50);
+				}
+				$do_event("VOICE_END");
+				
+				_poipoi = $get_autospeed()*0.8;	// 標準で.5秒待つ。
+			} else {
+				_poipoi = $get_autospeed()*3;		// 標準で1.5秒待つ。
+			}
+			while (_poipoi>0) {
+				switch ($mk_read() & (16+8)) {
+				case 8:	_cs = 1;	goto auto_skipped;
+				case 16:	_cs = 2;	goto auto_skipped;
+				}
+				$wait(50);
+				_poipoi -= 50;
+			}
+		}
+auto_skipped:
+		$pause_cursor_erase();			// カーソル消す
+		
+		switch(_cs) {
+		case 1:	// rollup
+			$history();
+			$set_auto_mode();				// オートモードに戻る
+			$reset_fast_disp();
+		case 2:	// rolldown
+			$reset_fast_mode();
+		}
+		
+		if ($is_auto_mode()) return;		// まだオートモードなので、戻る
+	}
+	
+top:
+	$check_font_change();				// configでフォントが変更されたかチェック
+	
+	$reset_fast_disp();				// 表示状態を反映
+	if ($is_fast_mode()) {
+		$wait(0);
+		return;			// 高速モードなので戻る
+	}
+	$pause_cursor_disp();				// カーソル出す
+	$mk_unwait();
+	
+	$areaevent_reset();
+	$areaevent_setdefault($lclick, $rclick, $mclick, $mroll);
+	$set_pausebutton_menu();
+	
+	_vs = $voice_stat();
+	do {
+		$areaevent_check();
+		$wait(5);
+		$check_font_change();			// configでフォントが変更されたかチェック
+		if (_vs) {					// 音声終了検知
+			if($voice_stat()==0) {
+				$do_event("VOICE_END");
+				_vs = 0;
+			}
+		}
+	} while(@is_select==0);
+	
+	if (@selsel_cur_dic) {
+		$sprite_release(@selsel_cur_dic);
+		@selsel_cur_dic = 0;
+	}
+	
+	$pause_cursor_erase();				// カーソル消す
+	
+	if (#but_push) {
+		if (@is_select==1) {
+			$push(@no, @lx, @ly, @lxl, @lyl);
+			$wait(100);
+		}
+	} else {
+		#if 0										// ちかちかするとき
+			if (@is_select==1) {
+				for (_i=0; _i<2; _i++) {
+
+					$on(@no, @lx, @ly, @lxl, @lyl);
+					$wait(30);		$draw_wait();
+					$off(@no, @lx, @ly, @lxl, @lyl);
+					$wait(30);		$draw_wait();
+				}
+			}
+		#endif
+	}
+	if (@is_select==1) {
+		$off(@no, @lx, @ly, @lxl, @lyl);				// 消す
+	}
+	$sprite_move(#optmsg_spr, 10000, 10000);
+	
+	if (@menuspr) $sprite_release(@menuspr);
+	@menuspr = 0;
+
+	var @in_yabo@GLOBAL;
+	if (@in_yabo@GLOBAL) return;
+
+	if (@ret!=-1) {
+		$sound3("push");
+	} else {
+		if (@ret==-2) {
+			$sound3("cancel");
+		}
+	}
+
+#define FASTERASE 0
+	switch(@ret) {
+	case -2:			// 右クリック
+		var #rightmode@CONFIG;
+		$loadsave_capture();
+		$loadsave_capture_disable();
+		
+		if (@con_mode!=0) {
+			switch(#rightmode@CONFIG) {
+			case 0:
+				if ($console_is_on()) {			// コンソールがついていれば
+					if (@con_mode==1) {
+						$pause_menu();		// ポーズ中のメニュー
+					} else {
+						$disp_scroll_end();
+						$wait(20);
+						$grp_point_set(@page_back@PIC, 0, 0, 0);
+						$conosle_picfix(@page_back@PIC, ($sprite_get_pos_x(@spr2@PIC)-($client_width()/2)) ,($sprite_get_pos_y(@spr2@PIC)-($client_height()/2)));
+						
+						$console_off(0, 1);
+						if ($is_scroll_pic()) {
+							_r = $pic_scroll_auto();
+						} else {
+							// 何も無し状態
+							$mk_unwait();
+							_r = $mk_wait();
+						}
+						
+						if (_r&2) {				// 右クリックはメニュー
+	//						$pause_menu(1);		// ポーズ中のメニュー
+							$pause_menu();		// ポーズ中のメニュー
+						}
+						$console_on(0, 1);
+					}
+				} else {
+					$pause_menu();			// ポーズ中のメニュー
+				}
+				break;
+			default:
+				if ($console_is_on()) {			// コンソールがついていれば
+					$console_off(0, 1);
+					$pause_menu();			// ポーズ中のメニュー
+					$console_on(0, 1);
+				} else {
+					$pause_menu();			// ポーズ中のメニュー
+				}
+				break;
+			}
+		} else {
+			switch(#rightmode@CONFIG) {
+			case 0:
+				if ($console_is_on()) {			// コンソールがついていれば
+					var _redraw;
+					
+					$console_off(0, 1);
+					$mk_unwait();
+					_r = $mk_wait();			// 何も無し状態
+					
+					if (_r&2) {				// 右クリックはメニュー
+						_redraw = $pause_menu();		// ポーズ中のメニュー
+					}
+					
+					if (_redraw) {
+						$histbuff_disable();
+						//$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|2<<24);
+						\w
+						$histbuff_enable();
+						
+						$console_on(1, 1);
+						$console_redraw(-1);
+					}
+					$console_on(0, 1);
+				} else {
+					$pause_menu();			// ポーズ中のメニュー
+				}
+				break;
+			case 1:
+				if ($console_is_on()) {			// コンソールがついていれば
+					$console_off(0, 1);
+					$pause_menu();			// ポーズ中のメニュー
+					$console_on(0, 1);
+				} else {
+					$pause_menu();			// ポーズ中のメニュー
+				}
+			case 2:
+				$mk_unwait();
+				$set_fast_mode_force();
+				return;
+			case 3:
+				if ($is_save_menu_disable()) {
+					$message("セーブできません");
+					break;
+				}
+				_r = $save_menu();
+			case 4:
+				$load_menu();
+			}
+		}
+	if (0) {
+		#if DIRECTMENU					// ダイレクトメニューモード化？
+			if ($console_is_on()) {			// コンソールがついていれば
+				$console_off(FASTERASE, 1);
+				$pause_menu();				// ポーズ中のメニュー
+				$console_on(FASTERASE, 1);
+			} else {
+				$pause_menu();			// ポーズ中のメニュー
+			}
+		#else
+			if ($console_is_on()) {			// コンソールがついていれば
+				var _redraw;
+				
+				$console_off(0, 1);
+				$mk_unwait();
+				_r = $mk_wait();			// 何も無し状態
+				
+				if (_r&2) {				// 右クリックはメニュー
+					_redraw = $pause_menu();		// ポーズ中のメニュー
+				}
+				
+				if (_redraw) {
+					$histbuff_disable();
+					//$console_color($rgb(255, 255, 255), $rgb(0, 0, 0)|2<<24);
+					\w
+					$histbuff_enable();
+					
+					$console_on(1, 1);
+					$console_redraw(-1);
+				}
+				$consle_on(0, 1);
+			} else {
+				$pause_menu();			// ポーズ中のメニュー
+			}
+		#endif
+	}
+		$loadsave_capture_enable();
+	
+		break;
+	case -1:			// 左クリック
+		while ($mk_read() & (16+8)) {			// 上下の場合はちょっとまとう
+			$wait(10);
+		}
+		return;
+	case -4:			// 中クリック(ALTSPACE)
+		#if DIRECTMENU					// ダイレクトメニューモード化？
+			if (@con_mode==0) {
+				if ($console_is_on()) {
+					// $sound3("cancel");
+					$console_off(FASTERASE, 1);
+					$mk_unwait();
+					$mk_wait();					// 何も無し状態			
+					// $sound3("cancel");
+					$console_on(FASTERASE, 1);		// コンソールを戻す
+				}
+			}
+		#endif
+		break;
+	case 0:
+		if ($is_save_menu_disable()) {
+			$message("セーブできません");
+			break;
+		}
+//		$console_off();
+		_r = $save_menu();
+//		$console_on();
+		break;
+	case 1:
+//		$console_off();
+		$load_menu();
+//		$console_on();
+		break;
+	case 2:	// auto
+		$set_auto_mode();
+		return;
+	case 3:	// skip
+		$set_fast_mode();
+		return;
+	case 4:	// system
+		if ($console_is_on()) {			// コンソールがついていれば
+			$console_off(FASTERASE, 1);
+			$pause_menu();				// ポーズ中のメニュー
+			$console_on(FASTERASE, 1);
+		} else {
+			$pause_menu();			// ポーズ中のメニュー
+		}
+		break;
+	case 5:	// erase
+		$console_off(FASTERASE, 1);
+		if ($is_scroll_pic()) {
+			_r = $pic_scroll_auto();
+		} else {
+			// 何も無し状態
+			$mk_unwait();
+			_r = $mk_wait();
+		}
+		$console_on(FASTERASE, 1);
+		break;
+	case 6:
+//		if (@con_mode==0) {
+			$history();		// ヒストリ！
+//		}
+		break;
+	case 7:
+		$config_menu();
+		break;
+	case 8:
+		$loadsave_capture();
+		// $sound3("quick_save");
+		if ($is_save_menu_disable()) {
+			//$message("セーブできません");
+			$message("Unable to save");
+			break;
+		}
+		if (ASKYESNO_ON_QSAVE) {
+			//if ($askyesno("クイックセーブします。よろしいですか？", 0)==0) break;
+			if ($askyesno("Quick-save?", 0)==0) break;
+		}
+		$do_save(9999);
+		//$message("クイックセーブしました");
+		$message("Quick-saved");
+		break;
+	case 9:
+		// $sound3("quick_load");
+		if (ASKYESNO_ON_QLOAD) {
+			//if ($askyesno("クイックロードします。よろしいですか？", 0)==0) break;
+			if ($askyesno("Quick-load?", 0)==0) break;
+		}
+		$do_load(9999);
+		//$message("クイックセーブされていません");
+		$message("Unable to quick-save");
+		break;
+	case 10:
+//		$open_chronicle();			// 年代記開くj
+		$do_event("POPUP_F9");
+		break;
+	case 11:
+		//if ($askyesno("タイトルに戻ります。よろしいですか？", 0)==1) {
+		if ($askyesno("Return to title?", 0)==1) {
+			$exit();
+		}
+		break;
+	case 12:
+		if (@name$) {
+			$user_voice_stop();
+			$user_voice_again(@name$);
+		}
+		
+	}
+	goto top;
+}
+
+var #voice_continue@CONFIG;
+void $pause(void) {
+	#if ALTWINKATLASTLINE
+	if (@con_mode==2) {			// 全体モードのときは
+		if ($console_curpos_y()>=(#conall_y@SYSTEM+#conall_yl@SYSTEM-(#confont_ystep@SYSTEM*3))) {
+			@altwink = 1;		// 強制altwink
+		}
+	}
+	#endif
+	
+	if (($console_is_on())&&(@con_mode==0)) {
+		if (($console_curpos_x()==(#conarea_x@SYSTEM-#conall_x@SYSTEM))&&($console_curpos_y()==(#conarea_y@SYSTEM-#conall_y@SYSTEM+(#confont_ystep@SYSTEM-#confont_yl@SYSTEM)/2))) {
+			return;
+		}
+	}
+	if (@next_beep$) {
+		$sound2_stop();
+		@next_beep$ = "";
+	}
+	$pause_inter();				// 通常のpause
+	@altwink = 0;				// altwink無しね
+	@fc@KOEKOE = @dc@KOEKOE;		// 色直し
+	
+	if ((@con_mode==2)&&(!$is_history())) {
+		$console_color(@dc@KOEKOE, (CONSOLE_MOZI_KAGE<<24));
+	}
+	
+	if (#voice_continue@CONFIG==0) {
+		$user_voice_stop();
+		$do_event("VOICE_END");
+	}
+	if (@con_mode==2) {			// 全体モードのときは
+		if ($console_curpos_y()>(#conall_y@SYSTEM+#conall_yl@SYSTEM-#confont_ystep@SYSTEM)) {	// 最終行だ
+			\w
+		}
+	}
+}
+void $pause_set_altwink(void) {
+	if (@con_mode==2) {			// 全体モードのときは
+		if (#wink_spr3) {
+			@altwink = 1;
+		}
+	}
+}
+
+
+void $pause_nodisp(void) {
+	$reset_fast_disp();
+	
+	if ($is_fast_mode()) return;
+	if ($is_auto_mode()) {							// オートモードだ
+		setskip {
+			if ($voice_stat()) {
+				$voice_wait();
+				$wait($get_autospeed()*0.8*2);	// 標準で.5秒待つ。
+			} else {
+				$wait($get_autospeed()*3*2);		// 標準で1.5秒待つ。
+			}
+		}
+		$reset_fast_disp();
+		return;					// 戻る
+	}
+
+	$mk_unwait();
+	$mk_wait();
+}
+
+void $crlf(void) {				// crlfでコールバックされるが何もしていない
+}
+//---------------------------------------------------------------------
+// コンソール位置の設定(小)
+//---------------------------------------------------------------------
+var @mh_pos_x, @mh_pos_y;
+void $set_mh_pos(_x, _y) {
+	@mh_pos_x = _x;
+	@mh_pos_y = _y;
+}
+//---------------------------------------------------------------------
+// コンソール画像の入れ替え
+//---------------------------------------------------------------------
+void $console_renewal(_fncfg$) {
+	var _tmp_page, _tmp, _cf;
+
+	$console_off(1);		// コンソール出ているとかっこ悪い？
+	$console_mode(0);		// 通常モードへ
+	
+	// 空指定だった
+	if (_fncfg$=="") _fncfg$ = @last_sysdata$;
+	
+	// 拡張しついていなかった
+	if ($strstr(_fncfg$, ".")<0) _fncfg$ = _fncfg$+".cfg";
+	
+	@last_sysdata$ = _fncfg$;
+	$read_sysdata(_fncfg$);
+	
+	@kmk = 2;			// コンソールの陰
+	
+	// コンソール本体
+	$grp_boxfill(#console, 0, 0, 9999, 9999, 255);
+	$grp_boxfill(#console_, 0, 0, 9999, 9999, 255);
+	
+	// パーツの入れ替え(off - 下地)
+	_tmp_page	= $page_create_file_withalfa(#console_file_off$@SYSTEM);	// コピー元のパーツ
+	
+	// 半透明化
+	if (_fncfg$=="guratan.cfg") {
+		if (#conhalf@CONFIG<192) {
+			$grp_extboxfill($get_alfapage(_tmp_page), 0, 0, 9999, 9999, 255, 255*#conhalf@CONFIG/192);
+		} else if (#conhalf@CONFIG>192) {
+			_tmp = $page_create_file_withalfa(#console_file_off$@SYSTEM+"_濃い目");
+			$grp_extcopy($get_alfapage(_tmp), 0, 0, 9999, 9999, $get_alfapage(_tmp_page), 0, 0, 255-(255*(#conhalf@CONFIG-192)/(255-192)));
+			$page_release(_tmp);
+		}
+	} else {
+		$grp_extboxfill($get_alfapage(_tmp_page), 0, 0, 9999, 9999, 255, #conhalf@CONFIG);
+	}
+	
+	if (_fncfg$=="guratan.cfg") {
+		var _tt;
+		// 専用、顔グラに加工が入っている
+		// $grp_boxfill(#console, 0, 0, 9999, 9999, $rgb(128, 128, 128));
+		// $grp_extcopy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+		// 	#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+		
+		$grp_copy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+			#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+		$grp_copy($get_alfapage(_tmp_page), #conall_x@SYSTEM, #conall_y@SYSTEM, 
+			#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console_, 0, 0);	// コンソール自体をコピー
+		
+		// フェイスの土台も加工
+		_tt = $page_create_file_withalfa_clip("gura_facebase", FACE_POS_START, FACE_POS_LEN);
+		$grp_copy(_tt, 0, 0, 9999, 9999, #face_org_page, 0, 0);
+		$page_release(_tt);
+		$grp_copy(#face_org_page, 0, 0, FACE_POS_LEN, $sprite_get_page(#spr_low), 0, 0);
+		if (#conhalf@CONFIG<192) {
+			$grp_extboxfill($get_alfapage($sprite_get_page(#spr_low)), 0, 0, 9999, 9999, 255, 255*#conhalf@CONFIG/192);
+		} else if (#conhalf@CONFIG>192) {
+			_tmp = $page_create_file_withalfa("facebase_濃い目");
+			$grp_extcopy($get_alfapage(_tmp), FACE_POS_START, FACE_POS_LEN, $get_alfapage($sprite_get_page(#spr_low)), 0, 0, 255-(255*(#conhalf@CONFIG-192)/(255-192)));
+			$page_release(_tmp);
+		}
+	} else if (_fncfg$=="sysdata.cfg") {
+		// 顔のベース(マージャン/8bitマスク)
+		_tt = $page_create_file_withalfa_clip(FACEPARTS, FACE_POS_START, FACE_POS_LEN);
+		$grp_copy(_tt, 0, 0, 9999, 9999, #face_org_page, 0, 0);
+		$page_release(_tt);
+		$grp_copy(#face_org_page, 0, 0, FACE_POS_LEN, $sprite_get_page(#spr_low), 0, 0);
+		$grp_extboxfill($get_alfapage($sprite_get_page(#spr_low)), 0, 0, 9999, 9999, 255, #conhalf@CONFIG);
+	
+		// 専用、顔グラに加工が入っている
+		//$grp_boxfill(#console, 0, 0, 9999, 9999, $rgb(128, 128, 128));
+		$grp_copy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+			#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+		$grp_copy($get_alfapage(_tmp_page), #conall_x@SYSTEM, #conall_y@SYSTEM, 
+			#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console_, 0, 0);	// コンソール自体をコピー
+	} else {
+		// 従来どおり
+		$grp_copy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+			#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+	}
+	$page_release(_tmp_page);							// テンポラリページの解放
+	
+	
+	// パーツの入れ替え(on)
+	_tmp_page	= $page_create_file_withalfa(#console_file_on$@SYSTEM);			// コピー元のパーツ
+	
+	$grp_copy(_tmp_page, #butall_x@SYSTEM, #butall_y@SYSTEM, #butall_xl@SYSTEM, #butall_yl@SYSTEM
+				, #but_on, 0, 0);			// ボタン(ＯＮ側)コピー
+	
+	$page_release(_tmp_page);						// テンポラリページの解放
+	_tmp_page	= $page_create_file_withalfa(#console_file_push$@SYSTEM);	// コピー元のパーツ
+	
+	$grp_copy(_tmp_page, #butall_x@SYSTEM, #butall_y@SYSTEM, 9999, 9999, #but_push, 0, 0);
+	$grp_copy(_tmp_page, #nameall_x@SYSTEM, #nameall_y@SYSTEM,
+		#nameall_xl@SYSTEM, #nameall_yl@SYSTEM, #name_org, 0, 0);	// 名前パーツを保存
+	$page_release(_tmp_page);							// テンポラリページの解放
+	
+	// スキップ、オートマーク
+	// ＊＊＊!!! ここでやっちゃ駄目 !!!＊＊＊
+	// ＊＊＊!!! ロードしたときに順不同で安定しない＆リーク !!!＊＊＊
+	
+	if (@con_mode==0) {
+		$console_cls();
+		$set_concon();
+	}
+	if (_cf) $console_on(0, 1);		// 通常モード
+	
+	// フォント変更は検出しない
+	@last_font_name$ = #confont_name$@SYSTEM;
+}
+//---------------------------------------------------------------------
+// ノベルモードの背景のアルファを設定
+//---------------------------------------------------------------------
+void $set_novel_alfa(_alfa) {
+	@novel_alfa = _alfa;
+}
+//=====================================================================
+// ホットリセット動作($main開始直前、ロード動作直後)
+//=====================================================================
+void $hot_reset(_is_load, _music$, _consw) {
+	var _face_fn$, _name$;
+	var _fc, _dc;
+	
+	
+	$histbuff_disable();
+	
+	_fc = @fc@KOEKOE;
+	@last_font_name$ = $get_font_name$();
+	_face_fn$ = @face_fn$;
+	_name$ = @name$;
+	
+	@last_face_fn$ = "";
+	@face_fn$ = "";			// 名前を保存
+	
+	@name$ = "";
+	@name_mode = 0;
+	@face_fn$ = "";
+	@face_erase_time	= 0;
+	
+	$sprite_alfa_set(#face_spr, 255);
+	$sprite_alfa_set(#spr_low, 255);
+	$sprite_alfa_set(#name_spr, 255);
+	
+	if (_is_load) {
+		var _cm;
+		
+		_cm = @con_mode;
+		$console_renewal(@last_sysdata$);
+		$console_mode(_cm);
+	} else {
+		@dc@KOEKOE = $rgb(255, 255, 255);
+		@fc@KOEKOE = $rgb(255, 255, 255);
+		
+		$console_renewal("sysdata.cfg");
+		@kmk = 2;
+		@novel_alfa = 128;
+	}
+	if (_consw) {
+		$do_event("GAIZI_RECOVER");
+		
+		$console_off(1, 1);
+		$console_on(1, 1);
+		$set_concon();
+		$console_cls();
+		
+		if (_fc==0) _fc = $rgb(255, 255, 255);
+		@fc@KOEKOE = _fc;
+		
+		if (_dc==0) _dc = $rgb(255, 255, 255);
+		@fc@KOEKOE = _dc;
+		
+		$console_color(_fc, CONSOLE_KAGE_COL|(@kmk@CONSOLE<<24));
+		
+		$console_redraw(-1);
+		if (_face_fn$) $facedisp(_face_fn$, 0);
+	} else {
+		$console_cls();
+	}
+	$histbuff_enable();
+	
+#if 1
+	var _sz;
+	if (#skipmode@SYSTEM==2) {
+		_sz = $pic_len_x(#auto_fn$@SYSTEM)/#num_auto_parts@SYSTEM;
+		switch(#num_auto_parts@SYSTEM) {
+		case -1:
+			$sprite_alfa_define(#auto_spr@SYSTEM, 0, 0, 255, #time_auto_parts@SYSTEM, 0, #time_auto_parts@SYSTEM);
+		case 2: $sprite_animate_define(#auto_spr@SYSTEM, 0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM);
+		case 3: $sprite_animate_define(#auto_spr@SYSTEM, 0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM);
+		case 4: $sprite_animate_define(#auto_spr@SYSTEM, 0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM);
+		case 5: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM);
+		case 6: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM);
+		case 7: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM);
+		case 8: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM);
+		case 9: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM);
+		case 10: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM);
+		case 11: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM);
+		case 12: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM, 11, #time_auto_parts@SYSTEM);
+		case 13: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM, 11, #time_auto_parts@SYSTEM, 12, #time_auto_parts@SYSTEM);
+		case 14: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM, 11, #time_auto_parts@SYSTEM, 12, #time_auto_parts@SYSTEM, 13, #time_auto_parts@SYSTEM);
+		case 15: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM, 11, #time_auto_parts@SYSTEM, 12, #time_auto_parts@SYSTEM, 13, #time_auto_parts@SYSTEM, 14, #time_auto_parts@SYSTEM);
+		case 16: $sprite_animate_define(#auto_spr@SYSTEM, 
+				0, #time_auto_parts@SYSTEM, 1, #time_auto_parts@SYSTEM, 2, #time_auto_parts@SYSTEM, 3, #time_auto_parts@SYSTEM, 4, #time_auto_parts@SYSTEM, 
+				5, #time_auto_parts@SYSTEM, 6, #time_auto_parts@SYSTEM, 7, #time_auto_parts@SYSTEM, 8, #time_auto_parts@SYSTEM, 9, #time_auto_parts@SYSTEM, 
+				10, #time_auto_parts@SYSTEM, 11, #time_auto_parts@SYSTEM, 12, #time_auto_parts@SYSTEM, 13, #time_auto_parts@SYSTEM, 14, #time_auto_parts@SYSTEM, 
+				15, #time_auto_parts@SYSTEM);
+		}
+		_sz = $pic_len_x(#skip_fn$@SYSTEM)/#num_skip_parts@SYSTEM;
+		switch(#num_skip_parts@SYSTEM) {
+		case -1:
+			$sprite_alfa_define(#skip_spr@SYSTEM, 0, 0, 255, #time_skip_parts@SYSTEM, 0, #time_skip_parts@SYSTEM);
+		case 2: $sprite_animate_define(#skip_spr@SYSTEM, 0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM);
+		case 3: $sprite_animate_define(#skip_spr@SYSTEM, 0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM);
+		case 4: $sprite_animate_define(#skip_spr@SYSTEM, 0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM);
+		case 5: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM);
+		case 6: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM);
+		case 7: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM);
+		case 8: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM);
+		case 9: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM);
+		case 10: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM);
+		case 11: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM);
+		case 12: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM, 11, #time_skip_parts@SYSTEM);
+		case 13: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM, 11, #time_skip_parts@SYSTEM, 12, #time_skip_parts@SYSTEM);
+		case 14: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM, 11, #time_skip_parts@SYSTEM, 12, #time_skip_parts@SYSTEM, 13, #time_skip_parts@SYSTEM);
+		case 15: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM, 11, #time_skip_parts@SYSTEM, 12, #time_skip_parts@SYSTEM, 13, #time_skip_parts@SYSTEM, 14, #time_skip_parts@SYSTEM);
+		case 16: $sprite_animate_define(#skip_spr@SYSTEM, 
+				0, #time_skip_parts@SYSTEM, 1, #time_skip_parts@SYSTEM, 2, #time_skip_parts@SYSTEM, 3, #time_skip_parts@SYSTEM, 4, #time_skip_parts@SYSTEM, 
+				5, #time_skip_parts@SYSTEM, 6, #time_skip_parts@SYSTEM, 7, #time_skip_parts@SYSTEM, 8, #time_skip_parts@SYSTEM, 9, #time_skip_parts@SYSTEM, 
+				10, #time_skip_parts@SYSTEM, 11, #time_skip_parts@SYSTEM, 12, #time_skip_parts@SYSTEM, 13, #time_skip_parts@SYSTEM, 14, #time_skip_parts@SYSTEM, 
+				15, #time_skip_parts@SYSTEM);
+		}
+	}
+	$sprite_priority_high(#auto_spr@SYSTEM);
+	$sprite_priority_high(#skip_spr@SYSTEM);					// スプライトを最優先に
+	
+//	$sprite_alfa_set(#auto_spr@SYSTEM, #conhalf@CONFIG);
+//	$sprite_alfa_set(#skip_spr@SYSTEM, #conhalf@CONFIG);
+#endif
+}
+//---------------------------------------------------------------------
+// イニシャライズ メイン関数(常駐関数の実行等)
+//---------------------------------------------------------------------
+void $main(void) {
+	var _tmp_page;
+
+	//ここからはパーツの下準備です。
+	@fn_console_off$	= #console_file_off$@SYSTEM;
+	@fn_console_on$	= #console_file_on$@SYSTEM;
+	
+	_tmp_page	= $page_create_file_withalfa(#console_file_off$@SYSTEM);	// コピー元のパーツ
+	
+	// コンソール本体
+//	#console	= $page_create(#conall_xl@SYSTEM, #conall_yl@SYSTEM);
+//	#console_	= $page_create(#conall_xl@SYSTEM, #conall_yl@SYSTEM, 0);
+	#console	= $page_create($client_width(), $client_height());
+	#console_	= $page_create($client_width(), $client_height(), 0);
+	$page_set_antidata(#console, #console_);					// コピー元のパーツ
+	
+	//■■■■■■■■■■■■■■■■■■■■アンバー専用のコピー
+	
+	// 元
+	//$grp_copy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+	//	#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+	
+	// 専用、顔グラに加工が入っている
+	$grp_boxfill(#console, 0, 0, 9999, 9999, $rgb(128, 128, 128));
+	$grp_extcopy(_tmp_page, #conall_x@SYSTEM, #conall_y@SYSTEM, 
+		#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console, 0, 0);	// コンソール自体をコピー
+	$grp_copy($get_alfapage(_tmp_page), #conall_x@SYSTEM, #conall_y@SYSTEM, 
+		#conall_xl@SYSTEM, #conall_yl@SYSTEM, #console_, 0, 0);	// コンソール自体をコピー
+	
+	#con_draw	= $page_create($client_width(), $client_height());
+	#con_draw_	= $page_create($client_width(), $client_height(), 0);
+	$page_set_antidata(#con_draw, #con_draw_);				// 実際に文字が描画されるページ
+	
+	#con_disp	= $page_create($client_width(), $client_height());
+	#con_disp_	= $page_create($client_width(), $client_height(), 0);
+	$page_set_antidata(#con_disp, #con_disp_);				// 画面上に表示しているペー
+	
+	#spr = $sprite_create(#con_disp);
+	$sprite_alfa_set(#spr, 255);							// 現状は消えている
+	
+	$page_release(_tmp_page);							// テンポラリページの解放
+	
+	
+	_tmp_page	= $page_create_file_withalfa(#console_file_on$@SYSTEM);	// コピー元のパーツ
+	#but_on	=  $page_create_withalfa(#butall_xl@SYSTEM, #butall_yl@SYSTEM);				// ボタン(ＯＮ側)
+	$grp_copy(_tmp_page, #butall_x@SYSTEM, #butall_y@SYSTEM, #butall_xl@SYSTEM, #butall_yl@SYSTEM
+							, #but_on, 0, 0);			// ボタン(ＯＮ側)コピー
+	
+	#name_org	= $page_create(#nameall_xl@SYSTEM, #nameall_yl@SYSTEM);
+	#name_org_	= $page_create(#nameall_xl@SYSTEM, #nameall_yl@SYSTEM, 0);
+	$page_set_antidata(#name_org, #name_org_);				// 名前パーツのオリジナル
+	
+	$grp_copy(_tmp_page, #nameall_x@SYSTEM, #nameall_y@SYSTEM,
+		#nameall_xl@SYSTEM, #nameall_yl@SYSTEM, #name_org, 0, 0);	// 名前パーツを保存
+	
+	#name_page	= $page_create(#nameall_xl@SYSTEM, #nameall_yl@SYSTEM);
+	#name_page_	= $page_create(#nameall_xl@SYSTEM, #nameall_yl@SYSTEM, 0);
+	$page_set_antidata(#name_page, #name_page_);				// 名前パーツ(出力側)
+	
+	#name_spr = $sprite_create(#name_page);
+	$sprite_alfa_set(#name_spr, 255);						// 現在は消えている
+	@name_mode = 0;									// 名前は出ていませんよ～
+	
+	$page_release(_tmp_page);							// テンポラリページの解放
+
+	if (#console_file_push$@SYSTEM=="NULL") {
+		#but_push	=  0;								// 使用しません
+	} else {
+		_tmp_page	= $page_create_file_withalfa(#console_file_push$@SYSTEM);	// コピー元のパーツ
+		#but_push	=  $page_create_withalfa(#butall_xl@SYSTEM, #butall_yl@SYSTEM);				// ボタン(ＯＮ側)
+		$grp_copy(_tmp_page, #butall_x@SYSTEM, #butall_y@SYSTEM, #butall_xl@SYSTEM, #butall_yl@SYSTEM
+								, #but_push, 0, 0);			// ボタン(ＯＮ側)コピー
+		$page_release(_tmp_page);							// テンポラリページの解放
+	}
+	
+	#optmsg	= $page_create_file(#setumei_file$@SYSTEM);
+	#optmsg_	= $page_create_file(#setumei_file$@SYSTEM+"_");
+	$page_set_antidata(#optmsg, #optmsg_);
+	
+	#optmsg_spr = $sprite_create(#optmsg, 0, 0, $page_len_x(#optmsg), 20);
+	$sprite_alfa_set(#optmsg_spr, 255);						// 現在は消えている
+
+#if USEFACE_SPR
+	
+	// 顔のベース(マージャン/8bitマスク)
+	#face_org_page = $page_create_withalfa(FACE_POS_LEN);
+	_tmp_page = $page_create_file_withalfa(FACEPARTS);
+	$grp_copy(_tmp_page, FACE_POS_START, FACE_POS_LEN, #face_org_page, 0, 0);
+	$page_release(_tmp_page);
+	
+	// 顔spr
+	#face_spr = $sprite_create($page_create_withalfa(FACE_POS_LEN*2), 0, 0, FACE_POS_LEN);
+	#spr_low = $sprite_create($page_create_withalfa(FACE_POS_LEN), 0, 0, FACE_POS_LEN);
+	
+	$grp_copy(#face_org_page, 0, 0, FACE_POS_LEN, $sprite_get_page(#spr_low), 0, 0);
+	$grp_extboxfill($get_alfapage($sprite_get_page(#spr_low)), 0, 0, 9999, 9999, 255, #conhalf@CONFIG);
+	$grp_boxfill($get_alfapage($sprite_get_page(#face_spr)), 0, 0, 9999, 9999, 255);
+	$sprite_priority_low_single(#spr_low, #spr);
+	$sprite_priority_low_single(#face_spr, #spr);
+	$sprite_alfa_set(#face_spr, 255);
+	$sprite_alfa_set(#spr_low, 255);
+	
+	$sprite_set_smooth_animation(#face_spr);
+	
+	// アルファ化効用のページ
+	#face_alfaseed_page = $page_create_file("フェースウインドウアルファ");
+#else
+	// 顔spr
+	#face_spr = $sprite_create($page_create_withalfa(1, 1));
+	$sprite_priority_high_single(#face_spr, #spr);
+	
+	$sprite_alfa_set(#face_spr, 255);
+	// スプライト無くても作成は必要
+#endif
+#if 1
+	
+	// ウインク(▼)のパーツ
+	var _x, _y;
+	_x = $pic_len_x(#wink_file$@SYSTEM)/$abs(#wink_koma@SYSTEM);
+	_y = $pic_len_y(#wink_file$@SYSTEM);
+	#wink_spr = $sprite_create_file(#wink_file$@SYSTEM, 0, 0, _x, _y);
+	if (#wink_usehalf@SYSTEM) {							// 中割りを入れる
+		#wink_spr2 = $sprite_create($sprite_get_page(#wink_spr), 0, 0, _x, _y);
+		$sprite_alfa_set(#wink_spr2, 128);					// 半透明を上にかぶせる
+	} else {
+		#wink_spr2 = 0;
+	}
+	
+	// ウインク(▽)のパーツ(ノベルモード用)
+	if ($strupr$(#wink_file2$@SYSTEM)!="NULL") {
+		_x = $pic_len_x(#wink_file2$@SYSTEM)/$abs(#wink_koma2@SYSTEM);
+		_y = $pic_len_y(#wink_file2$@SYSTEM);
+		#wink_spr3 = $sprite_create_file(#wink_file2$@SYSTEM, 0, 0, _x, _y);
+		if (#wink_usehalf2@SYSTEM) {							// 中割りを入れる
+			#wink_spr4 = $sprite_create($sprite_get_page(#wink_spr3), 0, 0, _x, _y);
+			$sprite_alfa_set(#wink_spr4, 128);					// 半透明を上にかぶせる
+		} else {
+			#wink_spr4 = 0;
+		}
+	} else {
+		#wink_spr3 = 0;
+		#wink_spr4 = 0;
+	}
+	
+	// ウインク(▽)のパーツ(ノベルモード用/改ページ)
+	if ($strupr$(#wink_file3$@SYSTEM)!="NULL") {
+		_x = $pic_len_x(#wink_file3$@SYSTEM)/$abs(#wink_koma3@SYSTEM);
+		_y = $pic_len_y(#wink_file3$@SYSTEM);
+		#wink_spr5 = $sprite_create_file(#wink_file3$@SYSTEM, 0, 0, _x, _y);
+		if (#wink_usehalf3@SYSTEM) {							// 中割りを入れる
+			#wink_spr6 = $sprite_create($sprite_get_page(#wink_spr5), 0, 0, _x, _y);
+			$sprite_alfa_set(#wink_spr6, 128);					// 半透明を上にかぶせる
+		} else {
+			#wink_spr4 = 0;
+		}
+	} else {
+		#wink_spr5 = 0;
+		#wink_spr6 = 0;
+	}
+	// wink / skip
+	if (#skipmode@SYSTEM==1) {
+		#skip_spr@SYSTEM = $sprite_create_file(#skip_fn$@SYSTEM);
+	}
+	if (#skipmode@SYSTEM==1) {
+		#auto_spr@SYSTEM = $sprite_create_file(#auto_fn$@SYSTEM);
+	}
+	if (#skipmode@SYSTEM==2) {
+		var _tmp;
+		
+		_tmp = $page_create_file_withalfa_clip(#auto_fn$@SYSTEM, #butauto_x@SYSTEM+@con_ofs_x, #butauto_y@SYSTEM+@con_ofs_y, #butauto_xl@SYSTEM, #butauto_yl@SYSTEM);
+		#auto_spr@SYSTEM = $sprite_create(_tmp);
+		_tmp = $page_create_file_withalfa_clip(#skip_fn$@SYSTEM, #butskip_x@SYSTEM+@con_ofs_x, #butskip_y@SYSTEM+@con_ofs_y, #butskip_xl@SYSTEM, #butskip_yl@SYSTEM);
+		#skip_spr@SYSTEM = $sprite_create(_tmp);
+	}
+	$sprite_priority_high(#auto_spr@SYSTEM);
+	$sprite_priority_high(#skip_spr@SYSTEM);					// スプライトを最優先に
+	
+//	$sprite_alfa_set(#auto_spr@SYSTEM, #conhalf@CONFIG);
+//	$sprite_alfa_set(#skip_spr@SYSTEM, #conhalf@CONFIG);
+#endif
+
+	// ここから、イベントとの連動を関連付けます。
+	$event_hook("X_CONTROL", $x_catch);
+	$event_hook("CONSOLE_WROTE", $cb_console_wrote);
+	$event_hook("CONSOLE_CLS", $cb_console_cls);
+	$event_hook("CONSOLE_ON", $cb_console_on);
+	$event_hook("CONSOLE_OFF", $cb_console_off);
+	$event_hook_after("CONSOLE_OFF", $reset_fast_disp);
+	$event_hook("PAUSE", $pause);
+	$event_hook("CRLF", $crlf);
+	
+	$event_hook("NAME_DISP", $namedisp);
+	$event_hook("CONSOLE_CLS", $namedisp_off);
+	
+	$event_hook_after("CONSOLE_OFF", $namedisp_pause);
+	$event_hook_after("CONSOLE_ON", $namerecover);
+	
+	$event_hook_after("HOT_RESET", $hot_reset);					// ホットリセット登録
+	
+	$event_hook_after("PIC_BACK", $facedisp_pic_back_hikkake);
+
+	$console_cls();										// 最初にイニシャライズ
+}

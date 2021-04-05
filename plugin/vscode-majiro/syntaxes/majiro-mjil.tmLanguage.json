@@ -1,0 +1,480 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Majilo IL Instructions",
+  "fileTypes": [
+    "mjil"
+  ],
+	"patterns": [
+		{
+			"include": "#comments"
+		},{
+      "include": "#labels"
+    },{
+      "include": "#functions"
+    },{
+      "include": "#opcodes"
+    },{
+      "include": "#storage"
+    },{
+      "include": "#strings"
+		},{
+      "include": "#numbers"
+    }
+	],
+	"repository": {
+    "labels": {
+      "comment": "Addresses, labels, and target operands",
+      "patterns": [
+        {
+          "name": "keyword.address.label.mjil",
+          "match": "\\b([0-9A-Fa-f]+:)"
+        },{
+          "name": "keyword.control.label.mjil",
+          "match": "^\\s*(?:[A-Za-z_][A-Za-z_0-9]*:)",
+
+          "comment": "match old: ^\\s*(?:(?:[A-Za-z][A-Za-z0-9]*_[0-9A-Fa-f_]*|entry|exit):)"
+        },{
+          "name": "keyword.control.operand.target.mjil",
+          "match": "(?<=\\s|^)@(?:[A-Za-z_][A-Za-z_0-9]*|~[-+]?[0-9a-fA-f]+)\\b"
+        }
+      ]
+    },
+    "storage": {
+      "comment": "Storage variable flags and variable hash color",
+      "name": "storage.modifier.variable.flags.mjil",
+      "patterns": [
+        {
+          "name": "storage.modifier.flags.locations.mjil",
+          "match": "\\b(?i:persist(?:ent)?|save(?:file)?|local|thread)\\b"
+        },{
+          "name": "storage.modifier.flags.modifier.mjil",
+          "match": "\\b(?i:(?:modifier|invert)_[0-9A-Za-z]+|dim\\d+)\\b"
+        },{
+          "name": "storage.type.flags.type.variable.mjil",
+          "match": "\\b(?i:int|float|string)(?:array)?\\b"
+        },{
+          "comment": "Variable hash color",
+          "name": "entity.name.variable.operand.hash.mjil",
+          "match": "(?<=\\s|^)(\\$[0-9A-Fa-f]{8})\\b"
+        }
+      ]
+    },
+    "functions": {
+      "comment": "Function header declarations",
+      "match": "^\\s*(void|func)\\s+(\\$[A-Za-z0-9_]+([%$]?#?))(?=\\b|\\s|\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.declaration.return-type.mjil" },
+        "2": { "name": "entity.name.function.declaration.hash.mjil" }
+      }
+    },
+
+    "opcodes": {
+      "patterns": [
+        {
+          "comment": "User calls / recolor hash  (includes op.* IDs)   old name = 'support.function.opcode.usercall.mjil'",
+          "match": "\\b(callp?|op\\.80f|op\\.810)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
+          "captures": {
+            "1": { "name": "keyword.control.function.opcode.usercall.mjil" },
+            "2": { "name": "entity.name.function.operand.hash.usercall.mjil"}
+          }
+        },{
+          "comment": "System calls / recolor hash  (includes op.* IDs)   old name = 'support.class.opcode.syscall.mjil'",
+          "match": "\\b(syscallp?|op\\.834|op\\.835)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
+          "captures": {
+            "1": { "name": "keyword.control.class.opcode.syscall.mjil" },
+            "2": { "name": "entity.name.class.operand.hash.syscall.mjil"}
+          }
+        },{
+          "comment": "Line number comment out  (includes op.* IDs)",
+          "match": "\\b(line|op\\.83a)(?:\\s+(#\\d+))?\\b",
+          "captures": {
+            "1": { "name": "comment.opcode.line.mjil" },
+            "2": { "name": "comment.operand.line-number.mjil"}
+          }
+        },{
+          "comment": "store operator opcodes",
+          "name": "keyword.operator.opcode.store.mjil",
+          "patterns": [ {
+              "match": "\\b(stp?\\.[irs](?:arr)?|stelemp?\\.[irs])\\b"
+            },{
+              "match": "\\b(st(?:elem)?p?(?:rem|mod|shr|shl|and|or|xor)(?:\\.i)?)\\b"
+            },{
+              "match": "\\b(st(?:elem)?p?(?:mul|div|sub)\\.[ir])\\b"
+            },{
+              "match": "\\b(st(?:elem)?p?(?:add)\\.[irs])\\b"
+          } ]
+        },{
+          "comment": "normal operator opcodes",
+          "name": "keyword.operator.opcode.operator.mjil",
+          "patterns": [ {
+              "match": "\\b((?:ceq|cne)\\.[irs](?:arr)?)\\b"
+            },{
+              "match": "\\b((?:add|cle|clt|cge|cgt)\\.[irs])\\b"
+            },{
+              "match": "\\b((?:mul|div|sub|neg|pos)\\.[ir])\\b"
+            },{
+              "match": "\\b((?:rem|mod|shr|shl|andl|orl|notl|and|or|not|xor)(?:\\.i)?)\\b"
+          } ]
+        },{
+          "comment": "0x8** control flow opcodes",
+          "name": "keyword.control.opcode.control.mjil",
+          "match": "\\b(?:callp?|ret|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|brtrue|jnz|brfalse|jz|syscallp?|bsel\\.(?:[123x45]|clr|jmp\\.4)|switch)\\b"
+        },{
+          "comment": "0x8** opcodes",
+          "name": "keyword.operator.opcode.special.mjil",
+          "match": "\\b(?:ldc\\.[ir]|ldstr|ld(?:elem)?|callp?|alloca|ret|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|brtrue|jnz|brfalse|jz|pop|syscallp?|argcheck|sigchk|line|bsel\\.(?:[123x45]|clr|jmp\\.4)|conv\\.[ir]|text|proc|ctrl|switch)\\b"
+        },{
+          "comment": "all nop.* opcodes by ID",
+          "match": "\\b(?:(nop\\.(?:191|1a[89]))|(nop\\.[0-9a-f]{3}))\\b",
+          "captures": {
+            "1": { "name": "keyword.opcode.nop.mjil" },
+            "2": { "name": "invalid.operator.opcode.nop.mjil" }
+          }
+        },{
+          "comment": "all op.* opcodes by ID",
+          "match": "\\b(?:(op\\.(?:10[01]|10[89]|110|11[89a]|12[01]|128|130|13[89a]|14[012]|14[89a]|15[012]|15[89abcd]|16[012345]|170|178|180|188|19[01]|198|1a[01]|1a[89]|1b[012345]|1b[89]|1c[01]|1c8|1d[012]|1d[89]|1e0|1e8|1f0|1f8|200|21[012345]|21[89]|22[01]|228|23[012]|23[89]|240|248|250|258|260|27[012]|27[89]|28[01]|288|29[012]|29[89]|2a0|2a8|2b0|2b8|2c0|2d[012]|2d[89]|2e[01]|2e8|2f[012]|2f[89]|300|308|310|318|320|80[0123f]|810|82[9b-f]|83[0-9a-f]|84[0-7]|850))|(op\\.[0-9a-f]{3}))\\b",
+          "captures": {
+            "1": { "name": "keyword.opcode.mjil" },
+            "2": { "name": "invalid.operator.opcode.mjil" }
+          }
+        }
+      ]
+    },
+
+    "comments": {
+      "patterns": [
+        {
+					"name": "comment.block.mjil",
+					"captures": {
+						"1": { "name": "meta.toc-list.banner.block.mjil" }
+					},
+					"match": "^/\\* =(\\s*.*?)\\s*= \\*/$\\n?"
+				},
+				{
+					"name": "comment.block.mjil",
+					"begin": "/\\*",
+					"beginCaptures": {
+						"0": { "name": "punctuation.definition.comment.begin.mjil" }
+					},
+					"end": "\\*/",
+					"endCaptures": {
+						"0": { "name": "punctuation.definition.comment.end.mjil" }
+					}
+				},
+				{
+					"name": "invalid.illegal.stray-comment-end.mjil",
+					"match": "\\*/.*\\n"
+				},
+				{
+					"begin": "(^[ \\t]+)?(?=//)",
+					"beginCaptures": {
+						"1": { "name": "punctuation.whitespace.comment.leading.mjil" }
+					},
+					"end": "(?!\\G)",
+					"patterns": [
+						{
+							"name": "comment.line.double-slash.mjil",
+							"begin": "//",
+							"beginCaptures": {
+								"0": { "name": "punctuation.definition.comment.mjil" }
+							},
+							"end": "(?=\\n)"
+						}
+          ]
+        }
+      ]
+    },
+		"strings": {
+			"patterns": [
+        {
+          "name": "string.quoted.single.mjil",
+          "begin": "'",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.mjil" }
+          },
+          "end": "'",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.mjil" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.string",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.mjil",
+          "begin": "\"",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.mjil" }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.mjil" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.string",
+              "match": "\\\\."
+            }
+          ]
+        }
+			]
+    },
+		"numbers": {
+			"match": "(?<!\\w)\\.?\\d(?:(?:[0-9a-zA-Z_\\.]|')|(?<=[eEpP])[+-])*",
+			"captures": {
+				"0": {
+					"patterns": [
+						{
+							"begin": "(?=.)",
+							"end": "$",
+							"patterns": [
+								{
+									"match": "(\\G(?:0[xX]))([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?:(?<=[0-9a-fA-F])\\.|\\.(?=[0-9a-fA-F])))([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?<!')([pP])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?([lLfF](?!\\w))?$",
+									"captures": {
+										"1": {
+											"name": "keyword.other.unit.hexadecimal.c"
+										},
+										"2": {
+											"name": "constant.numeric.hexadecimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"4": {
+											"name": "constant.numeric.hexadecimal.c"
+										},
+										"5": {
+											"name": "constant.numeric.hexadecimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"6": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"8": {
+											"name": "keyword.other.unit.exponent.hexadecimal.c"
+										},
+										"9": {
+											"name": "keyword.operator.plus.exponent.hexadecimal.c"
+										},
+										"10": {
+											"name": "keyword.operator.minus.exponent.hexadecimal.c"
+										},
+										"11": {
+											"name": "constant.numeric.exponent.hexadecimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"12": {
+											"name": "keyword.other.unit.suffix.floating-point.c"
+										}
+									}
+								},
+								{
+									"match": "(\\G(?=[0-9.])(?!(?:0[xXbB])))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?:(?<=[0-9])\\.|\\.(?=[0-9])))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?<!')([eE])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?([lLfF](?!\\w))?$",
+									"captures": {
+										"2": {
+											"name": "constant.numeric.decimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"4": {
+											"name": "constant.numeric.decimal.point.c"
+										},
+										"5": {
+											"name": "constant.numeric.decimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"6": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"8": {
+											"name": "keyword.other.unit.exponent.decimal.c"
+										},
+										"9": {
+											"name": "keyword.operator.plus.exponent.decimal.c"
+										},
+										"10": {
+											"name": "keyword.operator.minus.exponent.decimal.c"
+										},
+										"11": {
+											"name": "constant.numeric.exponent.decimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"12": {
+											"name": "keyword.other.unit.suffix.floating-point.c"
+										}
+									}
+								},
+								{
+									"match": "(\\G0[bB])([01](?:[01]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\\w))?$",
+									"captures": {
+										"1": {
+											"name": "keyword.other.unit.binary.c"
+										},
+										"2": {
+											"name": "constant.numeric.binary.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"4": {
+											"name": "keyword.other.unit.suffix.integer.c"
+										}
+									}
+								},
+								{
+									"match": "(\\G0)((?:[0-7]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))+)((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\\w))?$",
+									"captures": {
+										"1": {
+											"name": "keyword.other.unit.octal.c"
+										},
+										"2": {
+											"name": "constant.numeric.octal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"4": {
+											"name": "keyword.other.unit.suffix.integer.c"
+										}
+									}
+								},
+								{
+									"match": "(\\G(?:0[xX]))([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?<!')([pP])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\\w))?$",
+									"captures": {
+										"1": {
+											"name": "keyword.other.unit.hexadecimal.c"
+										},
+										"2": {
+											"name": "constant.numeric.hexadecimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"5": {
+											"name": "keyword.other.unit.exponent.hexadecimal.c"
+										},
+										"6": {
+											"name": "keyword.operator.plus.exponent.hexadecimal.c"
+										},
+										"7": {
+											"name": "keyword.operator.minus.exponent.hexadecimal.c"
+										},
+										"8": {
+											"name": "constant.numeric.exponent.hexadecimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"9": {
+											"name": "keyword.other.unit.suffix.integer.c"
+										}
+									}
+								},
+								{
+									"match": "(\\G(?=[0-9.])(?!(?:0[xXbB])))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?<!')([eE])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\\w))?$",
+									"captures": {
+										"2": {
+											"name": "constant.numeric.decimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"3": {
+											"name": "punctuation.separator.constant.numeric"
+										},
+										"5": {
+											"name": "keyword.other.unit.exponent.decimal.c"
+										},
+										"6": {
+											"name": "keyword.operator.plus.exponent.decimal.c"
+										},
+										"7": {
+											"name": "keyword.operator.minus.exponent.decimal.c"
+										},
+										"8": {
+											"name": "constant.numeric.exponent.decimal.c",
+											"patterns": [
+												{
+													"match": "(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])",
+													"name": "punctuation.separator.constant.numeric"
+												}
+											]
+										},
+										"9": {
+											"name": "keyword.other.unit.suffix.integer.c"
+										}
+									}
+								},
+								{
+									"match": "(?:(?:[0-9a-zA-Z_\\.]|')|(?<=[eEpP])[+-])+",
+									"name": "invalid.illegal.constant.numeric"
+								}
+							]
+						}
+					]
+				}
+			}
+		}
+	},
+	"scopeName": "source.majiro.mjil"
+}

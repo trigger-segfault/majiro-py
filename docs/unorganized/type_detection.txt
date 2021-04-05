@@ -1,0 +1,160 @@
+//line 137
+func $9d384797(void) {
+  checkargs
+  alloca 2 b'\x00\x00'
+  //line 140
+  ldvar i save $afc90889, -1
+  ldc.i 0
+  eq.i
+  brfalse @192
+  //line 141
+  ldc.i 6
+  syscall $1f57b724 [1]
+  st.sarr sarr save $e8cbb386, -1
+ARRAY DETECTED!!
+
+kumikomikansuu
+kumikomikansuu
+KUMIKOMIKANSUU
+
+
+ATOM REQUESTED: 0x11F91FD3
+
+Possible Float postfixes:
+Array postfix: #
+FLT = $71236e40
+
+$71236e40 = (float)$3d053317($6cfc884a($6584f13e() - _i1$a3d0623b, 0), _i2$ebcbcf9e);
+$71236e40 = (100 * $71236e40) / _i2$ebcbcf9e;
+
+
+if (_i4$6f75f2a6)
+{
+  $71236e40 -= (float)100;
+  $71236e40 = (float)(10000 - (int)($71236e40 * $71236e40));
+} else
+{
+  $71236e40 = $71236e40 * $71236e40;
+  return (int)($71236e40 * _i3$bc0299c3) / 10000
+  //???
+  return 0;
+}
+
+
+syscall $3d053317(_i1, _i2) // $min()?
+syscall $6cfc884a(_i1, _i2) // $max()?
+syscall $6584f13e() = $timer();
+
+$a3d0623b = _starttime@
+$ebcbcf9e   // _habatime@?
+$bc0299c3 = _endpara@
+$6f75f2a6 = _mode@
+
+$71236e40   // _dipflva.@?  // _scale2cm_aub.@?  // _alfalpl26a.@?
+
+func $bc5571f2(_i1, _i2, _i3, [_mode=1]) {
+func $bc5571f2(_i1, _i2, _i3, [_i4$6f75f2a6=1]) {
+
+//line 1044
+func $bc5571f2(_i1, _i2, _i3, _i4) {
+  checkargs i, i, i, i
+  alloca 1 b'\x01'
+  //line 1047
+  ldvar i stck $ebcbcf9e, -3
+  ldc.i 0
+  syscall $6584f13e [0]
+  ldvar i stck $a3d0623b, -2
+  sub.i
+  syscall $6cfc884a [2]
+  syscall $3d053317 [2]
+  conv.r
+  st.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1048
+  ldc.i 100
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  mul.r
+  ldvar i stck $ebcbcf9e, -3
+  div.r
+  st.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1050
+  ldvar i stck $6f75f2a6, -5
+  brfalse @193
+  //line 1052
+  ldc.i 100
+  conv.r
+  st.sub.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1053
+  ldc.i 10000
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  mul.r
+  conv.i
+  sub.i
+  conv.r
+  st.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1054
+  jmp @222
+  //line 1056
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  mul.r
+  st.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1057
+  //line 1058
+  ldvar i stck $bc0299c3, -4
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  mul.r
+  ldc.r 10000
+  div.r
+  conv.i
+  ret
+  ldc.i 0
+  ret
+}
+
+//line 1060
+func $e6bcd461(_i1, _i2, _i3, _i4) {
+  checkargs i, i, i, i
+  alloca 1 b'\x01'
+  //line 1063
+  ldvar i stck $bb95c901, -3
+  ldc.i 0
+  ldvar i stck $458226db, -2
+  syscall $6cfc884a [2]
+  syscall $3d053317 [2]
+  conv.r
+  st.r r stck $71236e40, 0
+FLOAT DETECTED!!
+
+  pop
+  //line 1064
+  ldc.i 100
+  ldvar r stck $71236e40, 0
+FLOAT DETECTED!!

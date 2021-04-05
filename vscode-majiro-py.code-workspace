@@ -1,0 +1,91 @@
+{
+  //////////////////////////////////////////////////////////
+  // REFERENCE LINKS
+  // VSCode Settings JSON: <https://code.visualstudio.com/docs/getstarted/settings>
+  // List of CIL instructions: <https://en.wikipedia.org/wiki/List_of_CIL_instructions>
+
+	"folders": [
+		{
+			"path": "."
+		}
+  ],
+
+  //////////////////////////////////////////////////////////
+  // WORKSPACE SETTINGS
+
+  "settings": {
+
+    /* Editor defaults */
+    "editor.wordWrap": "on",
+
+    ////////////////////////////////////////////////////////
+    // PROGRAMMING FILE TYPES
+
+    "python.autoComplete.extraPaths": ["./src/mjotool"],
+    "[python]": {
+      "editor.insertSpaces": true,
+      "editor.tabSize": 4,
+      "editor.wordWrap": "on"
+    },
+
+    ////////////////////////////////////////////////////////
+    // CONFIGURATION+TEXT DATA FILE TYPES
+
+    "[json|jsonc]": {
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2,
+      "editor.wordWrap": "on"
+    },
+    
+    ////////////////////////////////////////////////////////
+    // CATCH-ALL PLAIN TEXT FILES
+
+    "[plaintext]": {
+      // don't butcher my notes with
+      //"files.encoding": "shiftjis"
+    },
+
+    ////////////////////////////////////////////////////////
+    // PLACEHOLDER MJS SCRIPT FILES
+    "[javascript]": {
+      // used as the placeholder for the .mjs script syntax (also needed to enforce Shift_JIS encoding)
+      //"files.encoding": "shiftjis",
+      //  no .mjs files need to interact with Japanese tools,
+      //  so it's safer and easier to store them in UTF-8
+      "files.encoding": "utf8",
+      "editor.wordWrap": "on"
+    },
+
+    ////////////////////////////////////////////////////////
+    // CUSTOM MAJIRO OUTPUT FILE TYPES
+
+    "[majiro-mjil]": {
+      // custom language grammar for the Majiro engine's disassembled instruction set
+      // see: <https://github.com/AtomCrafty/MajiroTools/wiki>
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2,
+      "editor.wordWrap": "off",
+      "files.encoding": "utf8"
+    },
+    
+    ////////////////////////////////////////////////////////
+
+    "files.associations": {
+      // easiest syntax highlighting to read .mjs scripts in (cpp is also decent)
+      "*.old": "javascript",
+      "*.old2": "javascript",
+      "*.mjil": "majiro-mjil"
+    },
+
+    "vsicons.associations.files": [
+      {
+        "icon": "binary",
+        "extensions": ["mjo"]
+      },
+      {
+        "icon": "mjml",
+        "extensions": ["mjil"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,173 @@
+    | 0x82b -> cmdi 1 "exit"
+    | 0x82c -> `Cmd ("goto", 0, [read_ptr ()])
+    | 0x82d -> `Cmd ("jmp82d", 0, [read_ptr ()])
+    | 0x82e -> `Cmd ("jmp82e", 0, [read_ptr ()])
+    | 0x82f -> cmd "op82f"
+    | 0x830 -> kprintf cmd "op830[%s]" (read_bytes ic 4)
+    | 0x831 -> `Cmd ("jne", 1, [read_ptr ()])
+    | 0x832 -> `Cmd ("jmp832", 1, [read_ptr ()])
+X    | 0x834 -> let a = IO.read_real_i32 ic in
+X               let argc = IO.read_i16 ic in
+X               kprintf (stacki argc) "syscall<$%08lx>" a
+X    | 0x835 -> let a = IO.read_real_i32 ic in
+X               let argc = IO.read_i16 ic in
+X               kprintf (cmdi argc) "syscall<$%08lx>" a
+X    | 0x836 -> let cnt = IO.read_i16 ic in kprintf cmd "op836[%s]" (if cnt == 0 then "" else read_bytes ic cnt)
+X    | 0x837 -> kprintf cmd "op837[%s]" (read_bytes ic 8)
+    | 0x838 -> `Cmd ("jmp838", 1, [read_ptr ()])
+    | 0x839 -> `Cmd ("jmp839", 1, [read_ptr ()])
+X    | 0x83a -> let n = IO.read_i16 ic in if !include_markers then kprintf cmd "{-line %d-}" n else `Nothing
+    | 0x83b -> `Cmd ("jmp83b", 0, [read_ptr ()])
+    | 0x83d -> `Cmd ("jmp83d", 0, [read_ptr ()])
+
+    | 0x843 -> `Cmd ("jmp843", 0, [read_ptr ()])
+    | 0x844 -> cmd "op844" (* target for jmp83b, jmp83d? *)
+
+0x1b0: =   (assign to address)
+0x158: ==  (is equal comparison)
+0x160: !=  (not equal comparison)
+0x190: !   (not)
+0x82e: jz  (jump if zero)
+0x82f: always after assignment... is this for multithreading/volatility(???)
+
+Other findings: @SYSTEM namespace variables are not hardcoded. Not sure where they're defined but neither the names nor "@SYSTEM" are present in the Majiro engine exe (using Ame no Marginal)
+
+syscall<$a62aa5eb>(): $is_fast_mode()
+syscall<$c21f8b49>(): $is_auto_mode()
+
+syscall<$5b87a41d>(): $console_is_on()
+syscall<$76ee6c90>(str1): $do_event("RECOVER_FAST")  // example params
+
+syscall<$661afb43>(unk1, int2): $sprite_rotate(#skip_spr@SYSTEM, 0)  // example params
+syscall<$e119d5ba>(unk1, int2, int3): $sprite_move(#skip_spr@SYSTEM, 10000, 10000)  // example params
+
+EB A5 2A A6
+
+(d780d2cb)
+
+14
+28
+49
+6d
+92
+b6
+d7
+eb
+
+eb
+92
+49
+d7
+14
+6d
+b6
+28
+
+(b77da280)
+(146164c9)
+
+0xebe34e92 | 0x4972c7d7
+0x141cb16d | 0xb68d3828
+syscall<$ebe34e92
+syscall<$924ee3eb>
+
+34 08 EB E3 4E 92 03 00
+
+
+0x92d1f843
+syscall<$c21f8b49>(): $is_auto_mode()
+02ff3c2501555d185d0456ae99dcf07f
+
+e7a55d761a1b4102934bdb9f7ad5b431
+
+MajiroSysV1.100
+savedata\\majiro_system.mss
+\x00MAJIRO_SYSTEM\x00\x00\x00REG_GLOBAL\x00\x00MAJIRO_RUNTIME\x00
+
+0xA62AA5EB | 0xD7A55465
+0xEBA52AA6 | 0x6554A5D7
+
+e9a99174
+
+bee147d807cdf49db9aa1ebf4d0eaa38
+
+>>> hash_all(md5, '{}', 'is_fast_mode')
+e9a9917497c3f4c33a3a9189f90071e4
+d9ba041ff9e952be362abc05caac848f
+6d098e29872c8a0762ae5a9d1526bcbb
+e7a55d761a1b4102934bdb9f7ad5b431
+3ebc0abdac564077b1e84d2f2bfde935
+928411839c5131f0f97c9dc90b362496
+>>> hash_all(md5, 'func {}', 'is_fast_mode')
+754766429523c3cccff00a53d3bdef2f
+ef292810e14944764b8670e359c4f940
+b76d8e98a2d67eba8d8553ff01039ed8
+6a3a0d458205a2ac63e54afb9d3c6c46
+e7b4f7e459226b8e90343c3f44d13bb7
+8dcacb772476a914459a4ba492b3b41d
+>>> hash_all(sha1, 'func {}', 'is_fast_mode')
+4b55c46116bc8d73ff8dc52095f06208c5df0353
+a74732b2affcf4db4da5a0127ba4f03b13cbeefa
+5c0fb1e2cc977a971f0fe3f13d5ba38091cb2405
+1ad8cc806bfd0e3b3bb9e992d015899b7f646f49
+8f108fef84e3ad1cd08f1e93320f5ae2836a8597
+1ae80e2ad340c85c1ccf88b7b049a9a64014f529
+>>> hash_all(sha1, '{}', 'is_fast_mode')
+6e5b1adf8190a8b88c10af949cce36234fe13ea6
+13c7250e743aa8ef8222934f1ba5e8a4f1f83347
+9e09ea4f755cb0a3ad4f8939d19eb9cca3a20c72
+f31c91bbbebc7f11f0d19ded3c38ca72033d3699
+eff471badc11d560b428720f7d3f218ce21c93d1
+9da175ac24e1167656f58567faf1340bcb18b82b
+
+>>> hashlib.md5(b'$is_fast_mode').hexdigest()
+'d9ba041ff9e952be362abc05caac848f'
+>>> hashlib.sha1(b'$is_fast_mode').hexdigest()
+'13c7250e743aa8ef8222934f1ba5e8a4f1f83347'
+>>> hashlib.sha256(b'$is_fast_mode').hexdigest()
+'8ca7b7d4dcd2aad68dcb4e233431bb27ccc2a80e3d2f9badd7ea1dfc647e80b2'
+>>> hashlib.sha224(b'$is_fast_mode').hexdigest()
+'5f39ad9033c577c513bffcf238272139631be59762cf9f26362f7fed'
+>>> hashlib.sha384(b'$is_fast_mode').hexdigest()
+'1b5753389116349162024990eda94c1adcf0c7e41b43c2b521595335f770d85a0108a37bdfc4b5b60491baa5bb70f4c4
+
+
+EBA52AA6
+
+BA D5 19 E1
+43 FB 1A 66
+
+35 08 90 6C EE 76 01 00
+35 08 43 FB 1A 66 02 00 3A 08 73 05 00 08 10 27    5.C{.f..:.s....'
+00006190: 00 00 00 08 10 27 00 00 02 08 00 00 1F 91 36 8F    .....'........6.
+000061a0: FF FF 35 08 BA D5 19 E1 03 00 3A 08 74 05 02 08    ..5.:U.a..:.t...
+000061b0: 00 00 EB 29 F0 45 FF FF 00 08 01 00 00 00 58 01    ..k)pE........X.
+000061c0: 2E 08 1A 00 00 00 00 08 00 00 00 00 3F 08 02 08    ............?...
+000061d0: 00 00 04 62 5C 43 FF FF 35 08 43 FB 1A 66 02 00    ...b\C..5.C{.f..
+
+0x1b0: =   (assign to address)
+0x158: ==  (is equal comparison)
+0x160: !=  (not equal comparison)
+0x190: !   (not)
+0x82e: jz  (jump if zero)
+
+0x82b: ret
+0x82c: jmp @label
+0x82d: (jnz)
+0x82e: jz
+0x831: jne
+0x832: (je)
+0x838: (jge)
+0x839: (gle)
+0x83b: 
+0x83d: 
+0x843: 
+
+je
+jl
+jg
+jle
+jge
+
+jeq
+jne

@@ -1,13 +1,14 @@
 {
-	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "Majilo IL Instructions",
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Majilo IL Instructions",
   "fileTypes": [
     "mjil"
   ],
-	"patterns": [
-		{
-			"include": "#comments"
-		},{
+  "scopeName": "source.majiro.mjil",
+  "patterns": [
+    {
+      "include": "#comments"
+    },{
       "include": "#labels"
     },{
       "include": "#functions"
@@ -17,11 +18,11 @@
       "include": "#storage"
     },{
       "include": "#strings"
-		},{
+    },{
       "include": "#numbers"
     }
-	],
-	"repository": {
+  ],
+  "repository": {
     "labels": {
       "comment": "Addresses, labels, and target operands",
       "patterns": [
@@ -142,62 +143,81 @@
     },
 
     "comments": {
+      "comment": "Block comments: '/* */'  Line comments: '//' ';' (no line-continuation)",
       "patterns": [
         {
-					"name": "comment.block.mjil",
-					"captures": {
-						"1": { "name": "meta.toc-list.banner.block.mjil" }
-					},
-					"match": "^/\\* =(\\s*.*?)\\s*= \\*/$\\n?"
-				},
-				{
-					"name": "comment.block.mjil",
-					"begin": "/\\*",
-					"beginCaptures": {
-						"0": { "name": "punctuation.definition.comment.begin.mjil" }
-					},
-					"end": "\\*/",
-					"endCaptures": {
-						"0": { "name": "punctuation.definition.comment.end.mjil" }
-					}
-				},
-				{
-					"name": "invalid.illegal.stray-comment-end.mjil",
-					"match": "\\*/.*\\n"
-				},
-				{
-					"begin": "(^[ \\t]+)?(?=//)",
-					"beginCaptures": {
-						"1": { "name": "punctuation.whitespace.comment.leading.mjil" }
-					},
-					"end": "(?!\\G)",
-					"patterns": [
-						{
-							"name": "comment.line.double-slash.mjil",
-							"begin": "//",
-							"beginCaptures": {
-								"0": { "name": "punctuation.definition.comment.mjil" }
-							},
-							"end": "(?=\\n)"
-						}
-          ]
+          "comment": "C /* */ block comments",
+          "name": "comment.block.mjil",
+          "begin": "\\/\\*",
+          "end": "\\*\\/",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.begin.mjil" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.comment.end.mjil" }
+          }
+        },
+        {
+          "name": "invalid.illegal.unexpected.punctuation.definition.comment.end.mjil",
+          "match": "\\*\\/"
+        },
+        {
+          "comment": "C // line comments  (no line-continuation)",
+          "begin": "(^[ \\t]+)?(?=\\/\\/)",
+          "end": "(?!\\G)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.whitespace.comment.leading.mjil" }
+          },
+          "patterns": [ {
+              "name": "comment.line.double-slash.mjil",
+              "begin": "\\/\\/",
+              "end": "\\n",
+              "beginCaptures": {
+                "0": { "name": "punctuation.definition.comment.double-slash.mjil" }
+              }
+          } ]
+        },
+        {
+          "comment": "Disassembler ; line comments  (no line-continuation)",
+          "begin": "(^[ \\t]+)?(?=;)",
+          "end": "(?!\\G)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.whitespace.comment.leading.mjil" }
+          },
+          "patterns": [ {
+              "name": "comment.line.semicolon.mjil",
+              "begin": ";",
+              "end": "\\n",
+              "beginCaptures": {
+                "0": { "name": "punctuation.definition.comment.semicolon.mjil" }
+              }
+          } ]
         }
       ]
     },
-		"strings": {
-			"patterns": [
+
+    "string_codepoint_escapes": {
+      "comment": "Codepoint string escapes: '\\xXX' ASCII  '\\uXXXX' Unicode  '\\UXXXXXXXX' UTF32  '\\OOO' Octal",
+      "name": "constant.character.escape.codepoint.string",
+      "match": "\\\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3})"
+    },
+    "strings": {
+      "comment": "Single and double-quoted strings (only double-quotes are used at the moment)",
+      "patterns": [
         {
           "name": "string.quoted.single.mjil",
           "begin": "'",
+          "end": "'",
           "beginCaptures": {
             "0": { "name": "punctuation.definition.string.begin.mjil" }
           },
-          "end": "'",
           "endCaptures": {
             "0": { "name": "punctuation.definition.string.end.mjil" }
           },
           "patterns": [
             {
+              "include": "#string_codepoint_escapes"
+            },{
               "name": "constant.character.escape.string",
               "match": "\\\\."
             }
@@ -206,23 +226,25 @@
         {
           "name": "string.quoted.double.mjil",
           "begin": "\"",
+          "end": "\"",
           "beginCaptures": {
             "0": { "name": "punctuation.definition.string.begin.mjil" }
           },
-          "end": "\"",
           "endCaptures": {
             "0": { "name": "punctuation.definition.string.end.mjil" }
           },
           "patterns": [
             {
+              "include": "#string_codepoint_escapes"
+            },{
               "name": "constant.character.escape.string",
               "match": "\\\\."
             }
           ]
         }
-			]
+      ]
     },
-		"numbers": {
+    "numbers": {
 			"match": "(?<!\\w)\\.?\\d(?:(?:[0-9a-zA-Z_\\.]|')|(?<=[eEpP])[+-])*",
 			"captures": {
 				"0": {
@@ -474,7 +496,6 @@
 					]
 				}
 			}
-		}
-	},
-	"scopeName": "source.majiro.mjil"
+    }
+  }
 }

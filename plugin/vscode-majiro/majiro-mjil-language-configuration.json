@@ -1,6 +1,8 @@
 {
   "comments": {
     // symbol used for single line comment. Remove this entry if your language does not support line comments
+    //  double-slash line comment used over ';', as that's better suited for documentation
+    //  while '//' is better suited commenting-out instructions
     "lineComment": "//",
     // symbols used for start and end a block comment. Remove this entry if your language does not support block comments
     "blockComment": [ "/*", "*/" ]
@@ -25,23 +27,10 @@
     ["(", ")"],
     ["\"", "\""],
     ["'", "'"]
-  ]/*,
+  ],
+  // behavior for foldable blocks of code
   "folding": {
-    "markers": {
-      "start": "^#\\w+",
-      "end": "\\n(?=#\\w+)"
-    },
-    "offSide": false
-  },
-  "indentationRules": {
-    "increaseIndentPattern": "^#\\w+[ \t]*$",
-    "decreaseIndentPattern": "^#\\w+[ \t]*$"
-  }*/
-  ,"folding": {
-    /*"markers": {
-      "start": "^entry:",
-      "end": "^end:"
-    },*/
+    // fold based on change in indentation (which is increased inside functions -> labels -> instructions)
     "offSide": true
   }
 }

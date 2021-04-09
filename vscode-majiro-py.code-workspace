@@ -72,11 +72,13 @@
 
     "files.associations": {
       // easiest syntax highlighting to read .mjs scripts in (cpp is also decent)
-      "*.old": "javascript",
-      "*.old2": "javascript",
+      "*.mjs.old": "javascript",
+      "*.mjs.old2": "javascript",
+      "*.mjh.bak": "javascript",
       "*.mjil": "majiro-mjil"
     },
 
+    // VSIcons extension
     "vsicons.associations.files": [
       {
         "icon": "binary",

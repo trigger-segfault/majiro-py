@@ -91,7 +91,7 @@ class Instruction:
         if not color:
             return string
         # brighten escapes
-        return re.sub(r'''\\(x\d{2}|u\d{4}|U\d{8}|o\d{1,3}|[\\\\'\\"abfnrtv])''', r'{BRIGHT}\0{DIM}'.format(**colors), string)
+        return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|[\\\\'\\"abfnrtv])''', r'{BRIGHT}\0{DIM}'.format(**colors), string)
 
     def print_instruction(self, *, color:bool=False, **kwargs) -> NoReturn:
         print(self.format_instruction(color=color), **kwargs)
@@ -180,15 +180,15 @@ class Instruction:
         if self.opcode.mnemonic.startswith("syscall"): # 0x834, 0x835
             known_syscall = KNOWN_SYSCALLS.get(self.hash)
             if known_syscall:
-                sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
+                sb = sb.ljust(ops_offset + 17 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
                 # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_syscall, **colors)
-                sb += '{BRIGHT}{BLACK}// {DIM}{YELLOW}{}{RESET_ALL}'.format(known_syscall, **colors)
+                sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_syscall, **colors)
         elif self.opcode.mnemonic.startswith('st') or self.opcode.mnemonic == 'ld':
             known_variable = SPECIAL_VARIABLES.get(self.hash)
             if known_variable:
                 #sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
                 # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_syscall, **colors)
-                sb += '  {BRIGHT}{BLACK}// {DIM}{RED}{}{RESET_ALL}'.format(known_variable, **colors)
+                sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_variable, **colors)
         return sb
 
     @classmethod
@@ -256,10 +256,19 @@ class MjoScript:
     SIGNATURE_ENCRYPTED:bytes = b'MajiroObjX1.000\x00'  # encrypted bytecode
     SIGNATURE_DECRYPTED:bytes = b'MajiroObjV1.000\x00'  # decrypted bytecode (majiro)
     SIGNATURE_PLAIN:bytes = b'MjPlainBytecode\x00'  # decrypted bytecode (mjdisasm)
-    def __init__(self, entry_point_index:int, functions:List[FunctionEntry], instructions:List[Instruction]):
-        self.entry_point_index = 0
+    def __init__(self, signature:bytes, main_offset:int, line_count:int, functions:List[FunctionEntry], instructions:List[Instruction]):
+        self.signature:bytes = signature
+        self.main_offset:int = main_offset
+        self.line_count:int = line_count
         self.functions:List[FunctionEntry] = functions
         self.instructions:List[Instruction] = instructions
+
+    @property
+    def main_function(self) -> FunctionEntry:
+        for fn in self.functions:
+            if fn.offset == self.main_offset:
+                return fn
+        return None
 
     def instruction_index_from_offset(self, offset:int) -> int:
         for i,instr in enumerate(self.instructions):
@@ -275,13 +284,16 @@ class MjoScript:
         is_encrypted:bool = (signature == cls.SIGNATURE_ENCRYPTED)
         assert(is_encrypted ^ (signature in (cls.SIGNATURE_DECRYPTED, cls.SIGNATURE_PLAIN)))
 
-        entry_point_index:int = reader.unpackone('<I')
-        # unknown_14:int = reader.unpackone('<I')
-        _ = reader.unpackone('<I')  # unknown_14:int
+        # bytecode offset to main function, allows us to identify main function name_hash in entry table
+        main_offset:int = reader.unpackone('<I')
+        # field contains the last line number (as observed from line opcodes)
+        #  this field is only non-zero in "story" scripts, which include the
+        #  preprocessor command "#use_readflg on" when compiled
+        line_count:int = reader.unpackone('<I')
         function_count:int = reader.unpackone('<I')
-        function_index:List[FunctionEntry] = []
+        functions:List[FunctionEntry] = []
         for _ in range(function_count):
-            function_index.append(FunctionEntry(*reader.unpack('<II')))
+            functions.append(FunctionEntry(*reader.unpack('<II')))
 
         bytecode_size:int = reader.unpackone('<I')
         bytecode:bytes = reader.read(bytecode_size)
@@ -290,7 +302,7 @@ class MjoScript:
         ms = StructIO(io.BytesIO(bytecode))
         instructions:List[Instruction] = cls.disassemble_bytecode(ms)
 
-        return MjoScript(entry_point_index, function_index, instructions)
+        return MjoScript(signature, main_offset, line_count, functions, instructions)
 
     @classmethod
     def disassemble_bytecode(self, reader:StructIO) -> List[Instruction]:

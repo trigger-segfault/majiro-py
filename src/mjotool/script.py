@@ -180,14 +180,12 @@ class Instruction:
         if self.opcode.mnemonic.startswith("syscall"): # 0x834, 0x835
             known_syscall = KNOWN_SYSCALLS.get(self.hash)
             if known_syscall:
-                sb = sb.ljust(ops_offset + 17 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
+                sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
                 # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_syscall, **colors)
                 sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_syscall, **colors)
         elif self.opcode.mnemonic.startswith('st') or self.opcode.mnemonic == 'ld':
             known_variable = SPECIAL_VARIABLES.get(self.hash)
             if known_variable:
-                #sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
-                # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_syscall, **colors)
                 sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_variable, **colors)
         return sb
 

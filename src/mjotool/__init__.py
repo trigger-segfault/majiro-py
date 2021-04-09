@@ -17,6 +17,7 @@ from .script import Instruction, MjoScript
 from .analysis import ControlFlowGraph
 
 from . import crypt
+from . import flags
 from . import opcodes
 from . import script
 from . import analysis

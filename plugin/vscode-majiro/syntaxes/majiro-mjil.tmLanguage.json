@@ -57,6 +57,10 @@
           "comment": "Variable hash color",
           "name": "entity.name.variable.operand.hash.mjil",
           "match": "(?<=\\s|^)(\\$[0-9A-Fa-f]{8})\\b"
+        },{
+          "comment": "Entrypoint function modifier (goes after function declaration, before open brace)",
+          "name": "variable.other.constant.keyword.entrypoint.mjil",
+          "match": "(?<=\\s|^)entrypoint\\b"
         }
       ]
     },

@@ -17,12 +17,13 @@ __all__ = ['Instruction', 'MjoScript', 'BasicBlock', 'Function']
 import io
 from abc import abstractproperty
 from collections import namedtuple
-from typing import Iterator, List, NoReturn  # for hinting in declarations
+from typing import Iterator, List, NoReturn, Optional, Tuple  # for hinting in declarations
 
 from ._util import StructIO, DummyColors, Colors
 from .flags import MjoType, MjoScope, MjoInvertMode, MjoModifier, MjoFlags
 from .opcodes import Opcode
 from . import crypt
+from . import known_hashes
 
 
 ## Hardcoded list until a better method is setup
@@ -70,9 +71,12 @@ class Instruction:
     def is_syscall(self) -> bool: return self.opcode.mnemonic in ("syscall", "syscallp")  # 0x834, 0x835
     @property
     def is_call(self) -> bool: return self.opcode.mnemonic in ("call", "callp")  # 0x80f, 0x810
-    # ldc.i 0x800, ldstr 0x801, ld 0x802, ldc.r 0x803, ldelem 0x837
+    # ldc.i 0x800, ldstr 0x801, ldc.r 0x803
     @property
-    def is_load(self) -> bool: return self.opcode.mnemonic.startswith("ld")  
+    def is_literal(self) -> bool: return self.opcode.mnemonic in ("ldc.i", "ldc.r", "ldstr")
+    # ld 0x802, ldelem 0x837
+    @property
+    def is_load(self) -> bool: return self.opcode.mnemonic in ("ld", "ldelem")
     # st.* 0x1b0~0x200, stp.* 0x210~0x260, stelem.* 0x270~0x2c0, stelemp.* 0x2d0~0x320
     @property
     def is_store(self) -> bool: return self.opcode.mnemonic.startswith("st")
@@ -93,6 +97,27 @@ class Instruction:
         # brighten escapes
         return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|[\\\\'\\"abfnrtv])''', r'{BRIGHT}\0{DIM}'.format(**colors), string)
 
+    def check_known_hash(self) -> Optional[Tuple[str, bool]]: # (name, is_syscall)
+        if self.is_syscall:
+            return (known_hashes.SYSCALLS.get(self.hash, None), True)
+        elif self.is_call:
+            return (known_hashes.USERCALLS.get(self.hash, None), False)
+        elif self.is_load or self.is_store:
+            # TODO: this could be optimized to use the type flags
+            #       and search in the scope-independent dicts
+            return (known_hashes.VARIABLES.get(self.hash, None), False)
+        elif self.opcode.mnemonic == "ldc.i": # 0x800
+            name = (known_hashes.USERCALLS.get(self.int_value, None), False)
+            # TODO: Uncomment if it's observed that int literals
+            #       will use hashes for types other than usercalls
+            # if name[0] is None:
+            #     name = (known_hashes.VARIABLES.get(self.int_value, None), False)
+            # if name[0] is None:
+            #     name = (known_hashes.SYSCALLS.get(self.int_value, None), True)
+            return name
+        
+        return None, False # not an opcode that relates to hashes
+
     def print_instruction(self, *, color:bool=False, **kwargs) -> NoReturn:
         print(self.format_instruction(color=color), **kwargs)
     def format_instruction(self, *, color:bool=False) -> str:
@@ -105,6 +130,13 @@ class Instruction:
             sb += '{BRIGHT}{BLACK}{0.offset:06x}:{RESET_ALL} {BRIGHT}{WHITE}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, **colors)
 
         ops_offset = len(sb)  # for even ~fancier formatting~
+        # true if the integer literal field matches a known name hash
+        # is_literal_hash:bool = False
+        # literal_hash_type:str = None  # 'syscall', 'call', 'var'
+        # # at the moment, only function hashes have been observed being pushed with ldc.i
+        # #  set this constant to False to search through ALL hashes
+        # LITERAL_USERCALLS_ONLY:bool = True
+        known_hash_name, known_hash_is_syscall = self.check_known_hash()
 
         for operand in self.opcode.encoding:
             if operand == '0':
@@ -152,7 +184,12 @@ class Instruction:
             #     pass
             elif operand == 'i':
                 # integer constant
-                sb += '{:d}'.format(self.int_value)
+                # integer literals will sometimes use hashes for usercall function pointers
+                if known_hash_name is not None:
+                    # print as hex for simplicity
+                    sb += '0x{:08x}'.format(self.int_value)
+                else:
+                    sb += '{:d}'.format(self.int_value)
             elif operand == 'r':
                 # float constant
                 sb += '{:n}'.format(self.float_value)
@@ -177,16 +214,28 @@ class Instruction:
             else:
                 raise Exception('Unrecognized encoding specifier: {!r}'.format(operand))
         
-        if self.opcode.mnemonic.startswith("syscall"): # 0x834, 0x835
-            known_syscall = KNOWN_SYSCALLS.get(self.hash)
-            if known_syscall:
-                sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
-                # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_syscall, **colors)
-                sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_syscall, **colors)
-        elif self.opcode.mnemonic.startswith('st') or self.opcode.mnemonic == 'ld':
-            known_variable = SPECIAL_VARIABLES.get(self.hash)
-            if known_variable:
-                sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_variable, **colors)
+        if known_hash_name is None:
+            pass # no hash name comments
+        elif self.is_syscall: # 0x834, 0x835
+            sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
+            # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_hash_name, **colors)
+            sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_hash_name, **colors)
+        elif self.is_call: # 0x80f, 0x810
+            sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["BLUE"]) + len(colors["RESET_ALL"]))
+            # sb += '{BRIGHT}{BLACK}[{DIM}{BLUE}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_hash_name, **colors)
+            sb += '{BRIGHT}{BLACK}; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash_name, **colors)
+        elif self.is_load or self.is_store:
+            sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_hash_name, **colors)
+        elif self.opcode.mnemonic == "ldc.i": # 0x800
+            sb = sb.ljust(ops_offset + 16)
+            # check for loading function hashes (which are often passed to )
+            hash_color = colors["RED"]
+            if known_hash_name[0] == '$':
+                if known_hash_is_syscall:
+                    hash_color = colors["YELLOW"]
+                else:
+                    hash_color = colors["BLUE"]
+            sb += '{BRIGHT}{BLACK}; {DIM}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
         return sb
 
     @classmethod
@@ -408,7 +457,8 @@ class Function(_BlockContainer):
         print(self.format_function(color=color), **kwargs)
     def format_function(self, *, color:bool=False) -> str:
         colors:dict = Colors if color else DummyColors
-        return '{BRIGHT}{BLUE}func ${.name_hash:08x}({!s}){RESET_ALL}'.format(self, ', '.join(t.name for t in self.parameter_types), **colors) # pylint: disable=not-an-iterable
+        annotation:str = ' {DIM}{YELLOW}entrypoint{RESET_ALL}'.format(**colors) if self.start_offset == self.script.main_offset else ''
+        return '{BRIGHT}{BLUE}func ${.name_hash:08x}({!s}){RESET_ALL}{}'.format(self, ', '.join(t.name for t in self.parameter_types), annotation, **colors) # pylint: disable=not-an-iterable
 
 
-del abstractproperty, namedtuple, Iterator, NoReturn  # cleanup declaration-only imports
+del abstractproperty, namedtuple, Iterator, NoReturn, Optional, Tuple  # cleanup declaration-only imports

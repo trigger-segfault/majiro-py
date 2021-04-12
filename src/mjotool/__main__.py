@@ -16,6 +16,7 @@ import os
 from ._util import DummyColors, Colors
 from .script import MjoScript
 from .analysis import ControlFlowGraph
+from . import known_hashes
 
 
 ## READ / ANALYZE SCRIPT ##
@@ -42,10 +43,18 @@ def print_script(filename:str, script:MjoScript, *, color:bool=False):
     """Print analyzed script IL instructions and blocks to console (PRINTS A LOT OF LINE)
     """
     cfg:ControlFlowGraph = analyze_script(script)
+    colors = Colors if color else DummyColors
 
     print('## {}'.format(os.path.basename(filename)))
     for function in cfg.functions:
-        function.print_function(color=color)
+        function.print_function(color=color, end='')
+        # if function.start_offset == script.main_offset:
+        #     print(' {DIM}{YELLOW}entrypoint{RESET_ALL}'.format(**colors), end='')
+        print(' {', end='')
+        known_hash = known_hashes.USERCALLS.get(function.name_hash, None)
+        if known_hash is not None:
+            print('  ; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash, **colors), end='')
+        print()
         for basic_block in function.basic_blocks:
             basic_block.print_basic_block(color=color)
             for instruction in basic_block.instructions:
@@ -66,7 +75,14 @@ def write_script(filename:str, script:MjoScript, outfilename:str):
         # include extra indentation formatting for language grammar VSCode extension
         writer.write('/// {}\n\n'.format(os.path.basename(filename)))
         for function in cfg.functions:
-            writer.write(function.format_function(color=False) + ' {\n')
+            writer.write(function.format_function(color=False)) # + ' {')
+            # if function.start_offset == script.main_offset:
+            #     writer.write(' entrypoint')
+            writer.write(' {')
+            known_hash = known_hashes.USERCALLS.get(function.name_hash, None)
+            if known_hash is not None:
+                writer.write('  ; {}'.format(known_hash))
+            writer.write('\n')
             for i,basic_block in enumerate(function.basic_blocks):
                 writer.write(' ' + basic_block.format_basic_block(color=False) + '\n')
                 for instruction in basic_block.instructions:

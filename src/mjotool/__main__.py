@@ -45,23 +45,24 @@ def print_script(filename:str, script:MjoScript, *, color:bool=False):
     cfg:ControlFlowGraph = analyze_script(script)
     colors = Colors if color else DummyColors
 
-    print('## {}'.format(os.path.basename(filename)))
+    # include extra indentation formatting for an easier time reading
+    print('{BRIGHT}{WHITE}/// {}{RESET_ALL}'.format(os.path.basename(filename), **colors))
+    script.print_readmark(color=color)
+    # print()
+
     for function in cfg.functions:
-        function.print_function(color=color, end='')
-        # if function.start_offset == script.main_offset:
-        #     print(' {DIM}{YELLOW}entrypoint{RESET_ALL}'.format(**colors), end='')
-        print(' {', end='')
-        known_hash = known_hashes.USERCALLS.get(function.name_hash, None)
-        if known_hash is not None:
-            print('  ; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash, **colors), end='')
         print()
-        for basic_block in function.basic_blocks:
+        function.print_function(braces=True, color=color)
+        for i,basic_block in enumerate(function.basic_blocks):
+            print(' ', end='')
             basic_block.print_basic_block(color=color)
             for instruction in basic_block.instructions:
+                print('  ', end='')
                 instruction.print_instruction(color=color)
-            print()
-        print()
-    print()
+            if i + 1 < len(function.basic_blocks):
+                print(' ')
+        function.print_function_close(braces=True, color=color)
+        # print()
 
 
 ## WRITE SCRIPT ##
@@ -73,25 +74,21 @@ def write_script(filename:str, script:MjoScript, outfilename:str):
 
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
         # include extra indentation formatting for language grammar VSCode extension
-        writer.write('/// {}\n\n'.format(os.path.basename(filename)))
+        writer.write('/// {}\n'.format(os.path.basename(filename)))
+        writer.write(script.format_readmark(color=False) + '\n')
+        # writer.write('\n')
+
         for function in cfg.functions:
-            writer.write(function.format_function(color=False)) # + ' {')
-            # if function.start_offset == script.main_offset:
-            #     writer.write(' entrypoint')
-            writer.write(' {')
-            known_hash = known_hashes.USERCALLS.get(function.name_hash, None)
-            if known_hash is not None:
-                writer.write('  ; {}'.format(known_hash))
             writer.write('\n')
+            writer.write(function.format_function(braces=True, color=False) + '\n')
             for i,basic_block in enumerate(function.basic_blocks):
                 writer.write(' ' + basic_block.format_basic_block(color=False) + '\n')
                 for instruction in basic_block.instructions:
                     writer.write('  ' + instruction.format_instruction(color=False) + '\n')
                 if i + 1 < len(function.basic_blocks):
                     writer.write(' \n')
-                else:
-                    writer.write('}\n')
-            writer.write('\n')
+            writer.write(function.format_function_close(braces=True, color=False) + '\n')
+            # writer.write('\n')
         writer.flush()
 
 

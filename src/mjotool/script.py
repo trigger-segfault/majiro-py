@@ -311,6 +311,10 @@ class MjoScript:
         self.instructions:List[Instruction] = instructions
 
     @property
+    def is_readmark(self) -> bool:
+        # preprocessor "#use_readflg on" setting, we need to export this with IL
+        return bool(self.line_count)
+    @property
     def main_function(self) -> FunctionEntry:
         for fn in self.functions:
             if fn.offset == self.main_offset:
@@ -364,6 +368,13 @@ class MjoScript:
             instructions.append(instruction)
             offset = reader.tell()
         return instructions
+
+    def print_readmark(self, *, color:bool=False, **kwargs) -> NoReturn:
+        print(self.format_readmark(color=color), **kwargs)
+    def format_readmark(self, *, color:bool=False) -> str:
+        colors:dict = Colors if color else DummyColors
+        setting = ('{GREEN}enable' if self.is_readmark else '{RED}disable').format(**colors)
+        return '{DIM}{YELLOW}readmark{RESET_ALL} {BRIGHT}{}{RESET_ALL}'.format(setting, **colors)
 
 
 class _Block:
@@ -452,13 +463,34 @@ class Function(_BlockContainer):
     @property
     def script(self) -> MjoScript:
         return self._script
+    @property
+    def is_entrypoint(self) -> bool:
+        return self.start_offset == self.script.main_offset
 
-    def print_function(self, *, color:bool=False, **kwargs) -> NoReturn:
-        print(self.format_function(color=color), **kwargs)
-    def format_function(self, *, color:bool=False) -> str:
+    def print_function(self, *, braces:bool=True, color:bool=False, **kwargs) -> NoReturn:
+        print(self.format_function(braces=braces, color=color), **kwargs)
+    def format_function(self, *, braces:bool=True, color:bool=False) -> str:
         colors:dict = Colors if color else DummyColors
-        annotation:str = ' {DIM}{YELLOW}entrypoint{RESET_ALL}'.format(**colors) if self.start_offset == self.script.main_offset else ''
-        return '{BRIGHT}{BLUE}func ${.name_hash:08x}({!s}){RESET_ALL}{}'.format(self, ', '.join(t.name for t in self.parameter_types), annotation, **colors) # pylint: disable=not-an-iterable
+
+        args = ', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.name, **colors) for t in self.parameter_types) # pylint: disable=not-an-iterable
+        # always "func" as, "void" can only be confirmed by all-zero return values
+        s = '{BRIGHT}{BLUE}func ${.name_hash:08x}{RESET_ALL}({!s})'.format(self, args, **colors)
+        
+        # "entrypoint" states which function to declare as "main" to the IL assembler
+        if self.is_entrypoint:
+            s += ' {DIM}{YELLOW}entrypoint{RESET_ALL}'.format(**colors)
+        # optional brace formatting
+        if braces:
+            s += ' {'
+        known_hash = known_hashes.USERCALLS.get(self.name_hash, None)
+        if known_hash is not None:
+            s += '  {BRIGHT}{BLACK}; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash, **colors)
+    
+        return s
+    def print_function_close(self, *, braces:bool=True, color:bool=False, **kwargs) -> NoReturn:
+        print(self.format_function_close(braces=braces, color=color), **kwargs)
+    def format_function_close(self, *, braces:bool=True, color:bool=False) -> str:
+        return '}' if braces else ''
 
 
 del abstractproperty, namedtuple, Iterator, NoReturn, Optional, Tuple  # cleanup declaration-only imports

@@ -1,7 +1,8 @@
 /// console.mjo
 //
-// disassembled on: 2021-04-11
+// disassembled on: 2021-04-13
 //
+readmark disable
 
 func $158fcf1d() {  ; $is_sca@CONSOLE
  entry:
@@ -10105,4 +10106,3 @@ func $5ff01a4c() entrypoint {  ; $main@CONSOLE
   00cc71: ldc.i         0
   00cc77: ret          
 }
-

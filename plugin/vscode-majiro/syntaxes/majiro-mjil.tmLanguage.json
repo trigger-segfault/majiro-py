@@ -52,7 +52,7 @@
           "match": "\\b(?i:(?:modifier|invert)_[0-9A-Za-z]+|dim\\d+)\\b"
         },{
           "name": "storage.type.flags.type.variable.mjil",
-          "match": "\\b(?i:int|float|string)(?:array)?\\b"
+          "match": "\\b(?i:int|float|string)(?i:array)?\\b"
         },{
           "comment": "Variable hash color",
           "name": "entity.name.variable.operand.hash.mjil",
@@ -61,6 +61,13 @@
           "comment": "Entrypoint function modifier (goes after function declaration, before open brace)",
           "name": "variable.other.constant.keyword.entrypoint.mjil",
           "match": "(?<=\\s|^)entrypoint\\b"
+        },{
+          "comment": "readmark enable|disable directive",
+          "match": "\\b(readmark)(?:\\s+(enable|disable))\\b",
+          "captures": {
+            "1": { "name": "variable.other.constant.keyword.control.directive.readmark.mjil" },
+            "2": { "name": "entity.other.attribute-name.readmark.mjil" }
+          }
         }
       ]
     },

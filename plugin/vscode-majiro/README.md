@@ -21,7 +21,7 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Preview
 
-<p align="center"><img src="./preview.png"></p>
+<p align="center"><img src="./preview2.png"></p>
 
 
 ## Requirements

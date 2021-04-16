@@ -14,7 +14,7 @@ Converted to Python library by Robert Jordan - 2021
 
 import os
 from ._util import DummyColors, Colors
-from .script import MjoScript
+from .script import MjoScript, ILFormat
 from .analysis import ControlFlowGraph
 from . import known_hashes
 
@@ -39,55 +39,56 @@ def analyze_script(script:MjoScript) -> ControlFlowGraph:
 
 ## PRINT SCRIPT ##
 
-def print_script(filename:str, script:MjoScript, *, color:bool=False):
+def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DEFAULT):
     """Print analyzed script IL instructions and blocks to console (PRINTS A LOT OF LINE)
     """
     cfg:ControlFlowGraph = analyze_script(script)
-    colors = Colors if color else DummyColors
+    colors = options.colors
 
     # include extra indentation formatting for an easier time reading
     print('{BRIGHT}{WHITE}/// {}{RESET_ALL}'.format(os.path.basename(filename), **colors))
-    script.print_readmark(color=color)
+    script.print_readmark(options=options)
     # print()
 
     for function in cfg.functions:
         print()
-        function.print_function(braces=True, color=color)
+        function.print_function(options=options)
         for i,basic_block in enumerate(function.basic_blocks):
             print(' ', end='')
-            basic_block.print_basic_block(color=color)
+            basic_block.print_basic_block(options=options)
             for instruction in basic_block.instructions:
                 print('  ', end='')
-                instruction.print_instruction(color=color)
+                instruction.print_instruction(options=options)
             if i + 1 < len(function.basic_blocks):
                 print(' ')
-        function.print_function_close(braces=True, color=color)
+        function.print_function_close(options=options)
         # print()
 
 
 ## WRITE SCRIPT ##
 
-def write_script(filename:str, script:MjoScript, outfilename:str):
+def write_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT):
     """Write analyzed script IL instructions and blocks to .mjil file
     """
+    options.color = False
     cfg:ControlFlowGraph = analyze_script(script)
 
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
         # include extra indentation formatting for language grammar VSCode extension
         writer.write('/// {}\n'.format(os.path.basename(filename)))
-        writer.write(script.format_readmark(color=False) + '\n')
+        writer.write(script.format_readmark(options=options) + '\n')
         # writer.write('\n')
 
         for function in cfg.functions:
             writer.write('\n')
-            writer.write(function.format_function(braces=True, color=False) + '\n')
+            writer.write(function.format_function(options=options) + '\n')
             for i,basic_block in enumerate(function.basic_blocks):
-                writer.write(' ' + basic_block.format_basic_block(color=False) + '\n')
+                writer.write(' ' + basic_block.format_basic_block(options=options) + '\n')
                 for instruction in basic_block.instructions:
-                    writer.write('  ' + instruction.format_instruction(color=False) + '\n')
+                    writer.write('  ' + instruction.format_instruction(options=options) + '\n')
                 if i + 1 < len(function.basic_blocks):
                     writer.write(' \n')
-            writer.write(function.format_function_close(braces=True, color=False) + '\n')
+            writer.write(function.format_function_close(options=options) + '\n')
             # writer.write('\n')
         writer.flush()
 
@@ -118,7 +119,27 @@ def main(argv:list=None) -> int:
 
     args = parser.parse_args(argv)
 
-    color:bool = not args.no_color
+    options:ILFormat = ILFormat()
+
+    ###########################################################################
+    ##FIXME: make options configurable. for now, just change them here :)
+
+    options.color  = not args.no_color  # color, disabled by __main__.write_script() when outputting to file
+    options.braces = True  # function braces
+    options.annotations  = True  # annotations that describe either known hash names, or original hashed values
+    options.known_hashes = True  # check for known hash values
+    options.inline_hash  = True  # inline hash function $name / ${name} for known hash values
+    options.syscall_inline_hash  = True
+    options.int_inline_hash      = True   # ldc.i with a known hash value will use inline hash
+    options.explicit_inline_hash = False  # always use ${name} over $name
+    options.explicit_varoffset   = False  # exclude -1 offset for non-locals
+    options.modifier_aliases     = False
+    options.explicit_dim0   = False  # a useless feature (but it's legal)
+    options.group_directive = None   #unimplemented: removes @GROUP for that matching this setting
+    # options.group_directive = "CONSOLE"
+    ###########################################################################
+
+    # color:bool = not args.no_color
     infiles:list = args.input
     outfile:str  = args.output
 
@@ -146,17 +167,17 @@ def main(argv:list=None) -> int:
                     continue
                 
                 if research:
-                    do_research(args, path, color=color)
+                    do_research(args, path, options=options)
                 else:
                     script = read_script(path)
                     if outfile is not None:
                         outpath = os.path.join(infile, os.path.splitext(name)[0] + '.mjil')
-                        write_script(path, script, outpath)
+                        write_script(path, script, outpath, options=options)
                     else:
-                        print_script(path, script, color=color)
+                        print_script(path, script, options=options)
         else:  # single file
             if research:
-                do_research(args, infile, color=color)
+                do_research(args, infile, options=options)
             else:
                 script = read_script(infile)
                 if outfile is not None:
@@ -164,9 +185,9 @@ def main(argv:list=None) -> int:
                     if os.path.isdir(outfile):  # write to outfile/infilename.mjil
                         name = os.path.basename(infile)
                         outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjil')
-                    write_script(infile, script, outpath)
+                    write_script(infile, script, outpath, options=options)
                 else:
-                    print_script(infile, script, color=color)
+                    print_script(infile, script, options=options)
 
         if not research:
             print()

@@ -21,7 +21,7 @@ This library/tool is heavily tied to *and based on* [AtomCrafty/MajiroTools](htt
 ## Preview
 
 *Disassembled Majiro IL from `console.mjo` using the VSCode language extension.*
-<p align="center"><img src="./plugin/vscode-majiro/preview.png"></p>
+<p align="center"><img src="./plugin/vscode-majiro/preview2.png"></p>
 
 
 ## External links

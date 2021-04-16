@@ -15,7 +15,11 @@
     },{
       "include": "#opcodes"
     },{
+      "include": "#directives"
+    },{
       "include": "#storage"
+    },{
+      "include": "#inline_hash"
     },{
       "include": "#strings"
     },{
@@ -33,10 +37,63 @@
           "name": "keyword.control.label.mjil",
           "match": "^\\s*(?:[A-Za-z_][A-Za-z_0-9]*:)",
 
-          "comment": "match old: ^\\s*(?:(?:[A-Za-z][A-Za-z0-9]*_[0-9A-Fa-f_]*|entry|exit):)"
+          "comment": "match old: ^\\s*(?:(?:[A-Za-z][0-9A-Za-z]*_[0-9A-Fa-f_]*|entry|exit):)"
         },{
           "name": "keyword.control.operand.target.mjil",
           "match": "(?<=\\s|^)@(?:[A-Za-z_][A-Za-z_0-9]*|~[-+]?[0-9a-fA-f]+)\\b"
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "comment": "Entrypoint function modifier (goes after function declaration, before open brace)",
+          "name": "variable.other.constant.keyword.entrypoint.mjil",
+          "match": "(?<=\\s|^)entrypoint\\b"
+        },{
+          "comment": "readmark enable|disable directive",
+          "match": "\\b(readmark)(?:\\s+(enable|disable))?\\b",
+          "captures": {
+            "1": { "name": "variable.other.constant.keyword.control.directive.readmark.mjil" },
+            "2": { "name": "entity.other.attribute-name.readmark.mjil" }
+          }
+        },{
+          "comment": "group \"GROUPNAME\" directive    old= \\b(group)(?:\\s+(\".*\"))?(?=\\b|\\s|[;\\/]|$)",
+          "match": "\\b(group)(?:\\s+(?:(none)|(\"@(?:\\.|[^\\\"])*\")|(\".*\")))?(?=\\b|\\s|[;\\/]|$)",
+          "captures": {
+            "1": { "name": "variable.other.constant.keyword.control.directive.group.mjil" },
+            "2": { "name": "entity.other.attribute-name.group.mjil" },
+            "3": { "name": "invalid.illegal.group.directive.mjil" },
+            "4": {
+              "patterns": [{ "include": "#strings" }]
+            }
+          }
+        }
+      ]
+    },
+    "inline_hash": {
+      "patterns": [
+        {
+          "comment": "Inline hash function implicit ($NAME)  [note: valid hex hashes take priority]  [optiona: +emphasis]",
+          "name": "meta.inline-hash.mjil",
+          "match": "(?<=\\s|^)(?:(\\$)(?:([0-9A-Za-z][_%@#$0-9A-Za-z]*)|([$][_%@#$0-9A-Za-z]*)|([_%@#][_%@#$0-9A-Za-z]*)))(?=$|\\s|[(;\\/])",
+          "captures": {
+            "1": { "name": "constant.character.inline-hash.function.mjil" },
+            "2": { "name": "entity.name.class.operand.hash.syscall.mjil" },
+            "3": { "name": "entity.name.function.operand.hash.usercall.mjil"},
+            "4": { "name": "entity.name.variable.operand.hash.mjil"}
+          }
+        },{
+          "comment": "Inline hash function explicit (${NAME})  [note: valid hex hashes take priority]  [optiona: +emphasis]",
+          "name": "meta.inline-hash.mjil",
+          "match": "(?<=\\s|^)(?:(\\$\\{)(?:([^_%@#$][^}]*)|([$][^}]*)|([_%@#][^}]*))(\\}))(?=$|\\s|[(;\\/])",
+          "captures": {
+            "1": { "name": "constant.character.inline-hash.function.mjil" },
+            "2": { "name": "entity.name.class.operand.hash.syscall.mjil" },
+            "3": { "name": "entity.name.function.operand.hash.usercall.mjil"},
+            "4": { "name": "entity.name.variable.operand.hash.mjil"},
+            "5": { "name": "constant.character.inline-hash.function.mjil" }
+          }
         }
       ]
     },
@@ -45,35 +102,52 @@
       "name": "storage.modifier.variable.flags.mjil",
       "patterns": [
         {
-          "name": "storage.modifier.flags.locations.mjil",
-          "match": "\\b(?i:persist(?:ent)?|save(?:file)?|local|thread)\\b"
-        },{
-          "name": "storage.modifier.flags.modifier.mjil",
-          "match": "\\b(?i:(?:modifier|invert)_[0-9A-Za-z]+|dim\\d+)\\b"
-        },{
+          "comment": "Var type (int, float, string, intarray, floatarray, stringarray) [alias: i, r, s, iarr, rarr, sarr ]",
           "name": "storage.type.flags.type.variable.mjil",
-          "match": "\\b(?i:int|float|string)(?i:array)?\\b"
+          "match": "\\b(?:(?:int|float|string)(?:array)?|[irs](?:arr)?)\\b"
+        },{
+          "comment": "Flag scope (persistent, savefile, thread, local) [alias: persist, save, ,  ]",
+          "name": "storage.modifier.flags.scope.mjil",
+          "match": "\\b(?:persist(?:ent)?|save(?:file)?|thread|local)\\b"
+        },{
+          "comment": "Flag dimension (, dim1, dim2, dim3) [alias: dim0, , ,  ]",
+          "name": "storage.modifier.flags.dimension.mjil",
+          "match": "\\b(?:(dim[0-3])|(dim\\d+))\\b",
+          "captures": {
+            "2": { "name": "invalid.illegal.flags.dimension.mjil" }
+          }
+        },{
+          "comment": "Flag modifier (preinc, predec, postinc, postdec) [alias: inc.x, dec.x, x.inc, x.dec ]",
+          "name": "keyword.other.operator.storage.modifier.flags.modifier.mjil",
+          "match": "\\b(?:(?:post|pre|x\\.)(?:inc|dec)|(?:inc|dec)\\.x)\\b"
+        },{
+          "comment": "Flag invert (neg, notl, not) [illegal: neg.i, neg.r, notl.i, not.i ]",
+          "name": "keyword.other.operator.storage.modifier.flags.invert.mjil",
+          "match": "\\b(?:((?:neg|notl|not)\\.(?:[irs]\\b)?)|(neg|notl|not)\\b)",
+          "captures": {
+            "1": { "name": "invalid.illegal.flags.invert.mjil" }
+          }
         },{
           "comment": "Variable hash color",
           "name": "entity.name.variable.operand.hash.mjil",
           "match": "(?<=\\s|^)(\\$[0-9A-Fa-f]{8})\\b"
-        },{
-          "comment": "Entrypoint function modifier (goes after function declaration, before open brace)",
-          "name": "variable.other.constant.keyword.entrypoint.mjil",
-          "match": "(?<=\\s|^)entrypoint\\b"
-        },{
-          "comment": "readmark enable|disable directive",
-          "match": "\\b(readmark)(?:\\s+(enable|disable))\\b",
-          "captures": {
-            "1": { "name": "variable.other.constant.keyword.control.directive.readmark.mjil" },
-            "2": { "name": "entity.other.attribute-name.readmark.mjil" }
-          }
         }
       ]
     },
     "functions": {
+      "comment": "Function header declarations ",
+      "match": "^\\s*(void|func)\\s+(?:(\\$[0-9A-Fa-f]{8})|(\\$\\{[^}]+\\}|\\$[_%@#$0-9A-Za-z]+))(?=\\b|\\s|[(;\\/])",
+      "captures": {
+        "1": { "name": "entity.name.function.declaration.return-type.mjil" },
+        "2": { "name": "entity.name.function.declaration.hash.mjil" },
+        "3": {
+          "patterns": [{ "include": "#inline_hash" }]
+        }
+      }
+    },
+    "functions_old": {
       "comment": "Function header declarations",
-      "match": "^\\s*(void|func)\\s+(\\$[A-Za-z0-9_]+([%$]?#?))(?=\\b|\\s|\\()",
+      "match": "^\\s*(void|func)\\s+(\\$[0-9A-Za-z_]+([%$]?#?))(?=\\b|\\s|\\()",
       "captures": {
         "1": { "name": "entity.name.function.declaration.return-type.mjil" },
         "2": { "name": "entity.name.function.declaration.hash.mjil" }
@@ -97,6 +171,13 @@
             "2": { "name": "entity.name.class.operand.hash.syscall.mjil"}
           }
         },{
+          "comment": "Load constant int / recolor hash  (includes op.* IDs)  [sometimes ints are loading function hashes (basically func ptrs)]",
+          "match": "\\b(ldc.i|op\\.800)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
+          "captures": {
+            "1": { "name": "keyword.operator.opcode.special.mjil" },
+            "2": { "name": "entity.name.function.operand.hash.usercall.mjil" }
+          }
+        },{
           "comment": "Line number comment out  (includes op.* IDs)",
           "match": "\\b(line|op\\.83a)(?:\\s+(#\\d+))?\\b",
           "captures": {
@@ -104,7 +185,33 @@
             "2": { "name": "comment.operand.line-number.mjil"}
           }
         },{
-          "comment": "store operator opcodes",
+          "comment": "store/load operator opcodes  [capture opcode space so we can redefine invert flags, which use same names as opcodes...]",
+          "name": "mjil.varspace",
+          "match": "\\b(stp?\\.[irs](?:arr)?|stelemp?\\.[irs]|st(?:elem)?p?(?:rem|mod|shr|shl|and|or|xor)(?:\\.i)?|st(?:elem)?p?(?:mul|div|sub)\\.[ir]|st(?:elem)?p?(?:add)\\.[irs]|ld(?:elem)?|op\\.(?:1b[012345]|1b[89]|1c[01]|1c8|1d[012]|1d[89]|1e0|1e8|1f0|1f8|200|21[012345]|21[89]|22[01]|228|23[012]|23[89]|240|248|250|258|260|27[012]|27[89]|28[01]|288|29[012]|29[89]|2a0|2a8|2b0|2b8|2c0|2d[012]|2d[89]|2e[01]|2e8|2f[012]|2f[89]|300|308|310|318|320|802|837))(?:(\\s+.*)?|\\b)",
+          "captures": {
+            "1": { "name": "keyword.operator.opcode.var.mjil" },
+            "2": {
+              "patterns": [{
+                "include": "#comments"
+              },{
+                "include": "#labels"
+              },{
+                "include": "#functions"
+              },{
+                "include": "#directives"
+              },{
+                "include": "#storage"
+              },{
+                "include": "#inline_hash"
+              },{
+                "include": "#strings"
+              },{
+                "include": "#numbers"
+              }]
+            }
+          }
+        },{
+          "comment": "store/load operator opcodes",
           "name": "keyword.operator.opcode.store.mjil",
           "patterns": [ {
               "match": "\\b(stp?\\.[irs](?:arr)?|stelemp?\\.[irs])\\b"
@@ -114,6 +221,8 @@
               "match": "\\b(st(?:elem)?p?(?:mul|div|sub)\\.[ir])\\b"
             },{
               "match": "\\b(st(?:elem)?p?(?:add)\\.[irs])\\b"
+            },{
+              "match": "\\b(ld(?:elem)?)\\b"
           } ]
         },{
           "comment": "normal operator opcodes",
@@ -134,7 +243,7 @@
         },{
           "comment": "0x8** opcodes",
           "name": "keyword.operator.opcode.special.mjil",
-          "match": "\\b(?:ldc\\.[ir]|ldstr|ld(?:elem)?|callp?|alloca|ret|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|brtrue|jnz|brfalse|jz|pop|syscallp?|argcheck|sigchk|line|bsel\\.(?:[123x45]|clr|jmp\\.4)|conv\\.[ir]|text|proc|ctrl|switch)\\b"
+          "match": "\\b(?:ldc\\.[ir]|ldstr|callp?|alloca|ret|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|brtrue|jnz|brfalse|jz|pop|syscallp?|argcheck|sigchk|line|bsel\\.(?:[123x45]|clr|jmp\\.4)|conv\\.[ir]|text|proc|ctrl|switch)\\b"
         },{
           "comment": "all nop.* opcodes by ID",
           "match": "\\b(?:(nop\\.(?:191|1a[89]))|(nop\\.[0-9a-f]{3}))\\b",

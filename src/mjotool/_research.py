@@ -16,7 +16,7 @@ __author__  = 'Robert Jordan'
 
 import argparse, os, struct
 from ._util import DummyColors, Colors
-from .script import Instruction, MjoScript, Function
+from .script import Instruction, MjoScript, Function, ILFormat
 from .analysis import ControlFlowGraph
 
 
@@ -33,7 +33,7 @@ def _init_args(args):
     pass
 
 # do whatever we need to with any input files
-def do_research(args, filename:str, *, color:bool=False):
+def do_research(args, filename:str, *, options:ILFormat=ILFormat.DEFAULT):
     """Do whatever we need to with input script files
     """
     #script:MjoScript = read_script(filename)

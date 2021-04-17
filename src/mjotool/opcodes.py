@@ -30,6 +30,8 @@ class Opcode:
     # global opcode definitions
     LIST:List['Opcode'] = []
     BYVALUE:Dict[int, 'Opcode'] = {}
+    NAMES:Dict[str, 'Opcode'] = {}
+    ALIASES:Dict[str, 'Opcode'] = {}
 
     def __init__(self, value:int, mnemonic:str, operator:str, encoding:str, transition:str, *, aliases:tuple=()):
         # general #
@@ -92,10 +94,16 @@ def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str,
     existing = Opcode.BYVALUE.get(value, None)
     # LIST.append(opcode)
     # existing = BYVALUE.get(value, None)
-    if existing:
+    if existing is not None:
         raise ValueError('Opcode \"{0.mnemonic!s}\" value 0x{0.value:03x} already defined by \"{1.mnemonic!s}\"'.format(opcode, existing))
     Opcode.BYVALUE[value] = opcode
-    # BYVALUE[value] = opcode
+
+    for alias in ([mnemonic] + list(aliases) + ([f'op.{value:03x}'] if mnemonic != f'op.{value:03x}' else [])):
+        existing = Opcode.ALIASES.get(alias, None)
+        if existing is not None:
+            raise ValueError('Opcode \"{0.mnemonic!s}\" 0x{0.value:03x} alias {2!r} already defined by \"{1.mnemonic!s}\" 0x{1.value:03x}'.format(opcode, existing, alias))
+        Opcode.ALIASES[alias] = opcode
+    Opcode.NAMES[mnemonic] = opcode
 
 def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_comparison:bool, *aliases:str) -> NoReturn:
     for i, t_mask in enumerate(_TYPE_MASKS):
@@ -243,7 +251,7 @@ define_opcode(0x839, "blt.v", None, "j", "p.1", "jlt.v")  # !!non-final name!!
 define_opcode(0x834, "syscall",  None, "ha", "[*#a].*")
 define_opcode(0x835, "syscallp", None, "ha", "[*#a].")
 
-define_opcode(0x836, "argcheck", None, "t", ".", "sigchk")  # function arguments signature
+define_opcode(0x836, "argcheck", None, "t", ".", "argchk", "sigchk")  # function arguments signature
 
 define_opcode(0x837, "ldelem", None, "fho", "[i#d].~#t")
 
@@ -252,9 +260,9 @@ define_opcode(0x83a, "line", None, "l", ".")  # source script line number
 # branch-selector opcodes #
 # not fully understood, but all have relations to special
 # block definitions: setskip, destructor, constructor(?)
-define_opcode(0x83b, "bsel.1", None, "j", "???")   # !!non-final name!!
-define_opcode(0x83c, "bsel.3", None, "j", "???")   # !!non-final name!!
-define_opcode(0x83d, "bsel.2", None, "j", "???")   # !!non-final name!!
+define_opcode(0x83b, "bsel.1", None, "j", ".")   # !!non-final name!! left mouse button condition
+define_opcode(0x83c, "bsel.3", None, "j", ".")   # !!non-final name!! middle mouse button condition
+define_opcode(0x83d, "bsel.2", None, "j", ".")   # !!non-final name!! right mouse button condition
 
 define_opcode(0x83e, "conv.i", None, "", "f.i")
 define_opcode(0x83f, "conv.r", None, "", "i.f")
@@ -262,14 +270,14 @@ define_opcode(0x83f, "conv.r", None, "", "i.f")
 # visual novel opcodes #
 define_opcode(0x840, "text", None, "s", ".")
 define_opcode(0x841, "proc", None, "", ".")        # !!non-final name!!  process buffer created by text opcode
-define_opcode(0x842, "ctrl", None, "s", "???")  # "[#s]." (varying effect on stack depending on string)
+define_opcode(0x842, "ctrl", None, "s", "[#s].")   # !!non-final name!!  varying effect on stack depending on string
 
 # more branch-selector opcodes #
-define_opcode(0x843, "bsel.x", None, "j", ".")     # !!non-final name!!
+define_opcode(0x843, "bsel.x", None, "j", ".")     # !!non-final name!! left/middle/right (any) mouse button condition
 define_opcode(0x844, "bsel.clr", None, "", ".")    # !!non-final name!!
-define_opcode(0x845, "bsel.4", None, "j", ".")     # !!non-final name!!
-define_opcode(0x846, "bsel.jmp.4", None, "", ".")  # !!non-final name!!
-define_opcode(0x847, "bsel.5", None, "j", ".")     # !!non-final name!!
+define_opcode(0x845, "bsel.4", None, "j", ".")     # !!non-final name!! never observed before
+define_opcode(0x846, "bsel.jmp.4", None, "", ".")  # !!non-final name!! observed very rarely in older scripts, usually followed by a return, always found in switch statements
+define_opcode(0x847, "bsel.5", None, "j", ".")     # !!non-final name!! stores destructor position (does not actually jump)
 
 define_opcode(0x850, "switch", None, "c", "i.")
 

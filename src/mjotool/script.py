@@ -238,7 +238,7 @@ class Instruction:
 
                 sb += '{BRIGHT}{CYAN}{}{RESET_ALL}'.format(' '.join(keywords), **colors)
             elif operand == 'h':
-                # hash name
+                # hash value
                 # if known_hash_name and options.inline_hash and (options.syscall_inline_hash or not self.is_syscall):
                 #     if self.is_syscall:
                 #         sb += '{BRIGHT}{YELLOW}'.format(**colors)
@@ -403,7 +403,7 @@ class Instruction:
                 # flags
                 instruction.flags = MjoFlags(reader.unpackone('<H'))
             elif operand == 'h':
-                # hash name
+                # hash value
                 instruction.hash = reader.unpackone('<I')
             elif operand == 'o':
                 # variable offset
@@ -416,7 +416,7 @@ class Instruction:
                 instruction.int_value = reader.unpackone('<i')
             elif operand == 'r':
                 # float constant
-                instruction.int_value = reader.unpackone('<f')
+                instruction.float_value = reader.unpackone('<f')
             elif operand == 'a':
                 # argument count
                 instruction.argument_count = reader.unpackone('<H')

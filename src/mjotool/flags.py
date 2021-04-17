@@ -83,6 +83,15 @@ class MjoFlags(int):
     # Scope    = 0b00000000_11100000,
     # Invert   = 0b00000000_00011000,
     # Modifier = 0b00000000_00000111
+    @classmethod
+    def fromflags(cls, scope:MjoScope, type:MjoType, dimension:int=0, modifier:MjoModifier=MjoModifier.NoModifier, invert:MjoInvertMode=MjoInvertMode.NoInvert) -> 'MjoFlags':
+        flags = 0
+        flags |= ((modifier.value & 0x7))#<< 0)
+        flags |= ((invert.value   & 0x3) <<  3)
+        flags |= ((scope.value    & 0x7) <<  5)
+        flags |= ((type.value     & 0x7) <<  8)
+        flags |= ((dimension      & 0x3) << 11)
+        return cls(flags)
     def __new__(cls, *args, **kwargs):
         return  super().__new__(cls, *args, **kwargs)
     @property

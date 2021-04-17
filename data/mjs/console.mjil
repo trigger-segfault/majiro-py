@@ -1,6 +1,6 @@
 /// console.mjo
 //
-// disassembled on: 2021-04-15
+// disassembled on: 2021-04-16
 //
 readmark disable
 group none
@@ -1525,11 +1525,11 @@ func $$thread_consoleoff_base3@CONSOLE() {  ; $fbf57367
   001f73: syscallp      $sprite_alfa_set (3)  ; $ff7c52e6
   001f7b: line          #414
   001f7f: ldc.i         -1
-  001f85: ldc.r         0
+  001f85: ldc.r         3
   001f8b: ldc.i         200
-  001f91: ldc.r         0
+  001f91: ldc.r         2
   001f97: ldc.i         0
-  001f9d: ldc.r         0
+  001f9d: ldc.r         1
   001fa3: ld            local int $_spr@ 1  ; $3acf92c1
   001fad: syscallp      $sprite_xmodify_define (7)  ; $01b4517c
   001fb5: line          #415
@@ -1540,7 +1540,7 @@ func $$thread_consoleoff_base3@CONSOLE() {  ; $fbf57367
   001fcd: ldc.i         0
   001fd3: conv.r
   001fd5: ldc.i         0
-  001fdb: ldc.r         0
+  001fdb: ldc.r         1
   001fe1: ld            local int $_spr@ 1  ; $3acf92c1
   001feb: syscallp      $sprite_ymodify_define (7)  ; $6f384a3d
   001ff3: line          #417
@@ -6999,7 +6999,7 @@ func $$pause_inter@CONSOLE() {  ; $1fd318c6
   008a0f: syscallp      $voice_wait (0)  ; $d1f672c7
   008a17: line          #1676
   008a1b: syscall       $get_autospeed (0)  ; $ee154520
-  008a23: ldc.r         0
+  008a23: ldc.r         0.8
   008a29: mul.r
   008a2b: conv.i
   008a2d: syscallp      $wait (1)  ; $cf35f0e3
@@ -7181,7 +7181,7 @@ func $$pause_inter@CONSOLE() {  ; $1fd318c6
   008d06: syscallp      $do_event (1)  ; $76ee6c90
   008d0e: line          #1723
   008d12: syscall       $get_autospeed (0)  ; $ee154520
-  008d1a: ldc.r         0
+  008d1a: ldc.r         0.8
   008d20: mul.r
   008d22: conv.i
   008d24: st.i          local int $_poipoi@ 6  ; $829bfb64
@@ -8134,9 +8134,9 @@ func $$pause_nodisp@CONSOLE() {  ; $0a4e49ab
   009c28: syscallp      $voice_wait (0)  ; $d1f672c7
   009c30: line          #2084
   009c34: syscall       $get_autospeed (0)  ; $ee154520
-  009c3c: ldc.r         0
+  009c3c: ldc.r         0.8
   009c42: mul.r
-  009c44: ldc.r         0
+  009c44: ldc.r         2
   009c4a: mul.r
   009c4c: conv.i
   009c4e: syscallp      $wait (1)  ; $cf35f0e3

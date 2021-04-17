@@ -11,7 +11,7 @@ __all__ = ['StructIO', 'Colors', 'DummyColors', 'hd_span', 'print_hexdump']
 
 #######################################################################################
 
-import io, struct
+import io, re, struct
 from collections import namedtuple
 from types import SimpleNamespace
 from typing import Any, List, NoReturn, Union
@@ -39,6 +39,99 @@ class StructIO:
         return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))[0]
     def pack(self, fmt:str, *v) -> NoReturn:
         return self._stream.write(struct.pack(fmt, *v))
+
+
+## STRING HELPERS
+
+def strip_ansi(string:str) -> str:
+    r"""Strips all basic terminal ANSI "\x1b[...m" escapes from a string
+    """
+    return re.sub(r"\x1b\[[^m]m", r"", string)
+
+def len_ansi(string:str) -> int:
+    r"""Measures the length of a string with all  terminal ANSI "\x1b[...m" escapes removed
+    """
+    return len(strip_ansi(string))
+
+def repl_tabs(string:str, tab_size:int=4, space:str=' ') -> str:
+    """Replace tabs in a string with accurate space equivalents
+    
+    Does NOT handle proper spacing of fullwidth characters or emoji
+    """
+    if tab_size == 1:
+        return string.replace('\t', space) # no difference
+    indent = 0
+    parts = []
+
+    last_tab = 0  # stored as idx+1 for easier math
+    tab = string.find('\t')
+    while tab != -1:
+        if tab != last_tab:  # append normal string parts
+            indent += tab - last_tab
+            parts.append(string[last_tab:tab])
+
+        new_indent = (indent // tab_size + 1) * tab_size
+        parts.append(space * (new_indent - indent))
+        indent = new_indent
+
+        last_tab = tab + 1  # store as idx+1 for easier math
+        tab = string.find('\t', tab + 1)
+
+    if not parts:
+        return string  # no tabs
+
+    if last_tab != len(string):  # append final string part
+        parts.append(string[last_tab:])
+    return ''.join(parts)
+
+def len_tabs(string:str, tab_size:int=4) -> int:
+    """Measures the length of a string with all tabs converted to spacing of a specified width
+
+    Does NOT handle proper spacing of fullwidth characters or emoji
+    """
+    if tab_size == 1:
+        return len(string) # no difference
+    indent = 0
+
+    last_tab = 0  # stored as idx+1 for easier math
+    tab = string.find('\t')
+    while tab != -1:
+        indent = ((indent + tab - last_tab) // tab_size + 1) * tab_size
+    
+        last_tab = tab + 1  # store as idx+1 for easier math
+        tab = string.find('\t', tab + 1)
+
+    indent += len(string) - last_tab
+    return indent
+
+def doublequote(string:str, is_repr:bool=False) -> str:
+    """Doublequote (Python) string representation
+    """
+    if not is_repr: string = repr(string)
+    # remove current quotes to avoid accidental escaping
+    string = string[1:-1]
+    # this pattern ensures ignoring any leading escaped backslashes
+    # unescape single-quotes
+    string = re.sub(r'''(?<!\\)((?:\\\\)*)(?:\\('))''', r'\1\2', string)
+    # escape double-quotes
+    string = re.sub(r'''(?<!\\)((?:\\\\)*)(?:("))''', r'\1\\\2', string)
+    return f'"{string}"'
+
+def sub_escapes(repl:str, string:str, useless_escapes:bool=False, count:int=0) -> str:
+    r"""Regex substitution for all (Python) string escapes
+    \0 matches the full esacpe
+    \1 matches the full pattern after the escape '\'
+
+    ESCAPES: \xFF, \uFFFF, \UFFFFFFFF, \777{1,3}, \\, \', \", \a, \b, \f, \n, \r, \t, \v
+
+    useless_escapes will match any character pattern \.
+    """
+    # \xXX, \uXXXX, \UXXXXXXXX, \ooo{1,3}, \\, \', \", \a, \b, \f, \n, \r, \t, \v
+    if not useless_escapes:
+        return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|[\\\'\"abfnrtv])''', repl, string, count=count)
+    else:
+        return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|.)''', repl, string, count=count)
+
 
 
 ## COLOR HELPERS ##

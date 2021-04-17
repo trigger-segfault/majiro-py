@@ -23,5 +23,7 @@ VARIABLES.update(THREAD_VARS)
 VARIABLES.update(SAVEFILE_VARS)
 VARIABLES.update(PERSISTENT_VARS)
 
+SYSCALLS_LOOKUP:Dict[str,int] = dict((v,k) for k,v in SYSCALLS.items())
+
 
 del Dict  # cleanup declaration-only imports

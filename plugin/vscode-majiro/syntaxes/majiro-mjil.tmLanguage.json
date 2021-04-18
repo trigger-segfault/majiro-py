@@ -32,7 +32,7 @@
       "patterns": [
         {
           "name": "keyword.address.label.mjil",
-          "match": "\\b([0-9A-Fa-f]+:)"
+          "match": "^\\s*([0-9A-Fa-f]+:)"
         },{
           "name": "keyword.control.label.mjil",
           "match": "^\\s*(?:[A-Za-z_][A-Za-z_0-9]*:)",
@@ -106,9 +106,9 @@
           "name": "storage.type.flags.type.variable.mjil",
           "match": "\\b(?:(?:int|float|string)(?:array)?|[irs](?:arr)?)\\b"
         },{
-          "comment": "Flag scope (persistent, savefile, thread, local) [alias: persist, save, ,  ]",
+          "comment": "Flag scope (persistent, savefile, thread, local) [alias: persist, save, , loc ]",
           "name": "storage.modifier.flags.scope.mjil",
-          "match": "\\b(?:persist(?:ent)?|save(?:file)?|thread|local)\\b"
+          "match": "\\b(?:persist(?:ent)?|save(?:file)?|thread|loc(?:al)?)\\b"
         },{
           "comment": "Flag dimension (, dim1, dim2, dim3) [alias: dim0, , ,  ]",
           "name": "storage.modifier.flags.dimension.mjil",

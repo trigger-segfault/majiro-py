@@ -41,7 +41,46 @@ class StructIO:
         return self._stream.write(struct.pack(fmt, *v))
 
 
-## STRING HELPERS
+## INT SIGNEDNESS HELPERS ##
+
+def signed_h(num:int) -> int:
+    """Return signed value of unsigned (or signed) 16-bit integer (struct fmt 'h')
+    also performs bounds checking
+    """
+    if num >= 0x8000: # greater than SHRT_MAX
+        return struct.unpack('<h', struct.pack('<H', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<h', struct.pack('<h', num))[0]
+
+def unsigned_H(num:int) -> int:
+    """Return unsigned value of signed (or unsigned) 16-bit integer (struct fmt 'H')
+    also performs bounds checking
+    """
+    if num < 0:
+        return struct.unpack('<H', struct.pack('<h', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<H', struct.pack('<H', num))[0]
+
+def signed_i(num:int) -> int:
+    """Return signed value of unsigned (or signed) 32-bit integer (struct fmt 'i')
+    also performs bounds checking
+    """
+    if num >= 0x80000000: # greater than INT_MAX
+        return struct.unpack('<i', struct.pack('<I', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<i', struct.pack('<i', num))[0]
+
+def unsigned_I(num:int) -> int:
+    """Return unsigned value of signed (or unsigned) 32-bit integer (struct fmt 'I')
+    also performs bounds checking
+    """
+    if num < 0:
+        return struct.unpack('<I', struct.pack('<i', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<I', struct.pack('<I', num))[0]
+
+
+## STRING HELPERS ##
 
 def strip_ansi(string:str) -> str:
     r"""Strips all basic terminal ANSI "\x1b[...m" escapes from a string

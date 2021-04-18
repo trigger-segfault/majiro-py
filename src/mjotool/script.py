@@ -14,13 +14,13 @@ __all__ = ['Instruction', 'MjoScript', 'BasicBlock', 'Function']
 
 #######################################################################################
 
-import io, re
+import io, math, re  # math used for isnan()
 from abc import abstractproperty
 from collections import namedtuple
 from typing import Iterator, List, NoReturn, Optional, Tuple  # for hinting in declarations
 
-from ._util import StructIO, DummyColors, Colors
-from .flags import MjoType, MjoScope, MjoInvertMode, MjoModifier, MjoFlags
+from ._util import StructIO, DummyColors, Colors, signed_i, unsigned_I
+from .flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
 from .opcodes import Opcode
 from . import crypt
 from . import known_hashes
@@ -30,6 +30,7 @@ from . import known_hashes
 #NOTE: This is a temporary class until the real formatter module is complete
 
 class ILFormat:
+    # very lazy storage for default options
     DEFAULT:'ILFormat' = None
     def __init__(self):
         self.color:bool = False  # print colors to the console
@@ -42,13 +43,27 @@ class ILFormat:
         self.syscall_inline_hash:bool = False  # include inline hashing for syscalls
                                                # this will lose backwards compatibility as known hash names are updated
         self.int_inline_hash:bool = True  # inline hashes for integer literals
-        #FIXME: Not implemented (still output to file)
         self.group_directive:str = None  # default group to disassemble with (removes @GROUPNAME when found)
-        #FIXME: Not implemented
-        # self.vartype_aliases:bool = False   # i, r, s, iarr, rarr, sarr
-        self.modifier_aliases:bool = False  # inc.x, dec.x, x.inc, x.dec
+        self.implicit_local_groups:bool = False  # always exclude empty group name from known local names
+
+        # aliasing and operands
+        self.modifier_aliases:bool = False  # (variable flags) inc.x, dec.x, x.inc, x.dec
+        self.invert_aliases:bool   = False  # (variable flags) -, -, -, -  (NOTE: there are no aliases, added for conformity)
+        self.scope_aliases:bool    = False  # (variable flags) persist, save, -, -
+        self.vartype_aliases:bool  = False  # (variable flags) i, r, s, iarr, rarr, sarr
+        self.typelist_aliases:bool = False  # (typelist operand) i, r, s, iarr, rarr, sarr
+        self.functype_aliases:bool = False  # (function declaration) i, r, s, iarr, rarr, sarr
+        self.explicit_dim0:bool    = False  # (variable flags) always include dim0 flag  #WHY WOULD YOU WANT THIS?
         self.explicit_varoffset:bool = False  # always include -1 for non-local var offsets
-        self.explicit_dim0:bool = False  # always include dim0 flag  #WHY WOULD YOU WANT THIS?
+        
+        # space-savers:
+        self.address_len:int = 5
+
+    def set_address_len(self, bytecode_size:int) -> NoReturn:
+        self.address_len = max(2, len(f'{bytecode_size:x}'))
+
+    def address_fmt(self, offset) -> str:
+        return '{{:0{0}x}}'.format(max(2, int(self.address_len))).format(offset)
 
     def needs_explicit_hash(self, known_hash:str) -> bool:
         import re
@@ -83,7 +98,7 @@ class Instruction:
         self.var_offset:int = 0  # stack offset for ld* st* local variables (-1 used for non-local)
         self.type_list:List[MjoType] = None  # type list operand for argcheck opcode
         self.string:str = None  # string operand for ldstr, text, ctrl opcodes
-        self.int_value:int = 0  # int operand for ldc.i opcode
+        self.int_value:int = 0  # int operand for ldc.i opcode (SHOULD ALWAYS BE STORED AS SIGNED)
         self.float_value:float = 0.0  # float operand for ldc.r opcode
         self.argument_count:int = 0  # argument count operand for call* syscall* function opcodes
         self.line_number:int = 0  # line number operand for line opcode
@@ -138,26 +153,49 @@ class Instruction:
             string = re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|[\\\\'\\"abfnrtv])''', r'{BRIGHT}\0{DIM}'.format(**colors), string)
         return '{DIM}{GREEN}"{}"{RESET_ALL}'.format(string, **colors)
 
-    def check_known_hash(self) -> Optional[Tuple[str, bool]]: # (name, is_syscall)
+    @classmethod
+    def check_hash_group(cls, name:str, syscall:bool=False, *, options:ILFormat=ILFormat.DEFAULT) -> Optional[str]: # name
+        # attempt implicit groups/group directive:
+        #  has found name   and not a syscall hash
+        if name is not None and not syscall and (options.group_directive is not None or options.implicit_local_groups):
+            # handle group stripping
+            idx = name.find('@', 1)  # first char can't be group
+            if idx != -1 and name.find('@', idx + 1) == -1:
+                basename, group = name[:idx], name[idx+1:]
+                if options.implicit_local_groups and basename[0] == '_' and group == '':
+                    # local var
+                    name = basename
+                elif group == options.group_directive and basename[0] != '_':
+                    # same group as group directive, not allowed for locals
+                    name = basename
+            else:
+                # we can't handle this: group not found, or more than one '@'
+                #  (more than one '@' does not make a valid group!!!)
+                pass
+        return name
+
+    def check_known_hash(self, *, options:ILFormat=ILFormat.DEFAULT) -> Optional[Tuple[str, bool]]: # (name, is_syscall)
+        name, syscall = (None, False)  # not an opcode that relates to hashes
         if self.is_syscall:
-            return (known_hashes.SYSCALLS.get(self.hash, None), True)
+            name = known_hashes.SYSCALLS.get(self.hash, None)
+            syscall = True
         elif self.is_call:
-            return (known_hashes.USERCALLS.get(self.hash, None), False)
+            name = known_hashes.USERCALLS.get(self.hash, None)
         elif self.is_load or self.is_store:
             # TODO: this could be optimized to use the type flags
             #       and search in the scope-independent dicts
-            return (known_hashes.VARIABLES.get(self.hash, None), False)
+            name = known_hashes.VARIABLES.get(self.hash, None)
         elif self.opcode.mnemonic == "ldc.i": # 0x800
-            name = (known_hashes.USERCALLS.get(self.int_value, None), False)
+            name = known_hashes.USERCALLS.get(unsigned_I(self.int_value), None)
             # TODO: Uncomment if it's observed that int literals
             #       will use hashes for types other than usercalls
-            # if name[0] is None:
-            #     name = (known_hashes.VARIABLES.get(self.int_value, None), False)
-            # if name[0] is None:
-            #     name = (known_hashes.SYSCALLS.get(self.int_value, None), True)
-            return name
-        
-        return None, False # not an opcode that relates to hashes
+            if name is None:
+                name = known_hashes.VARIABLES.get(unsigned_I(self.int_value), None)
+            if name is None:
+                name = known_hashes.SYSCALLS.get(unsigned_I(self.int_value), None)
+                syscall = True
+
+        return (self.check_hash_group(name, syscall, options=options), syscall)
 
     def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
         print(self.format_instruction(options=options), **kwargs)
@@ -165,89 +203,54 @@ class Instruction:
         colors:dict = options.colors
         sb:str = ''
 
+        address = options.address_fmt(self.offset)
         if self.opcode.mnemonic == "line":  # 0x83a
-            sb += '{BRIGHT}{BLACK}{0.offset:06x}:{RESET_ALL} {BRIGHT}{BLACK}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, **colors)
+            sb += '{BRIGHT}{BLACK}{1}:{RESET_ALL} {BRIGHT}{BLACK}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, address, **colors)
         else:
-            sb += '{BRIGHT}{BLACK}{0.offset:06x}:{RESET_ALL} {BRIGHT}{WHITE}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, **colors)
+            sb += '{BRIGHT}{BLACK}{1}:{RESET_ALL} {BRIGHT}{WHITE}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, address, **colors)
 
         if not self.opcode.encoding:
             sb = sb.rstrip()  # trim trailing whitespace normally added to pad operands
             return sb  # no operands, nothing to add
 
         ops_offset = len(sb)  # for even ~fancier formatting~
-        # true if the integer literal field matches a known name hash
-        # is_literal_hash:bool = False
-        # literal_hash_type:str = None  # 'syscall', 'call', 'var'
-        # # at the moment, only function hashes have been observed being pushed with ldc.i
-        # #  set this constant to False to search through ALL hashes
-        # LITERAL_USERCALLS_ONLY:bool = True
+
         known_hash_name, known_hash_is_syscall = None, False
         if options.known_hashes:
-            known_hash_name, known_hash_is_syscall = self.check_known_hash()
+            known_hash_name, known_hash_is_syscall = self.check_known_hash(options=options)
 
         for operand in self.opcode.encoding:
             if operand == '0':
                 # 4 byte address placeholder
                 continue  # don't want the extra space in the operands
+            #NEW: exclude -1 offsets for non-local variables, because that operand
+            #     isn't used. still output erroneous var offsets
+            if operand == 'o' and not options.explicit_varoffset and self.var_offset == -1 and self.flags.scope is not MjoScope.LOCAL:
+                continue  # don't want the extra space in the operands
 
             sb += ' '
             if operand == 't':
                 # type list
-                sb += '[{!s}]'.format(', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.name.lower(), **colors) for t in self.type_list))
+                sb += '[{!s}]'.format(', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.getname(options.typelist_aliases), **colors) for t in self.type_list))
             elif operand == 's':
                 # string data
                 sb += self.format_string(self.string, options=options)
-                # sb += '{DIM}{GREEN}"{!s}"{RESET_ALL}'.format(self.format_string(self.string, options=options), **colors)
             elif operand == 'f':
                 # flags
                 flags = self.flags
                 keywords:list = []
-                #TODO: both type and scope names are match the legal names,
-                #      but these should be explictly defined at some point
-                keywords.append(flags.scope.name.lower())
-                keywords.append(flags.type.name.lower())
-                dimension = flags.dimension
-                if dimension or options.explicit_dim0:  #NOTE: dim0 is still legal, but not required, or recommended...
-                    keywords.append('dim{:d}'.format(dimension))
-                invert:MjoInvertMode = flags.invert
-                INVERT_NAMES = ('neg', 'notl', 'not')  # operators: (-x, !x, ~x)
-                if invert:
-                    keywords.append(INVERT_NAMES[invert.value - 1])
-                # if invert is MjoInvertMode.Numeric:
-                #     keywords.append('neg')   # operator: -x
-                # elif invert is MjoInvertMode.Boolean:
-                #     keywords.append('notl')  # operator: !x
-                # elif invert is MjoInvertMode.Bitwise:
-                #     keywords.append('not')   # operator: ~x
-                # if invert:
-                #     keywords.append('invert_{}'.format(invert.name.lower()))
-                modifier = flags.modifier
-                MODIFIER_NAMES = (('preinc','inc.x'), ('predec','dec.x'), ('postinc','x.inc'), ('postdec','x.dec'))
-                if modifier:
-                    keywords.append(MODIFIER_NAMES[modifier.value - 1][bool(options.modifier_aliases)])
-                # if modifier is MjoModifier.PreIncrement:
-                #     keywords.append('preinc')   # alias: inc.x
-                # elif modifier is MjoModifier.PreDecrement:
-                #     keywords.append('predec')   # alias: dec.x
-                # elif modifier is MjoModifier.PostIncrement:
-                #     keywords.append('postinc')  # alias: x.inc
-                # elif modifier is MjoModifier.PostDecrement:
-                #     keywords.append('postdec')  # alias: x.dec
-                # if modifier:
-                #     keywords.append('modifier_{}'.format(modifier.name.lower()))
+                keywords.append(flags.scope.getname(options.scope_aliases))
+                keywords.append(flags.type.getname(options.vartype_aliases))
+                if flags.dimension or options.explicit_dim0:  #NOTE: dim0 is legal, just not required or recommended
+                    keywords.append(flags.dimension.getname(options.explicit_dim0))
+                if flags.invert:
+                    keywords.append(flags.invert.getname(options.invert_aliases))
+                if flags.modifier:
+                    keywords.append(flags.modifier.getname(options.modifier_aliases))
 
-                sb += '{BRIGHT}{CYAN}{}{RESET_ALL}'.format(' '.join(keywords), **colors)
+                sb += '{BRIGHT}{CYAN}{}{RESET_ALL}'.format(' '.join(k for k in keywords if k), **colors)
             elif operand == 'h':
                 # hash value
-                # if known_hash_name and options.inline_hash and (options.syscall_inline_hash or not self.is_syscall):
-                #     if self.is_syscall:
-                #         sb += '{BRIGHT}{YELLOW}'.format(**colors)
-                #     elif self.is_call:
-                #         sb += '{BRIGHT}{BLUE}'.format(**colors)
-                #     else: #elif self.is_load or self.is_store:
-                #         sb += '{BRIGHT}{RED}'.format(**colors)
-                # else:
-                
                 if self.is_syscall:
                     hash_color = '{BRIGHT}{YELLOW}'.format(**colors)
                 elif self.is_call:
@@ -266,10 +269,8 @@ class Instruction:
                     sb += '${:08x}{RESET_ALL}'.format(self.hash, **colors)
             elif operand == 'o':
                 # variable offset
-                #NEW: exclude -1 offsets for non-local variables, because that operand
-                #     isn't used. still output erroneous var offsets
-                if options.explicit_varoffset or self.var_offset != -1 or self.flags.scope is MjoScope.Local:
-                    sb += '{:d}'.format(self.var_offset)
+                #NOTE: exclusion of -1 for non-locals handled at top of for loop
+                sb += '{:d}'.format(self.var_offset)
             # elif operand == '0':
             #     # 4 byte address placeholder
             #     pass
@@ -278,24 +279,13 @@ class Instruction:
                 # integer literals will sometimes use hashes for usercall function pointers
                 # this entire if statement tree is terrifying...
                 if known_hash_name is not None:
-                    # hash_color = colors["RED"]  # default to variable hash name
                     if known_hash_is_syscall:
                         hash_color = '{BRIGHT}{YELLOW}'.format(**colors)
                     elif known_hash_name[0] == '$':
                         hash_color = '{BRIGHT}{BLUE}'.format(**colors)
                     else: #elif self.is_load or self.is_store:
                         hash_color = '{BRIGHT}{RED}'.format(**colors)
-                    # if known_hash_name[0] in ('_','%','@','#'):
-                    #     hash_color = colors["RED"]
-                    # elif known_hash_name[0] == '$':
-                    #     if known_hash_is_syscall:
-                    #         hash_color = colors["YELLOW"]
-                    #     else:
-                    #         hash_color = colors["BLUE"]
-                    # if options.inline_hash and (not known_hash_is_syscall or options.syscall_inline_hash):
-                    #     sb += '{BRIGHT}{BLACK}; {DIM}{}${:08x}{RESET_ALL}'.format(hash_color, self.int_value, **colors)
-                    # else:
-                    #     sb += '{BRIGHT}{BLACK}; {DIM}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
+
                     if options.inline_hash and options.int_inline_hash and (options.syscall_inline_hash or not known_hash_is_syscall):
                         known_hash_name2 = known_hash_name
                         if known_hash_is_syscall:
@@ -306,12 +296,25 @@ class Instruction:
                             sb += '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                     else:
                         # print as hex for simplicity
-                        sb += '0x{:08x}'.format(self.int_value)
+                        sb += '0x{:08x}'.format(unsigned_I(self.int_value))
                 else:
-                    sb += '{:d}'.format(self.int_value)
+                    sb += '{:d}'.format(signed_i(self.int_value))
             elif operand == 'r':
                 # float constant
-                sb += '{:n}'.format(self.float_value)
+                if self.float_value == float('inf'):
+                    sb += '+Inf'
+                elif self.float_value == float('-inf'):
+                    sb += '-Inf'
+                elif math.isnan(self.float_value):
+                    sb += 'NaN'
+                else:
+                    fltstr = '{:g}'.format(self.float_value)  # fixed or exponential
+                    try:
+                        int(fltstr, 10)  # test if no decimal or exponent
+                        sb += fltstr + '.0'  # add '.0' for all floats
+                    except:
+                        sb += fltstr
+                    #sb += '{:g}'.format(self.float_value)  # fixed or exponential
             elif operand == 'a':
                 # argument count
                 sb += '({:d})'.format(self.argument_count)
@@ -336,14 +339,12 @@ class Instruction:
         if known_hash_name is None or not options.annotations:
             pass  # no hash name comments
         elif self.is_syscall: # 0x834, 0x835
-            # sb += '{BRIGHT}{BLACK}[{DIM}{YELLOW}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_hash_name, **colors)
             if options.inline_hash and options.syscall_inline_hash:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{YELLOW}${:08x}{RESET_ALL}'.format(self.hash, **colors)
             else:
                 sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
                 sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_hash_name, **colors)
         elif self.is_call: # 0x80f, 0x810
-            # sb += '{BRIGHT}{BLACK}[{DIM}{BLUE}{}{BRIGHT}{BLACK}]{RESET_ALL}'.format(known_hash_name, **colors)
             if options.inline_hash:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{BLUE}${:08x}{RESET_ALL}'.format(self.hash, **colors)
             else:
@@ -356,27 +357,15 @@ class Instruction:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_hash_name, **colors)
         elif self.opcode.mnemonic == "ldc.i": # 0x800
             # check for loading function hashes (which are often passed to )
-            #hash_color = colors["YELLOW"]  # default to syscall when hash type is not known, because we do syscalls without '$' sometimes
-            # hash_color = colors["RED"]  # default to variable hash name
-            # if known_hash_is_syscall:
-            #     hash_color = colors["YELLOW"]
-            # elif known_hash_name[0] == '$':
-            #     hash_color = colors["BLUE"]
             if known_hash_is_syscall:
                 hash_color = '{DIM}{YELLOW}'.format(**colors)
             elif known_hash_name[0] == '$':
                 hash_color = '{DIM}{BLUE}'.format(**colors)
             else: #elif self.is_load or self.is_store:
                 hash_color = '{DIM}{RED}'.format(**colors)
-            # if known_hash_name[0] in ('_','%','@','#'):
-            #     hash_color = colors["RED"]
-            # elif known_hash_name[0] == '$':
-            #     if known_hash_is_syscall:
-            #         hash_color = colors["YELLOW"]
-            #     else:
-            #         hash_color = colors["BLUE"]
+
             if options.inline_hash and options.int_inline_hash and (not known_hash_is_syscall or options.syscall_inline_hash):
-                sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}${:08x}{RESET_ALL}'.format(hash_color, self.int_value, **colors)
+                sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}${:08x}{RESET_ALL}'.format(hash_color, unsigned_I(self.int_value), **colors)
             else:
                 sb = sb.ljust(ops_offset + 16)
                 sb += '{BRIGHT}{BLACK}; {RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
@@ -435,6 +424,55 @@ class Instruction:
         
         instruction.size = reader.tell() - offset
         return instruction
+    
+    def write_instruction(self, writer:StructIO) -> NoReturn:
+        offset = writer.tell()
+        opcode = self.opcode
+        writer.pack('<H', opcode.value)
+        for operand in opcode.encoding:
+            if operand == 't':
+                # type list
+                writer.pack('<H', len(self.type_list))  # count
+                writer.pack(f'<{len(self.type_list)}B', *[t.value for t in self.type_list])  # types
+            elif operand == 's':
+                # string data
+                writer.pack('<H', len(self.string.encode("cp932"))+1)  # size + null terminator
+                writer.pack(f'<{len(self.string.encode("cp932"))+1}s', self.string.encode("cp932"))  # string + null terminator
+            elif operand == 'f':
+                # flags
+                writer.pack('<H', int(self.flags))  #currently flags is a type that subclasses int, but do this anyway
+            elif operand == 'h':
+                # hash value
+                # this shouldn't happen... buuuuut, be safe and force unsigned
+                writer.pack('<I', unsigned_I(self.hash))  # hash value
+            elif operand == 'o':
+                # variable offset
+                writer.pack('<h', self.var_offset)
+            elif operand == '0':
+                # 4 byte address placeholder
+                writer.pack('<I', 0)  # 4 byte address placeholder  (always 0)
+            elif operand == 'i':
+                # integer constant
+                writer.pack('<i', signed_i(self.int_value))  # integer constant
+            elif operand == 'r':
+                # float constant
+                writer.pack('<f', self.float_value)  # float constant
+            elif operand == 'a':
+                # argument count
+                writer.pack('<H', self.argument_count)  # argument count
+            elif operand == 'j':
+                # jump offset
+                writer.pack('<i', self.jump_offset)  # jump offset
+            elif operand == 'l':
+                # line number
+                writer.pack('<H', self.line_number)  # line number
+            elif operand == 'c':
+                # switch case table
+                writer.pack('<H', len(self.switch_cases))  # count
+                writer.pack(f'<{len(self.switch_cases)}i', *self.switch_cases)  # cases
+            else:
+                raise Exception('Unrecognized encoding specifier: {!r}'.format(operand))
+        assert(self.size == (writer.tell() - offset)), f'{self.offset:05x}: {opcode.mnemonic}'
 
 
 # function entry type declared in table in MjoScript header before bytecode
@@ -472,48 +510,84 @@ class MjoScript:
             if instr.offset == offset:
                 return i
         return -1
+    
+    def assemble_script(self, writer:io.BufferedWriter) -> NoReturn:
+        if not isinstance(writer, StructIO):
+            writer = StructIO(writer)
+
+        # header:
+        if self.signature not in (self.SIGNATURE_ENCRYPTED, self.SIGNATURE_DECRYPTED):
+            raise Exception(f'{self.__class__.__name__} signature must be {self.SIGNATURE_ENCRYPTED.decode("cp932")!r} or {self.SIGNATURE_DECRYPTED.decode("cp932")!r}, not {self.signature.decode("cp932")!r}')
+        writer.pack('<16sIII', self.signature, self.main_offset, self.line_count, len(self.functions))
+        is_encrypted:bool = (self.signature == self.SIGNATURE_ENCRYPTED)
+        assert(is_encrypted ^ (self.signature in (self.SIGNATURE_DECRYPTED, self.SIGNATURE_PLAIN)))
+
+        # functions table:
+        for fn in self.functions:
+            writer.pack('<II', *fn)  # fn.name_hash, fn.offset
+
+        # bytecode:
+        writer.pack('<I', self.bytecode_size)
+
+        # initialize full-length of bytecode ahead of time (is this actually efficient in Python?)
+        ms:io.BytesIO = io.BytesIO(bytes(self.bytecode_size))
+        self.assemble_bytecode(StructIO(ms))
+        ms.flush()
+
+        bytecode:bytes = ms.getvalue()
+        if is_encrypted:
+            bytecode = crypt.crypt32(bytecode)  # encrypt bytecode
+        written_size = writer.write(bytecode)
+        assert(written_size == self.bytecode_size)
 
     @classmethod
     def disassemble_script(cls, reader:io.BufferedReader) -> 'MjoScript':
         if not isinstance(reader, StructIO):
             reader = StructIO(reader)
-        signature:bytes = reader.unpackone('<16s')
+
+        # header:
+        signature, main_offset, line_count, function_count = reader.unpack('<16sIII')
         is_encrypted:bool = (signature == cls.SIGNATURE_ENCRYPTED)
         assert(is_encrypted ^ (signature in (cls.SIGNATURE_DECRYPTED, cls.SIGNATURE_PLAIN)))
 
-        # bytecode offset to main function, allows us to identify main function name_hash in entry table
-        main_offset:int = reader.unpackone('<I')
-        # field contains the last line number (as observed from line opcodes)
-        #  this field is only non-zero in "story" scripts, which include the
-        #  preprocessor command "#use_readflg on" when compiled
-        line_count:int = reader.unpackone('<I')
-        function_count:int = reader.unpackone('<I')
+        # functions table:
         functions:List[FunctionEntry] = []
         for _ in range(function_count):
             functions.append(FunctionEntry(*reader.unpack('<II')))
 
-        bytecode_offset:int = reader.tell()
+        # bytecode:
         bytecode_size:int = reader.unpackone('<I')
+
+        bytecode_offset:int = reader.tell()
         bytecode:bytes = reader.read(bytecode_size)
         if is_encrypted:
             bytecode = crypt.crypt32(bytecode)  # decrypt bytecode
-        ms = StructIO(io.BytesIO(bytecode))
-        instructions:List[Instruction] = cls.disassemble_bytecode(ms)
+        ms:io.BytesIO = io.BytesIO(bytecode)
+        instructions:List[Instruction] = cls.disassemble_bytecode(StructIO(ms))
 
         return MjoScript(signature, main_offset, line_count, bytecode_offset, bytecode_size, functions, instructions)
 
+    def assemble_bytecode(self, writer:StructIO) -> NoReturn:
+        if not isinstance(writer, StructIO):
+            writer = StructIO(writer)
+
+        for instruction in self.instructions:
+            instruction.write_instruction(writer)
+
     @classmethod
-    def disassemble_bytecode(self, reader:StructIO) -> List[Instruction]:
+    def disassemble_bytecode(cls, reader:StructIO) -> List[Instruction]:
         if not isinstance(reader, StructIO):
             reader = StructIO(reader)
+
         length:int = reader.length()
+        offset:int = reader.tell()
 
         instructions:List[Instruction] = []
-        offset:int = reader.tell()
         while offset != length:
             instruction:Instruction = Instruction.read_instruction(reader, offset)
             instructions.append(instruction)
             offset = reader.tell()
+
         return instructions
 
     def print_readmark(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
@@ -581,11 +655,11 @@ class BasicBlock(_Block):
         if self.is_entry_block:
             return 'entry'
         elif self.is_dtor_block:
-            return 'destructor_{:06x}'.format(self.start_offset)
+            return 'destructor_{:05x}'.format(self.start_offset)
         elif self.is_exit_block:
-            return 'exit_{:06x}'.format(self.start_offset)
+            return 'exit_{:05x}'.format(self.start_offset)
         else:
-            return 'block_{:06x}'.format(self.start_offset)
+            return 'block_{:05x}'.format(self.start_offset)
 
     def print_basic_block(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
         print(self.format_basic_block(options=options), **kwargs)
@@ -634,6 +708,9 @@ class Function(_BlockContainer):
         known_hash:str = None
         if options.known_hashes:
             known_hash = known_hashes.USERCALLS.get(self.name_hash, None)
+        if known_hash is not None:
+            #TODO: move check hash function somewhere more fitting
+            known_hash = Instruction.check_hash_group(known_hash, False, options=options)
         if known_hash is not None and options.inline_hash:
             if options.needs_explicit_hash(known_hash):
                 s += '{BRIGHT}{CYAN}${{{BRIGHT}{BLUE}{}{BRIGHT}{CYAN}}}{BRIGHT}{BLUE}'.format(known_hash, **colors)
@@ -642,7 +719,7 @@ class Function(_BlockContainer):
         else:
             s += '${.name_hash:08x}'.format(self)
 
-        args = ', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.name.lower(), **colors) for t in self.parameter_types) # pylint: disable=not-an-iterable
+        args = ', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.getname(options.functype_aliases), **colors) for t in self.parameter_types) # pylint: disable=not-an-iterable
         s += '{RESET_ALL}({!s})'.format(args, **colors)
 
         # "entrypoint" states which function to declare as "main" to the IL assembler

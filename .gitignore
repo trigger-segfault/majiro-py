@@ -7,6 +7,8 @@ __pycache__/
 
 # bytecode script
 *.mjo
+# test data
+data/test/
 
 
 # C extensions

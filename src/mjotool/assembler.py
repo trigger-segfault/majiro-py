@@ -11,7 +11,7 @@ __all__ = ['MjILAssembler']
 
 #######################################################################################
 
-import enum, io, re, struct
+import enum, io, math, re, struct  # math used for isnan()
 from abc import abstractproperty
 from collections import namedtuple, OrderedDict
 from typing import Any, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union  # for hinting in declarations
@@ -20,8 +20,8 @@ from typing import Match, Pattern  # for regex type hinting
 from enum import auto
 from struct import calcsize
 
-from ._util import StructIO, DummyColors, Colors, doublequote, sub_escapes, strip_ansi, len_ansi, repl_tabs, len_tabs
-from .flags import MjoType, MjoScope, MjoInvertMode, MjoModifier, MjoFlags
+from ._util import StructIO, DummyColors, Colors, signed_i, unsigned_I, doublequote, sub_escapes, strip_ansi, len_ansi, repl_tabs, len_tabs
+from .flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
 from .opcodes import Opcode
 from . import crypt
 # from . import known_hasheshinting in declarations
@@ -30,6 +30,20 @@ from . import known_hashes
 from .script import Instruction, FunctionEntry, MjoScript, BasicBlock, Function
 from .analysis import ControlFlowGraph
 
+
+#region ## PARSER EXCEPTIONS ##
+
+class TokenError(Exception):
+    """Error raised by known token during parsing
+    """
+    pass
+
+class ContextError(Exception):
+    """Error raised by unexpected tokens during a specific context
+    """
+    pass
+
+#endregion
 
 #region ## TOKEN ENUMS ##
 
@@ -63,9 +77,10 @@ class TokenKind(enum.IntEnum):
     # STRING:
     LITERAL_STRING = auto()
     # FLOAT:
-    LITERAL_FLOAT  = auto()
+    LITERAL_FLOAT  = auto()  # fixed, exponential
+    SPECIAL_FLOAT  = auto()  # NaN, [+-]Inf[inity] ~~(this will be typed as a keyword if there's no [+-] prefix)~~
     # INT:
-    LITERAL_INT    = auto()
+    LITERAL_INT    = auto()  # decimal or hex, this is a legal float operand (assuming int is not also a potential operand)
     # HASH:
     LITERAL_HASH   = auto()
     INLINE_HASH    = auto()
@@ -86,8 +101,8 @@ class TokenType(enum.IntEnum):
     LINE_NUMBER  = auto()
     KEYWORD      = auto() # Aa.dy887_  [A-Za-z]
     STRING       = auto() # "string"
-    FLOAT        = auto() # .0, 0.0
-    INT          = auto() # 0
+    FLOAT        = auto() # [+-].0, [+-]0.0, 
+    INT          = auto() # [+-]0, [+-]0x0  (all ranges outside )
     HASH         = auto() # $XXXXXXXX, $_hashname%, ${anotherhashname}
     RESOURCE     = auto() # unimplemented
     PUNCTUATION  = auto() # ()[]{}, etc. for function/array syntax etc.
@@ -130,58 +145,6 @@ FUNC_KEYWORDS:Dict[str,str] = OrderedDict({
     'void': 'func',
 })
 
-TYPE_KEYWORDS:Dict[str,MjoType] = OrderedDict({
-    'int': MjoType.Int,
-    'float': MjoType.Float,
-    'string': MjoType.String,
-    'intarray': MjoType.IntArray,
-    'floatarray': MjoType.FloatArray,
-    'stringarray': MjoType.StringArray,
-    # aliases:
-    'i': MjoType.Int,
-    'r': MjoType.Float,
-    's': MjoType.String,
-    'iarr': MjoType.IntArray,
-    'rarr': MjoType.FloatArray,
-    'sarr': MjoType.StringArray,
-})
-
-MODIFIER_KEYWORDS:Dict[str,MjoModifier] = OrderedDict({
-    'preinc': MjoModifier.PreIncrement,
-    'predec': MjoModifier.PreDecrement,
-    'postinc': MjoModifier.PostIncrement,
-    'postdec': MjoModifier.PostDecrement,
-    # aliases:
-    'inc.x': MjoModifier.PreIncrement,
-    'dec.x': MjoModifier.PreDecrement,
-    'x.inc': MjoModifier.PostIncrement,
-    'x.dec': MjoModifier.PostDecrement,
-})
-
-INVERT_KEYWORDS:Dict[str,MjoInvertMode] = OrderedDict({
-    'neg': MjoInvertMode.Numeric,
-    'notl': MjoInvertMode.Boolean,
-    'not': MjoInvertMode.Bitwise,
-    # (no aliases)
-})
-
-SCOPE_KEYWORDS:Dict[str,MjoScope] = OrderedDict({
-    'persistent': MjoScope.Persistent,
-    'savefile': MjoScope.SaveFile,
-    'thread': MjoScope.Thread,
-    'local': MjoScope.Local,
-    # aliases:
-    'persist': MjoScope.Persistent,
-    'save': MjoScope.SaveFile,
-})
-
-DIMENSION_KEYWORDS:Dict[str,int] = OrderedDict({
-    'dim0': 0, # optional for lazy parsers disassemblers
-    'dim1': 1,
-    'dim2': 2,
-    'dim3': 3,
-})
-
 DIRECTIVE_KEYWORDS:Dict[str,str] = OrderedDict({
     'readmark':   'readmark',
     'entrypoint': 'entrypoint',
@@ -195,6 +158,23 @@ DIRECTIVE_ARG_KEYWORDS:Dict[str,bool] = OrderedDict({
     # # aliases:
     # 'off':     False,
     # 'on':      True,
+})
+
+# map of types/enums that implement: fromname(name, default=...)
+FROMNAME_KIND_MAP:Dict[TokenKind,type] = OrderedDict({
+    TokenKind.SCOPE:     MjoScope,
+    TokenKind.TYPE:      MjoType,
+    TokenKind.DIMENSION: MjoDimension,
+    TokenKind.MODIFIER:  MjoModifier,
+    TokenKind.INVERT:    MjoInvert,
+    TokenKind.OPCODE:    Opcode,
+})
+# map of names to valid keyword names/values, many are redundant
+KEYWORD_KIND_MAP:Dict[TokenKind,dict] = OrderedDict({
+    #TokenKind.OPCODE: Opcode.ALIASES,  # this includes all op.xxx patterns
+    TokenKind.FUNC:          FUNC_KEYWORDS,
+    TokenKind.DIRECTIVE:     DIRECTIVE_KEYWORDS,
+    TokenKind.DIRECTIVE_ARG: DIRECTIVE_ARG_KEYWORDS,
 })
 
 #endregion
@@ -218,8 +198,11 @@ RE_KEYWORD = re.compile(r"^([A-Za-z_](?:[0-9A-Za-z_.]*[0-9A-Za-z_])?)\b")
 
 # quoted, (unquoted)
 RE_LITERAL_STRING = re.compile(r"^(\"(?P<value>(?:\\.|[^\"])*)\")")
-# value
-RE_LITERAL_FLOAT = re.compile(r"^([+-]?[0-9]*\.[0-9]+)\b")
+#FIXME: [DISCUSSION] decided on specification for legal NAN/INF, currently all case-mixing is legal
+#NOTE: regex case-insensitivity (?i:) is Python 3.6+
+# value, (fixed | exponent | (+-)inf | nan)
+RE_LITERAL_FLOAT = re.compile(r"^(([+-]?[0-9]*\.[0-9]+)|([+-]?\d*\.\d+[Ee][+-]?\d+)|([+-]?(?i:INF)(?i:INITY)?)|(?i:NaN))\b")
+#FIXME: [DISCUSSION] should [+-]0xHEX be allowed? should unsigned decimal integers be allowed?
 # value, (prefixed hex | dec)
 RE_LITERAL_INT = re.compile(r"^((?P<hex>[+-]?0[Xx][0-9A-Fa-f]+)|(?P<dec>[+-]?[0-9]+))\b(?!\.)")
 
@@ -241,9 +224,8 @@ RE_PUNCTUATION = re.compile(r"^[(){}\[\],]")
 #region ## PARSE MATCHED TOKENS ##
 
 def parse_target(token:ParseToken) -> NoReturn:
-    # m:Match = RE_TARGET.match(token.text)
+    # pattern: RE_TARGET
     m:Match = token.match
-    assert(m is not None, 'parse_target regex match unexpectedly failed')
     if m[2]: # explicit offset
         #NOTE: Python supports int('+1', 16), we don't need to handle it (if you're porting this, beware!)
         token.value = int(m[2], 16)
@@ -257,9 +239,8 @@ def parse_target(token:ParseToken) -> NoReturn:
         token.kind = TokenKind.LABEL
 
 def parse_label(token:ParseToken) -> NoReturn:
-    # m:Match = RE_LABEL.match(token.text)
+    # pattern: RE_LABEL
     m:Match = token.match
-    assert(m is not None, 'parse_label regex match unexpectedly failed')
     if m[2]: # address
         token.value = m[2]  #TODO: address target is stored as str
         # token.value = int(m[2], 16)
@@ -269,46 +250,42 @@ def parse_label(token:ParseToken) -> NoReturn:
         token.kind = TokenKind.LABEL
 
 def parse_line_number(token:ParseToken) -> NoReturn:
-    # m:Match = RE_LINE_NUMBER.match(token.text)
+    # pattern: RE_LINE_NUMBER
     m:Match = token.match
-    assert(m is not None, 'parse_line_number regex match unexpectedly failed')
     token.value = int(m[1], 10)
     token.kind = TokenKind.LINE_NUMBER
 
 def parse_keyword(token:ParseToken) -> NoReturn:
     name = token.text
-    if name in FUNC_KEYWORDS:
-        token.value = FUNC_KEYWORDS[name]
-        token.kind = TokenKind.FUNC
-    elif name in DIRECTIVE_KEYWORDS:
-        token.value = DIRECTIVE_KEYWORDS[name]
-        token.kind = TokenKind.DIRECTIVE
-    elif name in DIRECTIVE_ARG_KEYWORDS:
-        token.value = DIRECTIVE_ARG_KEYWORDS[name]
-        token.kind = TokenKind.DIRECTIVE_ARG
-    elif name in SCOPE_KEYWORDS:
-        token.value = SCOPE_KEYWORDS[name]
-        token.kind = TokenKind.SCOPE
-    elif name in TYPE_KEYWORDS:
-        token.value = TYPE_KEYWORDS[name]
-        token.kind = TokenKind.TYPE
-    elif name in DIMENSION_KEYWORDS:
-        token.value = DIMENSION_KEYWORDS[name]
-        token.kind = TokenKind.DIMENSION
-    elif name in MODIFIER_KEYWORDS:
-        token.value = MODIFIER_KEYWORDS[name]
-        token.kind = TokenKind.MODIFIER
-    elif name in INVERT_KEYWORDS:
-        token.value = INVERT_KEYWORDS[name]
-        if name in Opcode.ALIASES:
-            token.value = (Opcode.ALIASES[name], INVERT_KEYWORDS[name])
-            token.kind = TokenKind.OPCODE_INVERT  # flags will need to handle this awkward scenario
-        else:
-            token.kind = TokenKind.INVERT
-    elif name in Opcode.ALIASES: # (aliases contains all op.xxx variants)
-        token.value = Opcode.ALIASES[name]
-        token.kind = TokenKind.OPCODE
-    elif re.match(r"^dim\d+$", name):
+
+    # types implementing function: cls.fromname(name:str, default=...)
+    for kind,namecls in FROMNAME_KIND_MAP.items():
+        nameval = namecls.fromname(name, None)
+        if nameval is not None:
+            # if kind is TokenKind.INVERT: and name in Opcode.ALIASES:
+            if kind is TokenKind.INVERT:
+                # handle context dependent keywords: notl, not
+                opcode = Opcode.fromname(name, None)
+                if opcode is not None:
+                    # flags and opcodes will need to handle this awkward scenario
+                    token.value = (Opcode.ALIASES[name], nameval)
+                    token.kind = TokenKind.OPCODE_INVERT
+                    return
+            token.value = nameval
+            token.kind = kind
+            return
+
+    # dictionaries of known keywords:
+    # func|void, directives, directive arguments:
+    for kind,kwddict in KEYWORD_KIND_MAP.items():
+        kwdval = kwddict.get(name, None)
+        if kwdval is not None:
+            token.value = kwdval
+            token.kind = kind
+            return
+
+    # point of no return: add some non-essential failures that may have happened
+    if re.match(r"^dim\d+$", name):
         raise Exception(f'invalid variable dimension flag {name!r}')
     elif re.match(r"^n?op\.[0-9a-f]{3}$", name):
         raise Exception(f'invalid opcode value {name!r}')
@@ -316,30 +293,25 @@ def parse_keyword(token:ParseToken) -> NoReturn:
         raise Exception(f'unknown symbol or keyword {name!r}')
 
 def parse_string(token:ParseToken) -> NoReturn:
-    # m:Match = RE_LITERAL_STRING.match(token.text)
+    # pattern: RE_LITERAL_STRING
     m:Match = token.match
-    assert(m is not None, 'parse_string regex match unexpectedly failed')
     token.value = unescape_string(m[2])
     token.kind = TokenKind.LITERAL_STRING
 
 def parse_float(token:ParseToken) -> NoReturn:
-    # m:Match = RE_LITERAL_FLOAT.match(token.text)
-    # m:Match = token.match
-    # assert(m is not None, 'parse_float regex match unexpectedly failed')
+    # pattern: RE_LITERAL_FLOAT
+    # Python supports parsing all formats: [+-]fixed, [+-]exponent, [+-]inf(inity), NaN
     token.value = float(token.text)
     token.kind = TokenKind.LITERAL_FLOAT
 
 def parse_int(token:ParseToken) -> NoReturn:
-    # m:Match = RE_LITERAL_INT.match(token.text)
-    # m:Match = token.match
-    # assert(m is not None, 'parse_int regex match unexpectedly failed')
-    token.value = int(token.text, 0)  # 0 checks prefix for base type
+    # pattern: RE_LITERAL_INT
+    token.value = signed_i(int(token.text, 0))  # 0 checks prefix for base type
     token.kind = TokenKind.LITERAL_INT
 
 def parse_hash(token:ParseToken) -> NoReturn:
-    # m:Match = RE_ANY_HASH.match(token.text)
+    # pattern: RE_ANY_HASH
     m:Match = token.match
-    assert(m is not None, 'parse_hash regex match unexpectedly failed')
     if m[2]: # hex
         token.value = int(m[2], 16)
         token.kind = TokenKind.LITERAL_HASH
@@ -351,24 +323,25 @@ def parse_hash(token:ParseToken) -> NoReturn:
         token.kind = TokenKind.INLINE_HASH
 
 def parse_resource(token:ParseToken) -> NoReturn:
+    ## pattern: RE_RESOURCE
     token.value = token.text
     token.kind = None #TokenKind.RESOURCE
     # pass  # dummy method, unimplemented
 
 def parse_punctuation(token:ParseToken) -> NoReturn:
+    # pattern: RE_PUNCTUATION
     token.value = token.text
     token.kind = TokenKind.PUNCTUATION
-    # pass  # dummy method, nothing required
 
 def parse_whitespace(token:ParseToken) -> NoReturn:
+    # pattern: RE_WHITESPACE
     token.value = token.text
     token.kind = TokenKind.WHITESPACE
-    # pass  # dummy method, nothing required
 
 def parse_eol(token:ParseToken) -> NoReturn:
+    # pattern: RE_EOL
     token.value = ''
     token.kind = TokenKind.EOL
-    # pass  # dummy method, nothing required
 
 #endregion
 
@@ -377,12 +350,13 @@ def parse_eol(token:ParseToken) -> NoReturn:
 MATCHING:Dict[TokenType, Tuple[Pattern,Callable]] = OrderedDict({
     TokenType.EOL:         (RE_EOL, parse_eol),                 # [] empty string
     TokenType.WHITESPACE:  (RE_WHITESPACE, parse_whitespace),   # [ \t] and comments (//|;|/**/)
+    #NOTE: float goes above all else to lazily steal any INF/NAN matches from the KEYWORD regex
+    TokenType.FLOAT:       (RE_LITERAL_FLOAT, parse_float),     # [.] contains, [+-]Inf(inity), NaN
     TokenType.LABEL:       (RE_LABEL, parse_label),             # [0-9A-Za-z_] prefix, [:] postfix
     TokenType.TARGET:      (RE_TARGET, parse_target),           # [@] prefix
     TokenType.LINE_NUMBER: (RE_LINE_NUMBER, parse_line_number), # [#] prefix
     TokenType.KEYWORD:     (RE_KEYWORD, parse_keyword),         # [A-Za-z_] prefix
     TokenType.STRING:      (RE_LITERAL_STRING, parse_string),   # [""] surrounds
-    TokenType.FLOAT:       (RE_LITERAL_FLOAT, parse_float),     # [.] contains 1
     TokenType.INT:         (RE_LITERAL_INT, parse_int),         # [^.] postfix
     TokenType.HASH:        (RE_ANY_HASH, parse_hash),           # [$] prefix
     TokenType.PUNCTUATION: (RE_PUNCTUATION, parse_punctuation), # [(){}[],]
@@ -747,7 +721,7 @@ class MjILAssembler:
         self.is_eol = False
         self.line = self.file.readline()
         self.line_num += 1
-        print(f'{self.line_num} : ', end='')
+        # print(f'{self.line_num} : ', end='')
         self.pos = 0
         if not self.line:
             self.is_eol = True
@@ -787,7 +761,7 @@ class MjILAssembler:
         if not self.is_block_comment:
             # specially handle whitespace and normalize comments
             RE_ALL_WHITESPACE = re.compile(r"^(?:(\s+)|(\/\*[^\n]*?\*\/)|((?:\/\/|;).*$)|(\/\*)|($))")#|(.*\*\/)")
-            if not isinstance(pos, int): print(f'pos type is {pos.__class__.__name__}')
+            # if not isinstance(pos, int): print(f'pos type is {pos.__class__.__name__}')
             m:Match = RE_ALL_WHITESPACE.search(self.line[pos:])
             while m:
                 if m[1]:  # whitespace
@@ -944,12 +918,12 @@ class MjILAssembler:
         if self.unresolved_targets:
             def fmt_instr(i:Instruction):
                 if i.opcode.mnemonic == "switch":
-                    return f'{i.offset:06x}: {i.opcode.mnemonic} {i.switch_targets!r}'
+                    return f'{i.offset:05x}: {i.opcode.mnemonic} {i.switch_targets!r}'
                 else:
-                    return f'{i.offset:06x}: {i.opcode.mnemonic} {i.jump_target!r}'
+                    return f'{i.offset:05x}: {i.opcode.mnemonic} {i.jump_target!r}'
             for s in self.unresolved_targets.values():
                 print(', '.join(repr(fmt_instr(i)) for i in s))
-            #print(list(f'{i.offset:06x}: {i.opcode.mnemonic} self.unresolved_targets.values()))
+            #print(list(f'{i.offset:05x}: {i.opcode.mnemonic} self.unresolved_targets.values()))
             raise Exception(f'{len(self.unresolved_targets)} unresolved targets defined with no label found by end of function')
         self.unresolved_targets.clear()
         self.current_labels.clear()
@@ -1115,7 +1089,7 @@ class MjILAssembler:
                 instr.string = token.value
             elif operand == 'f':
                 # flags
-                invert:MjoInvertMode = None
+                invert:MjoInvert = None
                 modifier:MjoModifier = None
                 vartype:MjoType = None
                 scope:MjoScope = None
@@ -1153,9 +1127,9 @@ class MjILAssembler:
                     self.require_ws(last_token)
                     last_token = token = self.next_token()
                 if invert is None:
-                    invert = MjoInvertMode.NoInvert
+                    invert = MjoInvert.NONE
                 if modifier is None:
-                    modifier = MjoModifier.NoModifier
+                    modifier = MjoModifier.NONE
                 if dimension is None:
                     if opcode.mnemonic.startswith('ldelem') or opcode.mnemonic.startswith('stelem'):
                         raise Exception(f'dimension flag is required for {opcode.mnemonic} instructions flags operand')
@@ -1193,7 +1167,7 @@ class MjILAssembler:
                     continue
             elif operand == 'o':
                 # variable offset
-                required = instr.flags.scope is MjoScope.Local
+                required = instr.flags.scope is MjoScope.LOCAL
                 instr.var_offset = -1 # default until handled
                 if required:
                     self.require_ws(last_token)
@@ -1227,7 +1201,7 @@ class MjILAssembler:
                     token.value = self.inline_hash(token.value) #TODO: inline hash function should really be handled during parsing...
                 if token.type not in (TokenType.INT, TokenType.HASH):
                     raise Exception(f'expected integer literal or hash operand, not token {token!r}')
-                instr.int_value = token.value
+                instr.int_value = signed_i(token.value)
             elif operand == 'r':
                 # float constant
                 if token.type is TokenType.INT:
@@ -1372,88 +1346,85 @@ class MjILAssembler:
 #         self.line_count:int = 0  # 0 is default
 
 # def tryit(filename:str, encoding:str='utf-8') -> ControlFlowGraph:
-def tryit(filename:str, encoding:str='utf-8') -> MjoScript:
-    print('Something need doing?')
-    assembler = MjILAssembler(filename, encoding=encoding)
-    print('Work work...')
-    assembler.read()
-    print(f'Job done!\nRead {len(assembler.instructions)} instructions and {len(assembler.functions)} functions')
+# def tryit(filename:str, encoding:str='utf-8') -> MjoScript:
+#     print('Something need doing?')
+#     assembler = MjILAssembler(filename, encoding=encoding)
+#     print('Work work...')
+#     assembler.read()
+#     print(f'Job done!\nRead {len(assembler.instructions)} instructions and {len(assembler.functions)} functions')
 
-    script = assembler.script
-    with open(filename + '.assembler.mjo', 'wb+') as f:
-        f.write(struct.pack('<16sIII', script.signature, script.main_offset, script.line_count, len(script.functions)))
-        for fn in script.functions:
-            f.write(struct.pack('<II', *fn))  # fn.name_hash, fn.offset
-        f.write(struct.pack('<I', script.bytecode_size))
-        for instr in script.instructions:
-            offset = f.tell()
-            opcode = instr.opcode
-            f.write(struct.pack('<H', opcode.value))
-            for operand in opcode.encoding:
-                if operand == 't':
-                    # type list
-                    f.write(struct.pack('<H', len(instr.type_list)))  # count
-                    f.write(struct.pack(f'<{len(instr.type_list)}B', *[t.value for t in instr.type_list]))  # types
-                    # count = reader.unpackone('<H')
-                    # instruction.type_list = [MjoType(b) for b in reader.unpack('<{:d}B'.format(count))]
-                elif operand == 's':
-                    # string data
-                    f.write(struct.pack('<H', len(instr.string.encode("cp932"))+1))  # size + null terminator
-                    f.write(struct.pack(f'<{len(instr.string.encode("cp932"))+1}s', instr.string.encode("cp932")))  # string + null terminator
-                    # size = reader.unpackone('<H') 
-                    # instruction.string = reader.read(size).rstrip(b'\x00').decode('cp932')
-                elif operand == 'f':
-                    # flags
-                    f.write(struct.pack('<H', int(instr.flags)))  #currently flags is a type that subclasses int, but do this anyway
-                    # instruction.flags = MjoFlags(reader.unpackone('<H'))
-                elif operand == 'h':
-                    # hash value
-                    if instr.hash < 0:  # this shouldn't happen... buuuuut
-                        instr.hash &= 0xffffffff
-                    f.write(struct.pack('<I', instr.hash))  # hash value
-                    # instruction.hash = reader.unpackone('<I')
-                elif operand == 'o':
-                    # variable offset
-                    f.write(struct.pack('<h', instr.var_offset))
-                    # instruction.var_offset = reader.unpackone('<h')
-                elif operand == '0':
-                    # 4 byte address placeholder
-                    f.write(struct.pack('<I', 0))  # 4 byte address placeholder
-                    # assert(reader.unpackone('<I') == 0)
-                elif operand == 'i':
-                    # integer constant
-                    signed_value = instr.int_value
-                    if instr.int_value > 0x7fffffff:
-                        signed_value = struct.unpack('<i', struct.pack('<I', instr.int_value))[0]
-                    f.write(struct.pack('<i', signed_value))  # integer constant
-                    # instruction.int_value = reader.unpackone('<i')
-                elif operand == 'r':
-                    # float constant
-                    f.write(struct.pack('<f', instr.float_value))  # float constant
-                    # instruction.float_value = reader.unpackone('<f')
-                elif operand == 'a':
-                    # argument count
-                    f.write(struct.pack('<H', instr.argument_count))  # argument count
-                    # instruction.argument_count = reader.unpackone('<H')
-                elif operand == 'j':
-                    # jump offset
-                    f.write(struct.pack('<i', instr.jump_offset))  # jump offset
-                    # instruction.jump_offset = reader.unpackone('<i')
-                elif operand == 'l':
-                    # line number
-                    f.write(struct.pack('<H', instr.line_number))  # line number
-                    # instruction.line_number = reader.unpackone('<H')
-                elif operand == 'c':
-                    # switch case table
-                    f.write(struct.pack('<H', len(instr.switch_cases)))  # count
-                    f.write(struct.pack(f'<{len(instr.switch_cases)}i', *instr.switch_cases))  # cases
-                    # count = reader.unpackone('<H')
-                    # instruction.switch_cases = list(reader.unpack('<{:d}i'.format(count)))
-                else:
-                    raise Exception('Unrecognized encoding specifier: {!r}'.format(operand))
-            assert(instr.size == (f.tell() - offset), f'{instr.offset:06x}: {opcode.mnemonic}')
+#     # script = assembler.script
+#     # with open(filename + '.assembler.mjo', 'wb+') as f:
+#     #     f.write(struct.pack('<16sIII', script.signature, script.main_offset, script.line_count, len(script.functions)))
+#     #     for fn in script.functions:
+#     #         f.write(struct.pack('<II', *fn))  # fn.name_hash, fn.offset
+#     #     f.write(struct.pack('<I', script.bytecode_size))
+#     #     for instr in script.instructions:
+#     #         offset = f.tell()
+#     #         opcode = instr.opcode
+#     #         f.write(struct.pack('<H', opcode.value))
+#     #         for operand in opcode.encoding:
+#     #             if operand == 't':
+#     #                 # type list
+#     #                 f.write(struct.pack('<H', len(instr.type_list)))  # count
+#     #                 f.write(struct.pack(f'<{len(instr.type_list)}B', *[t.value for t in instr.type_list]))  # types
+#     #                 # count = reader.unpackone('<H')
+#     #                 # instruction.type_list = [MjoType(b) for b in reader.unpack('<{:d}B'.format(count))]
+#     #             elif operand == 's':
+#     #                 # string data
+#     #                 f.write(struct.pack('<H', len(instr.string.encode("cp932"))+1))  # size + null terminator
+#     #                 f.write(struct.pack(f'<{len(instr.string.encode("cp932"))+1}s', instr.string.encode("cp932")))  # string + null terminator
+#     #                 # size = reader.unpackone('<H') 
+#     #                 # instruction.string = reader.read(size).rstrip(b'\x00').decode('cp932')
+#     #             elif operand == 'f':
+#     #                 # flags
+#     #                 f.write(struct.pack('<H', int(instr.flags)))  #currently flags is a type that subclasses int, but do this anyway
+#     #                 # instruction.flags = MjoFlags(reader.unpackone('<H'))
+#     #             elif operand == 'h':
+#     #                 # hash value
+#     #                 if instr.hash < 0:  # this shouldn't happen... buuuuut
+#     #                     instr.hash &= 0xffffffff
+#     #                 f.write(struct.pack('<I', instr.hash))  # hash value
+#     #                 # instruction.hash = reader.unpackone('<I')
+#     #             elif operand == 'o':
+#     #                 # variable offset
+#     #                 f.write(struct.pack('<h', instr.var_offset))
+#     #                 # instruction.var_offset = reader.unpackone('<h')
+#     #             elif operand == '0':
+#     #                 # 4 byte address placeholder
+#     #                 f.write(struct.pack('<I', 0))  # 4 byte address placeholder
+#     #                 # assert(reader.unpackone('<I') == 0)
+#     #             elif operand == 'i':
+#     #                 # integer constant
+#     #                 f.write(struct.pack('<i', signed_i(instr.int_value)))  # integer constant
+#     #                 # instruction.int_value = reader.unpackone('<i')
+#     #             elif operand == 'r':
+#     #                 # float constant
+#     #                 f.write(struct.pack('<f', instr.float_value))  # float constant
+#     #                 # instruction.float_value = reader.unpackone('<f')
+#     #             elif operand == 'a':
+#     #                 # argument count
+#     #                 f.write(struct.pack('<H', instr.argument_count))  # argument count
+#     #                 # instruction.argument_count = reader.unpackone('<H')
+#     #             elif operand == 'j':
+#     #                 # jump offset
+#     #                 f.write(struct.pack('<i', instr.jump_offset))  # jump offset
+#     #                 # instruction.jump_offset = reader.unpackone('<i')
+#     #             elif operand == 'l':
+#     #                 # line number
+#     #                 f.write(struct.pack('<H', instr.line_number))  # line number
+#     #                 # instruction.line_number = reader.unpackone('<H')
+#     #             elif operand == 'c':
+#     #                 # switch case table
+#     #                 f.write(struct.pack('<H', len(instr.switch_cases)))  # count
+#     #                 f.write(struct.pack(f'<{len(instr.switch_cases)}i', *instr.switch_cases))  # cases
+#     #                 # count = reader.unpackone('<H')
+#     #                 # instruction.switch_cases = list(reader.unpack('<{:d}i'.format(count)))
+#     #             else:
+#     #                 raise Exception('Unrecognized encoding specifier: {!r}'.format(operand))
+#     #         assert(instr.size == (f.tell() - offset)), f'{instr.offset:05x}: {opcode.mnemonic}'
                 
-        f.flush()
-    # cfg:ControlFlowGraph = ControlFlowGraph.build_from_script(assembler.script)
-    # return cfg
-    return assembler.script
+#     #     f.flush()
+#     # cfg:ControlFlowGraph = ControlFlowGraph.build_from_script(assembler.script)
+#     # return cfg
+#     return assembler.script

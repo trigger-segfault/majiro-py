@@ -17,7 +17,8 @@ __all__ = ['Opcode']
 
 #######################################################################################
 
-from typing import Dict, List, NoReturn  # for hinting in declarations
+import enum, re
+from typing import Dict, List, NoReturn, Optional  # for hinting in declarations
 
 from .flags import MjoType, MjoTypeMask
 
@@ -27,17 +28,18 @@ from .flags import MjoType, MjoTypeMask
 class Opcode:
     """Opcode definition
     """
-    # global opcode definitions
+    __slots__ = ('value', 'mnemonic', 'operator', 'encoding', 'transition', 'aliases')
+    # global opcode definitions:
     LIST:List['Opcode'] = []
-    BYVALUE:Dict[int, 'Opcode'] = {}
-    NAMES:Dict[str, 'Opcode'] = {}
-    ALIASES:Dict[str, 'Opcode'] = {}
+    BYVALUE:Dict[int, 'Opcode'] = {}  # lookup by value
+    NAMES:Dict[str, 'Opcode'] = {}    # lookup by mnemonic
+    ALIASES:Dict[str, 'Opcode'] = {}  # lookup by mnemonic + aliases (excludes op.xxx)
 
-    def __init__(self, value:int, mnemonic:str, operator:str, encoding:str, transition:str, *, aliases:tuple=()):
+    def __init__(self, value:int, mnemonic:str, operator:Optional[str], encoding:str, transition:str, *, aliases:tuple=()):
         # general #
         self.value:int      = value
         self.mnemonic:str   = mnemonic
-        self.operator:str   = operator
+        self.operator:str   = operator    # operator symbol (visual helper)
 
         # parsing / analysis #
         self.encoding:str   = encoding    # instruction encoding
@@ -46,7 +48,7 @@ class Opcode:
         if aliases is None:
             aliases = ()
         elif not isinstance(aliases, tuple):
-            raise TypeError('{0.__class__.__name__} argument \'aliases\' must be tuple or NoneType, not {1.__class__.__name__}'.format(self, aliases))
+            raise TypeError(f'{self.__class__.__name__} argument \'aliases\' must be tuple or NoneType, not {aliases.__class__.__name__}')
         self.aliases:tuple = aliases
     @property
     def is_jump(self) -> bool:
@@ -56,25 +58,34 @@ class Opcode:
         return self.mnemonic
     def __str__(self) -> str:
         return self.mnemonic
+    
+    #region # MjIL assembler language names:
+    def getname(self, opvalue:bool=False) -> str:
+        if opvalue:
+            return f'op.{self.value:03x}'
+        return self.mnemonic
+    @classmethod
+    def fromname(cls, name:str, default=...) -> 'Opcode':
+        # this allows "nop.xxx" for all opcodes, and is more of a convenience
+        if re.match(r"^n?op\.[0-9a-f]{3}$", name):
+            value = int(name[-3:], 16)
+            key, lookup = value, cls.BYVALUE
+        else:
+            key, lookup = name, cls.ALIASES
+        if default is not Ellipsis:
+            return lookup.get(key, default)  # returns `default` on invalid
+        return lookup[key]  # raises `KeyError`
+    #endregion
+
 
 #endregion
 
-
-# global opcode definitions
-# Opcode.LIST:List[Opcode] = []
-# Opcode.BYVALUE:Dict[int, Opcode] = {}
-
 #region ## OPCODE DEFINITION FUNCTIONS ##
 
-# wrap opcode definitions setup in function scope
-# def _init(LIST:List[Opcode], BYVALUE:Dict[int, Opcode]) -> List[Opcode]:
-#     global LIST
-#     global BYVALUE
-#     opcodeslist:List[Opcode] = []
 
 _POSTFIXES  = (".i", ".r", ".s", ".iarr", ".rarr", ".sarr")
-#_TYPES      = (MjoType.Int,     MjoType.Float,     MjoType.String,     MjoType.IntArray,     MjoType.FloatArray,     MjoType.StringArray)
-_TYPE_MASKS = (MjoTypeMask.Int, MjoTypeMask.Float, MjoTypeMask.String, MjoTypeMask.IntArray, MjoTypeMask.FloatArray, MjoTypeMask.StringArray)
+#_TYPES      = (MjoType.INT,     MjoType.FLOAT,     MjoType.STRING,     MjoType.INT_ARRAY,     MjoType.FLOAT_ARRAY,     MjoType.STRING_ARRAY)
+_TYPE_MASKS = (MjoTypeMask.INT, MjoTypeMask.FLOAT, MjoTypeMask.STRING, MjoTypeMask.INT_ARRAY, MjoTypeMask.FLOAT_ARRAY, MjoTypeMask.STRING_ARRAY)
 _COMPARISON_TRANSITIONS = (("ii.i", "ii.b"), ("nn.f", "nn.b"), ("ss.s", "ss.b"), ("-", "II.b"), ("-", "FF.b"), ("-", "SS.b"))
 _POP_TRANSITIONS        = (("i.i", "i."),    ("n.f", "n."),    ("s.s", "s."),    ("I.I", "I."), ("F.F", "F."), ("S.S", "S."))
 _POPARRAY_TRANSITIONS   = (("i[i#d].i", "i[i#d]."), ("n[i#d].f", "n[i#d]."), ("s[i#d].s", "[i#d]s."), (), (), ())
@@ -98,7 +109,8 @@ def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str,
         raise ValueError('Opcode \"{0.mnemonic!s}\" value 0x{0.value:03x} already defined by \"{1.mnemonic!s}\"'.format(opcode, existing))
     Opcode.BYVALUE[value] = opcode
 
-    for alias in ([mnemonic] + list(aliases) + ([f'op.{value:03x}'] if mnemonic != f'op.{value:03x}' else [])):
+    # no longer incldue "op.xxx" pattern, handled by Opcode.fromname
+    for alias in ([mnemonic] + list(aliases)): 
         existing = Opcode.ALIASES.get(alias, None)
         if existing is not None:
             raise ValueError('Opcode \"{0.mnemonic!s}\" 0x{0.value:03x} alias {2!r} already defined by \"{1.mnemonic!s}\" 0x{1.value:03x}'.format(opcode, existing, alias))
@@ -110,7 +122,7 @@ def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:M
         if allowed_types & t_mask:
             comparison = _COMPARISON_TRANSITIONS[is_comparison]
             postfix = _POSTFIXES[i]
-            if allowed_types == MjoTypeMask.Int:
+            if allowed_types == MjoTypeMask.INT:
                 define_opcode(base_value, mnemonic, op, "", comparison, *alias_intonly(postfix, mnemonic, *aliases))
                 return # no need to check for others
             else:
@@ -121,7 +133,7 @@ def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_typ
         if allowed_types & t_mask:
             pop = _POP_TRANSITIONS[is_pop]
             postfix = _POSTFIXES[i]
-            if allowed_types == MjoTypeMask.Int:
+            if allowed_types == MjoTypeMask.INT:
                 define_opcode(base_value, mnemonic, op, "fho", pop, *alias_intonly(postfix, mnemonic, *aliases))
                 return # no need to check for others
             else:
@@ -132,7 +144,7 @@ def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allow
         if allowed_types & t_mask:
             pop = _POPARRAY_TRANSITIONS[is_pop]
             postfix = _POSTFIXES[i]
-            if allowed_types == MjoTypeMask.Int:
+            if allowed_types == MjoTypeMask.INT:
                 define_opcode(base_value, mnemonic, op, "fho", pop, *alias_intonly(postfix, mnemonic, *aliases))
                 return # no need to check for others
             else:
@@ -143,24 +155,24 @@ def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allow
 #region ## BEGIN OPCODE DEFINITIONS ##
 
 # binary operators #
-define_binary_operator(0x100, "mul",  "*",  MjoTypeMask.Numeric, False)
-define_binary_operator(0x108, "div",  "/",  MjoTypeMask.Numeric, False)
-define_binary_operator(0x110, "rem",  "%",  MjoTypeMask.Int, False, "mod")
-define_binary_operator(0x118, "add",  "+",  MjoTypeMask.Primitive, False)
-define_binary_operator(0x120, "sub",  "-",  MjoTypeMask.Primitive, False)
-define_binary_operator(0x128, "shr",  ">>", MjoTypeMask.Int, False)
-define_binary_operator(0x130, "shl",  "<<", MjoTypeMask.Int, False)
-define_binary_operator(0x138, "cle",  "<=", MjoTypeMask.Primitive, True)
-define_binary_operator(0x140, "clt",  "<",  MjoTypeMask.Primitive, True)
-define_binary_operator(0x148, "cge",  ">=", MjoTypeMask.Primitive, True)
-define_binary_operator(0x150, "cgt",  ">",  MjoTypeMask.Primitive, True)
-define_binary_operator(0x158, "ceq",  "==", MjoTypeMask.All, True)
-define_binary_operator(0x160, "cne",  "!=", MjoTypeMask.All, True)
-define_binary_operator(0x168, "xor",  "^",  MjoTypeMask.Int, False)
-define_binary_operator(0x170, "andl", "&&", MjoTypeMask.Int, False)
-define_binary_operator(0x178, "orl",  "||", MjoTypeMask.Int, False)
-define_binary_operator(0x180, "and",  "&",  MjoTypeMask.Int, False)
-define_binary_operator(0x188, "or",   "|",  MjoTypeMask.Int, False)
+define_binary_operator(0x100, "mul",  "*",  MjoTypeMask.NUMERIC, False)
+define_binary_operator(0x108, "div",  "/",  MjoTypeMask.NUMERIC, False)
+define_binary_operator(0x110, "rem",  "%",  MjoTypeMask.INT, False, "mod")
+define_binary_operator(0x118, "add",  "+",  MjoTypeMask.PRIMITIVE, False)
+define_binary_operator(0x120, "sub",  "-",  MjoTypeMask.PRIMITIVE, False)
+define_binary_operator(0x128, "shr",  ">>", MjoTypeMask.INT, False)
+define_binary_operator(0x130, "shl",  "<<", MjoTypeMask.INT, False)
+define_binary_operator(0x138, "cle",  "<=", MjoTypeMask.PRIMITIVE, True)
+define_binary_operator(0x140, "clt",  "<",  MjoTypeMask.PRIMITIVE, True)
+define_binary_operator(0x148, "cge",  ">=", MjoTypeMask.PRIMITIVE, True)
+define_binary_operator(0x150, "cgt",  ">",  MjoTypeMask.PRIMITIVE, True)
+define_binary_operator(0x158, "ceq",  "==", MjoTypeMask.ALL, True)
+define_binary_operator(0x160, "cne",  "!=", MjoTypeMask.ALL, True)
+define_binary_operator(0x168, "xor",  "^",  MjoTypeMask.INT, False)
+define_binary_operator(0x170, "andl", "&&", MjoTypeMask.INT, False)
+define_binary_operator(0x178, "orl",  "||", MjoTypeMask.INT, False)
+define_binary_operator(0x180, "and",  "&",  MjoTypeMask.INT, False)
+define_binary_operator(0x188, "or",   "|",  MjoTypeMask.INT, False)
 
 # unary operators / nops #
 define_opcode(0x190, "notl",  "!", "", "i.i", *alias_intonly(".i", "notl"))
@@ -173,54 +185,54 @@ define_opcode(0x1a8, "nop.1a8", None, "", "", "pos.i")   # assumed original usag
 define_opcode(0x1a9, "nop.1a9", None, "", "", "pos.r")   # assumed original usage
 
 # assignment operators #
-define_assignment_operator(0x1b0, "st",     "=",   MjoTypeMask.All, False)
-define_assignment_operator(0x1b8, "st.mul", "*=",  MjoTypeMask.Numeric, False)
-define_assignment_operator(0x1c0, "st.div", "/=",  MjoTypeMask.Numeric, False)
-define_assignment_operator(0x1c8, "st.rem", "%=",  MjoTypeMask.Int, False, "st.mod")
-define_assignment_operator(0x1d0, "st.add", "+=",  MjoTypeMask.Primitive, False)
-define_assignment_operator(0x1d8, "st.sub", "-=",  MjoTypeMask.Numeric, False)
-define_assignment_operator(0x1e0, "st.shl", "<<=", MjoTypeMask.Int, False)
-define_assignment_operator(0x1e8, "st.shr", ">>=", MjoTypeMask.Int, False)
-define_assignment_operator(0x1f0, "st.and", "&=",  MjoTypeMask.Int, False)
-define_assignment_operator(0x1f8, "st.xor", "^=",  MjoTypeMask.Int, False)
-define_assignment_operator(0x200, "st.or",  "|=",  MjoTypeMask.Int, False)
+define_assignment_operator(0x1b0, "st",     "=",   MjoTypeMask.ALL, False)
+define_assignment_operator(0x1b8, "st.mul", "*=",  MjoTypeMask.NUMERIC, False)
+define_assignment_operator(0x1c0, "st.div", "/=",  MjoTypeMask.NUMERIC, False)
+define_assignment_operator(0x1c8, "st.rem", "%=",  MjoTypeMask.INT, False, "st.mod")
+define_assignment_operator(0x1d0, "st.add", "+=",  MjoTypeMask.PRIMITIVE, False)
+define_assignment_operator(0x1d8, "st.sub", "-=",  MjoTypeMask.NUMERIC, False)
+define_assignment_operator(0x1e0, "st.shl", "<<=", MjoTypeMask.INT, False)
+define_assignment_operator(0x1e8, "st.shr", ">>=", MjoTypeMask.INT, False)
+define_assignment_operator(0x1f0, "st.and", "&=",  MjoTypeMask.INT, False)
+define_assignment_operator(0x1f8, "st.xor", "^=",  MjoTypeMask.INT, False)
+define_assignment_operator(0x200, "st.or",  "|=",  MjoTypeMask.INT, False)
 
-define_assignment_operator(0x210, "stp",     "=",   MjoTypeMask.All, True)
-define_assignment_operator(0x218, "stp.mul", "*=",  MjoTypeMask.Numeric, True)
-define_assignment_operator(0x220, "stp.div", "/=",  MjoTypeMask.Numeric, True)
-define_assignment_operator(0x228, "stp.rem", "%=",  MjoTypeMask.Int, True, "stp.mod")
-define_assignment_operator(0x230, "stp.add", "+=",  MjoTypeMask.Primitive, True)
-define_assignment_operator(0x238, "stp.sub", "-=",  MjoTypeMask.Numeric, True)
-define_assignment_operator(0x240, "stp.shl", "<<=", MjoTypeMask.Int, True)
-define_assignment_operator(0x248, "stp.shr", ">>=", MjoTypeMask.Int, True)
-define_assignment_operator(0x250, "stp.and", "&=",  MjoTypeMask.Int, True)
-define_assignment_operator(0x258, "stp.xor", "^=",  MjoTypeMask.Int, True)
-define_assignment_operator(0x260, "stp.or",  "|=",  MjoTypeMask.Int, True)
+define_assignment_operator(0x210, "stp",     "=",   MjoTypeMask.ALL, True)
+define_assignment_operator(0x218, "stp.mul", "*=",  MjoTypeMask.NUMERIC, True)
+define_assignment_operator(0x220, "stp.div", "/=",  MjoTypeMask.NUMERIC, True)
+define_assignment_operator(0x228, "stp.rem", "%=",  MjoTypeMask.INT, True, "stp.mod")
+define_assignment_operator(0x230, "stp.add", "+=",  MjoTypeMask.PRIMITIVE, True)
+define_assignment_operator(0x238, "stp.sub", "-=",  MjoTypeMask.NUMERIC, True)
+define_assignment_operator(0x240, "stp.shl", "<<=", MjoTypeMask.INT, True)
+define_assignment_operator(0x248, "stp.shr", ">>=", MjoTypeMask.INT, True)
+define_assignment_operator(0x250, "stp.and", "&=",  MjoTypeMask.INT, True)
+define_assignment_operator(0x258, "stp.xor", "^=",  MjoTypeMask.INT, True)
+define_assignment_operator(0x260, "stp.or",  "|=",  MjoTypeMask.INT, True)
 
 # array assignment operators #
-define_array_assignment_operator(0x270, "stelem",     "=",   MjoTypeMask.All, False)
-define_array_assignment_operator(0x278, "stelem.mul", "*=",  MjoTypeMask.Numeric, False)
-define_array_assignment_operator(0x280, "stelem.div", "/=",  MjoTypeMask.Numeric, False)
-define_array_assignment_operator(0x288, "stelem.rem", "%=",  MjoTypeMask.Int, False, "stelem.mod")
-define_array_assignment_operator(0x290, "stelem.add", "+=",  MjoTypeMask.Primitive, False)
-define_array_assignment_operator(0x298, "stelem.sub", "-=",  MjoTypeMask.Numeric, False)
-define_array_assignment_operator(0x2a0, "stelem.shl", "<<=", MjoTypeMask.Int, False)
-define_array_assignment_operator(0x2a8, "stelem.shr", ">>=", MjoTypeMask.Int, False)
-define_array_assignment_operator(0x2b0, "stelem.and", "&=",  MjoTypeMask.Int, False)
-define_array_assignment_operator(0x2b8, "stelem.xor", "^=",  MjoTypeMask.Int, False)
-define_array_assignment_operator(0x2c0, "stelem.or",  "|=",  MjoTypeMask.Int, False)
+define_array_assignment_operator(0x270, "stelem",     "=",   MjoTypeMask.ALL, False)
+define_array_assignment_operator(0x278, "stelem.mul", "*=",  MjoTypeMask.NUMERIC, False)
+define_array_assignment_operator(0x280, "stelem.div", "/=",  MjoTypeMask.NUMERIC, False)
+define_array_assignment_operator(0x288, "stelem.rem", "%=",  MjoTypeMask.INT, False, "stelem.mod")
+define_array_assignment_operator(0x290, "stelem.add", "+=",  MjoTypeMask.PRIMITIVE, False)
+define_array_assignment_operator(0x298, "stelem.sub", "-=",  MjoTypeMask.NUMERIC, False)
+define_array_assignment_operator(0x2a0, "stelem.shl", "<<=", MjoTypeMask.INT, False)
+define_array_assignment_operator(0x2a8, "stelem.shr", ">>=", MjoTypeMask.INT, False)
+define_array_assignment_operator(0x2b0, "stelem.and", "&=",  MjoTypeMask.INT, False)
+define_array_assignment_operator(0x2b8, "stelem.xor", "^=",  MjoTypeMask.INT, False)
+define_array_assignment_operator(0x2c0, "stelem.or",  "|=",  MjoTypeMask.INT, False)
 
-define_array_assignment_operator(0x2d0, "stelemp",     "=",   MjoTypeMask.All, True)
-define_array_assignment_operator(0x2d8, "stelemp.mul", "*=",  MjoTypeMask.Numeric, True)
-define_array_assignment_operator(0x2e0, "stelemp.div", "/=",  MjoTypeMask.Numeric, True)
-define_array_assignment_operator(0x2e8, "stelemp.rem", "%=",  MjoTypeMask.Int, True, "stelemp.mod")
-define_array_assignment_operator(0x2f0, "stelemp.add", "+=",  MjoTypeMask.Primitive, True)
-define_array_assignment_operator(0x2f8, "stelemp.sub", "-=",  MjoTypeMask.Numeric, True)
-define_array_assignment_operator(0x300, "stelemp.shl", "<<=", MjoTypeMask.Int, True)
-define_array_assignment_operator(0x308, "stelemp.shr", ">>=", MjoTypeMask.Int, True)
-define_array_assignment_operator(0x310, "stelemp.and", "&=",  MjoTypeMask.Int, True)
-define_array_assignment_operator(0x318, "stelemp.xor", "^=",  MjoTypeMask.Int, True)
-define_array_assignment_operator(0x320, "stelemp.or",  "|=",  MjoTypeMask.Int, True)
+define_array_assignment_operator(0x2d0, "stelemp",     "=",   MjoTypeMask.ALL, True)
+define_array_assignment_operator(0x2d8, "stelemp.mul", "*=",  MjoTypeMask.NUMERIC, True)
+define_array_assignment_operator(0x2e0, "stelemp.div", "/=",  MjoTypeMask.NUMERIC, True)
+define_array_assignment_operator(0x2e8, "stelemp.rem", "%=",  MjoTypeMask.INT, True, "stelemp.mod")
+define_array_assignment_operator(0x2f0, "stelemp.add", "+=",  MjoTypeMask.PRIMITIVE, True)
+define_array_assignment_operator(0x2f8, "stelemp.sub", "-=",  MjoTypeMask.NUMERIC, True)
+define_array_assignment_operator(0x300, "stelemp.shl", "<<=", MjoTypeMask.INT, True)
+define_array_assignment_operator(0x308, "stelemp.shr", ">>=", MjoTypeMask.INT, True)
+define_array_assignment_operator(0x310, "stelemp.and", "&=",  MjoTypeMask.INT, True)
+define_array_assignment_operator(0x318, "stelemp.xor", "^=",  MjoTypeMask.INT, True)
+define_array_assignment_operator(0x320, "stelemp.or",  "|=",  MjoTypeMask.INT, True)
 
 # 0800 range opcodes #
 define_opcode(0x800, "ldc.i", None, "i", ".i")
@@ -284,4 +296,4 @@ define_opcode(0x850, "switch", None, "c", "i.")
 #endregion ## END OPCODE DEFINITIONS ##
 
 
-del Dict, List, NoReturn  # cleanup declaration-only imports
+del Dict, List, NoReturn, Optional  # cleanup declaration-only imports

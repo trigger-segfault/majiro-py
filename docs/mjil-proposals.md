@@ -131,6 +131,7 @@ func $$main@CONSOLE() entrypoint {  ; $5ff01a4c
 ### Variable flag names
 
 <!-- discussion: <https://discord.com/channels/@me/766128075352047646/832317373133619250> -->
+<!-- loc alias:  <https://discord.com/channels/@me/766128075352047646/833103888130244618> -->
 
 The following names, *and only* the following names, must be supported for variable flag operands, and types used in other operands, or function declarations.
 
@@ -140,7 +141,7 @@ The following names, *and only* the following names, must be supported for varia
 
 **Scope flags:**
 
-`local`, `thread`, `savefile`, `persistent`, **\[alias:** -, -, `save`, `persist` **\]** **&lt;value:** `0`, `3`, `2`, `1`, `0` **&gt;**
+`local`, `thread`, `savefile`, `persistent`, **\[alias:** `loc`, -, `save`, `persist` **\]** **&lt;value:** `0`, `3`, `2`, `1`, `0` **&gt;**
 
 **Modifier flags:**
 

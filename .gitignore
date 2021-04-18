@@ -9,6 +9,8 @@ __pycache__/
 *.mjo
 # test data
 data/test/
+# uncommitted backups
+_backup/
 
 
 # C extensions

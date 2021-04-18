@@ -1,6 +1,6 @@
 # vscode-majiro
 
-Majiro custom script types (.mjil) languages support for VS Code
+Majiro custom script types (.mjil) assembler languages support for VS Code
 * Color Syntax
 * Comment blocks
 * Smart hash color differentiation
@@ -21,7 +21,7 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Preview
 
-<p align="center"><img src="./preview2.png"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/trigger-segfault/majiro-py/unstable/plugin/vscode-majiro/preview2.png"></p>
 
 
 ## Requirements
@@ -35,4 +35,4 @@ Visual Studio Code v1.30.0
 
 ## License
 
-[MIT](https://github.com/trigger-segfault/majiro-py/blob/master/License.md)
+[MIT](https://github.com/trigger-segfault/majiro-py/blob/unstable/plugin/vscode-majiro/LICENSE.md)

@@ -11,11 +11,11 @@
     <Properties>
       <Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.32.0" />
       <Property Id="Microsoft.VisualStudio.Code.ExtensionDependencies" Value="" />
-      <Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://github.com/AtomCrafty/MajiroTools.git" />
+      <Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://github.com/trigger-segfault/majiro-py.git" />
       <Property Id="Microsoft.VisualStudio.Services.Links.Getstarted" Value="https://github.com/AtomCrafty/MajiroTools/wiki" />
-      <Property Id="Microsoft.VisualStudio.Services.Links.GitHub" Value="https://github.com/AtomCrafty/MajiroTools.git" />
-      <Property Id="Microsoft.VisualStudio.Services.Links.Support" Value="https://github.com/AtomCrafty/MajiroTools/issues" />
-      <Property Id="Microsoft.VisualStudio.Services.Links.Learn" Value="https://github.com/AtomCrafty/MajiroTools/blob/master/README.md" />
+      <Property Id="Microsoft.VisualStudio.Services.Links.GitHub" Value="https://github.com/trigger-segfault/majiro-py.git" />
+      <Property Id="Microsoft.VisualStudio.Services.Links.Support" Value="https://github.com/trigger-segfault/majiro-py/issues" />
+      <Property Id="Microsoft.VisualStudio.Services.Links.Learn" Value="https://github.com/trigger-segfault/majiro-py" />
       <Property Id="Microsoft.VisualStudio.Services.Branding.Color" Value="#003d4c" />
       <Property Id="Microsoft.VisualStudio.Services.Branding.Theme" Value="dark" />
       <Property Id="Microsoft.VisualStudio.Services.GitHubFlavoredMarkdown" Value="true" />

@@ -26,7 +26,7 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Requirements
 
-Visual Studio Code v1.30.0
+Visual Studio Code v1.32.0
 
 ## Credits
 

@@ -68,31 +68,58 @@
               "patterns": [{ "include": "#strings" }]
             }
           }
+        },{
+          "comment": "resfile \"MJRESFILE\" directive",
+          "match": "\\b(resfile)(?:\\s+(?:(none)|(\".*\")))?(?=\\b|\\s|[;\\/]|$)",
+          "captures": {
+            "1": { "name": "variable.other.constant.keyword.control.directive.resfile.mjil" },
+            "2": { "name": "entity.other.attribute-name.resfile.mjil" },
+            "3": {
+              "patterns": [{ "include": "#strings" }]
+            }
+          }
         }
       ]
     },
     "inline_hash": {
       "patterns": [
         {
-          "comment": "Inline hash function implicit ($NAME)  [note: valid hex hashes take priority]  [optiona: +emphasis]",
+          "comment": "Inline hash function implicit ($NAME)  [note: valid hex hashes take priority]  [optional: +emphasis]",
           "name": "meta.inline-hash.mjil",
           "match": "(?<=\\s|^)(?:(\\$)(?:([0-9A-Za-z][_%@#$0-9A-Za-z]*)|([$][_%@#$0-9A-Za-z]*)|([_%@#][_%@#$0-9A-Za-z]*)))(?=$|\\s|[(;\\/])",
           "captures": {
             "1": { "name": "constant.character.inline-hash.function.mjil" },
             "2": { "name": "entity.name.class.operand.hash.syscall.mjil" },
-            "3": { "name": "entity.name.function.operand.hash.usercall.mjil"},
-            "4": { "name": "entity.name.variable.operand.hash.mjil"}
+            "3": { "name": "entity.name.function.operand.hash.usercall.mjil" },
+            "4": { "name": "entity.name.variable.operand.hash.mjil" }
           }
         },{
-          "comment": "Inline hash function explicit (${NAME})  [note: valid hex hashes take priority]  [optiona: +emphasis]",
+          "comment": "Inline hash function explicit (${NAME})  [note: valid hex hashes take priority]  [optional: +emphasis]",
           "name": "meta.inline-hash.mjil",
           "match": "(?<=\\s|^)(?:(\\$\\{)(?:([^_%@#$][^}]*)|([$][^}]*)|([_%@#][^}]*))(\\}))(?=$|\\s|[(;\\/])",
           "captures": {
             "1": { "name": "constant.character.inline-hash.function.mjil" },
             "2": { "name": "entity.name.class.operand.hash.syscall.mjil" },
-            "3": { "name": "entity.name.function.operand.hash.usercall.mjil"},
-            "4": { "name": "entity.name.variable.operand.hash.mjil"},
+            "3": { "name": "entity.name.function.operand.hash.usercall.mjil" },
+            "4": { "name": "entity.name.variable.operand.hash.mjil" },
             "5": { "name": "constant.character.inline-hash.function.mjil" }
+          }
+        },{
+          "comment": "Inline resource function implicit (%NAME)  [optional: +emphasis]",
+          "name": "meta.inline-resource.mjil",
+          "match": "(?<=\\s|^)(?:(%)([_%@#$0-9A-Za-z]*))(?=$|\\s|[(;\\/])",
+          "captures": {
+            "1": { "name": "constant.character.inline-resource.function.mjil" },
+            "2": { "name": "meta.embedded.operand.resource.mjil" }
+          }
+        },{
+          "comment": "Inline resource function explicit (%{NAME})  [optional: +emphasis]",
+          "name": "meta.inline-resource.mjil",
+          "match": "(?<=\\s|^)(?:(%\\{)([^}]*)(\\}))(?=$|\\s|[(;\\/])",
+          "captures": {
+            "1": { "name": "constant.character.inline-resource.function.mjil" },
+            "2": { "name": "meta.embedded.operand.resource.mjil" },
+            "3": { "name": "constant.character.inline-resource.function.mjil" }
           }
         }
       ]
@@ -211,6 +238,10 @@
             }
           }
         },{
+          "comment": "all nop.* opcodes by Name",
+          "name": "punctuation.definition.tag.keyword.opcode.nop.mjil",
+          "match": "\\b(notl\\.r|pos\\.[ir])\\b"
+        },{
           "comment": "store/load operator opcodes",
           "name": "keyword.operator.opcode.store.mjil",
           "patterns": [ {
@@ -232,7 +263,7 @@
             },{
               "match": "\\b((?:add|cle|clt|cge|cgt)\\.[irs])\\b"
             },{
-              "match": "\\b((?:mul|div|sub|neg|pos)\\.[ir])\\b"
+              "match": "\\b((?:mul|div|sub|neg)\\.[ir])\\b"
             },{
               "match": "\\b((?:rem|mod|shr|shl|andl|orl|notl|and|or|not|xor)(?:\\.i)?)\\b"
           } ]
@@ -248,7 +279,7 @@
           "comment": "all nop.* opcodes by ID",
           "match": "\\b(?:(nop\\.(?:191|1a[89]))|(nop\\.[0-9a-f]{3}))\\b",
           "captures": {
-            "1": { "name": "keyword.opcode.nop.mjil" },
+            "1": { "name": "punctuation.definition.tag.keyword.opcode.nop.mjil" },
             "2": { "name": "invalid.operator.opcode.nop.mjil" }
           }
         },{

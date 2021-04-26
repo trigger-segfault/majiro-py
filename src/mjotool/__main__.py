@@ -129,6 +129,7 @@ on|off [-H|--hash]  hashing options
  e|>E  : explicit_inline_hash  (explicit inline hash function ${name})
 >s| S  : syscall_inline_hash   (inline hashing for syscalls - which work by lookup)
 >l| L  : int_inline_hash       (inline hashing for matching int literals)
+>h| H  : annotate_hex          (hex annotations when inline hash is used)
 >g| G  : implicit_local_groups (strip empty @ group names from locals)
 
 on|off [-A|--alias] aliasing/shorthand options
@@ -140,6 +141,10 @@ on|off [-A|--alias] aliasing/shorthand options
  l|>L  : typelist_aliases   (type list:      i, r, s, iarr, rarr, sarr)
  f|>F  : functype_aliases   (func arg types: i, r, s, iarr, rarr, sarr)
  d|>D  : explicit_dim0      (always include dimension flag: dim0)
+
+on|off [-F|--format] formatting options
+--------------------------------------------
+>a| A  : address_labels     (show bytecode addresses before opcodes)
 """)
     #~~ i|>I  : invert_aliases~~
     parser.add_argument('-p','--print', metavar='MJO', action='append',
@@ -152,10 +157,14 @@ on|off [-A|--alias] aliasing/shorthand options
     #     help='.mjo script file/directory to read')
     parser.add_argument('-G', '--group', metavar='NAME', dest='group', action='store', default=None,
         required=False, help='group name directive disassembler option')
+    parser.add_argument('-O', '--opcode-pad', metavar='PADDING', dest='opcode_pad', type=int, action='store', default=None,
+        required=False, help='spacing between opcodes and operands')
     parser.add_argument('-H', '--hash', metavar='FLGS', dest='hash_flags', action='store', default='',
         required=False, help='unhashing disassembler options')
     parser.add_argument('-A', '--alias', metavar='FLGS', dest='alias_flags', action='store', default='',
         required=False, help='alias naming disassembler options')
+    parser.add_argument('-F', '--format', metavar='FLGS', dest='format_flags', action='store', default='',
+        required=False, help='formatting disassembler options')
     parser.add_argument('-C', '--no-color', dest='color', action='store_false', default=True,
         required=False, help='disable color printing')
     # parser.add_argument('-o', '--output', metavar='MJIL', action='store', default=None,
@@ -168,6 +177,7 @@ on|off [-A|--alias] aliasing/shorthand options
         'e': 'explicit_inline_hash',
         's': 'syscall_inline_hash',
         'l': 'int_inline_hash',
+        'h': 'annotate_hex',
         'g': 'implicit_local_groups',
     }
     ALIAS_FLAGNAMES:dict = {
@@ -179,9 +189,14 @@ on|off [-A|--alias] aliasing/shorthand options
         'f': 'functype_aliases',
         'd': 'explicit_dim0',
     }
+    FORMAT_FLAGNAMES:dict = {
+        'a': 'address_labels',
+    }
+
     HASH_FLAGNAME_LEN:int = max(len(n) for n in HASH_FLAGNAMES.values())
     ALIAS_FLAGNAME_LEN:int = max(len(n) for n in ALIAS_FLAGNAMES.values())
-    FLAGNAME_LEN:int = max(HASH_FLAGNAME_LEN, ALIAS_FLAGNAME_LEN)
+    FORMAT_FLAGNAME_LEN:int = max(len(n) for n in FORMAT_FLAGNAMES.values())
+    FLAGNAME_LEN:int = max(HASH_FLAGNAME_LEN, ALIAS_FLAGNAME_LEN, FORMAT_FLAGNAME_LEN)
     
     try:  # try adding research module
         from ._research import _init_parser, _init_args, do_research
@@ -199,7 +214,6 @@ on|off [-A|--alias] aliasing/shorthand options
     options:ILFormat = ILFormat()
 
     ###########################################################################
-    ##FIXME: make options configurable. for now, just change them here :)
 
     options.color  = args.color  # color, disabled by __main__.disassemble_script() when outputting to file
     options.braces = True  # function braces
@@ -209,6 +223,7 @@ on|off [-A|--alias] aliasing/shorthand options
     options.syscall_inline_hash  = True
     options.int_inline_hash      = True   # ldc.i with a known hash value will use inline hash
     options.explicit_inline_hash = False  # always use ${name} over $name
+    options.annotate_hex         = True  # hex annotations when inline hash is used
     options.implicit_local_groups= True  # always exclude empty group name from known local names
 
     options.explicit_varoffset   = False  # exclude -1 offset for non-locals
@@ -219,6 +234,9 @@ on|off [-A|--alias] aliasing/shorthand options
     options.functype_aliases     = False  # i, r, s, iarr... for function signatures
     options.typelist_aliases     = False  # i, r, s, iarr... for type list operands
     options.explicit_dim0        = False  # a useless feature (but it's legal)
+
+    options.address_labels       = True   # print bytecode address offset labels before opcodes
+    options.opcode_padding       = 13     # number of absolute padding added from start of opcode (always adds one space after)
     
     options.group_directive      = None   # removes @GROUP for that matching this setting (DO NOT INCLUDE "@" in NAME)
     # options.group_directive      = "CONSOLE"
@@ -230,10 +248,17 @@ on|off [-A|--alias] aliasing/shorthand options
         if '@' in args.group:
             raise argparse.ArgumentError('--group', f'"@" character cannot be present in name : {args.group!r}')
         options.group_directive = args.group
-        print('{DIM}{CYAN}group opt:{RESET_ALL}'.format(**colors), '{DIM}{GREEN}{!r}{RESET_ALL}'.format(args.group, **colors))
+        print('{DIM}{CYAN}group name:{RESET_ALL}'.format(**colors), '{DIM}{GREEN}{!r}{RESET_ALL}'.format(args.group, **colors))
+
+    if args.opcode_pad is not None:
+        if args.opcode_pad < 0:
+            raise argparse.ArgumentError('--opcode-pad', f'padding less than zero : {args.opcode_pad!r}')
+        options.opcode_padding = args.opcode_pad
+        print('{DIM}{CYAN}opcode pad:{RESET_ALL}'.format(**colors), '{BRIGHT}{WHITE}{!r}{RESET_ALL}'.format(args.opcode_pad, **colors))
     
     CONSUMED_HASH_FLAGS:set = set()
     CONSUMED_ALIAS_FLAGS:set = set()
+    CONSUMED_FORMAT_FLAGS:set = set()
 
     # visual names for flag on/off modes
     ONOFF:dict = {
@@ -250,7 +275,7 @@ on|off [-A|--alias] aliasing/shorthand options
         opt_name = HASH_FLAGNAMES[f.lower()]
         opt_on = f == f.lower()
         setattr(options, opt_name, opt_on)  # lower=True
-        print('{BRIGHT}{YELLOW}hash  opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
+        print('{BRIGHT}{YELLOW}hash   opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
 
     for f in args.alias_flags:
         if f.lower() not in ALIAS_FLAGNAMES:
@@ -261,7 +286,18 @@ on|off [-A|--alias] aliasing/shorthand options
         opt_name = ALIAS_FLAGNAMES[f.lower()]
         opt_on = f == f.lower()
         setattr(options, opt_name, opt_on)  # lower=True
-        print('{BRIGHT}{BLUE}alias opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
+        print('{BRIGHT}{BLUE}alias  opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
+
+    for f in args.format_flags:
+        if f.lower() not in FORMAT_FLAGNAMES:
+            raise argparse.ArgumentError('--format', f'unknown flag {f!r}')
+        if f.lower() in CONSUMED_FORMAT_FLAGS:
+            raise argparse.ArgumentError('--format', f'flag {f!r} already used')
+        CONSUMED_FORMAT_FLAGS.add(f.lower())
+        opt_name = FORMAT_FLAGNAMES[f.lower()]
+        opt_on = f == f.lower()
+        setattr(options, opt_name, opt_on)  # lower=True
+        print('{BRIGHT}{MAGENTA}format opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
 
     # color:bool = args.color
     # infiles:list = args.input

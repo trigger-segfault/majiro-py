@@ -45,8 +45,9 @@ class ILFormat:
         self.int_inline_hash:bool = True  # inline hashes for integer literals
         self.group_directive:str = None  # default group to disassemble with (removes @GROUPNAME when found)
         self.implicit_local_groups:bool = False  # always exclude empty group name from known local names
+        self.annotate_hex:bool     = True  # enables/disables ; $XXXXXXXX annotations when using inline hashes
 
-        # aliasing and operands
+        # aliasing and operands:
         self.modifier_aliases:bool = False  # (variable flags) inc.x, dec.x, x.inc, x.dec
         self.invert_aliases:bool   = False  # (variable flags) -, -, -, -  (NOTE: there are no aliases, added for conformity)
         self.scope_aliases:bool    = False  # (variable flags) persist, save, -, -
@@ -57,7 +58,10 @@ class ILFormat:
         self.explicit_varoffset:bool = False  # always include -1 for non-local var offsets
         
         # space-savers:
-        self.address_len:int = 5
+        self.address_len:int       = 5     # len of XXXXX: addresses before every opcode
+        self.address_labels:bool   = True  # include address labels at all before every opcode
+        self.opcode_padding:int    = 13    # number of EXTRA spaces to pad opcodes with (from the start of the opcode)
+                                           # one mandatory space is always added AFTER this for operands
 
     def set_address_len(self, bytecode_size:int) -> NoReturn:
         self.address_len = max(2, len(f'{bytecode_size:x}'))
@@ -203,38 +207,35 @@ class Instruction:
         colors:dict = options.colors
         sb:str = ''
 
-        address = options.address_fmt(self.offset)
+        if options.address_labels:
+            address = options.address_fmt(self.offset)
+            sb += '{BRIGHT}{BLACK}{0}:{RESET_ALL} '.format(address, **colors)
         if self.opcode.mnemonic == "line":  # 0x83a
-            sb += '{BRIGHT}{BLACK}{1}:{RESET_ALL} {BRIGHT}{BLACK}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, address, **colors)
+            sb += '{BRIGHT}{BLACK}{0.opcode.mnemonic}{RESET_ALL}'.format(self, **colors)
         else:
-            sb += '{BRIGHT}{BLACK}{1}:{RESET_ALL} {BRIGHT}{WHITE}{0.opcode.mnemonic:<13}{RESET_ALL}'.format(self, address, **colors)
+            sb += '{BRIGHT}{WHITE}{0.opcode.mnemonic}{RESET_ALL}'.format(self, **colors)
 
         if not self.opcode.encoding:
-            sb = sb.rstrip()  # trim trailing whitespace normally added to pad operands
             return sb  # no operands, nothing to add
 
-        ops_offset = len(sb)  # for even ~fancier formatting~
+        # padding after opcode (min 1 space, which is not included in padding option count)
+        sb += ' ' + (' ' * max(0, options.opcode_padding - len(self.opcode.mnemonic)))
 
         known_hash_name, known_hash_is_syscall = None, False
         if options.known_hashes:
             known_hash_name, known_hash_is_syscall = self.check_known_hash(options=options)
 
+        operands = []
         for operand in self.opcode.encoding:
-            if operand == '0':
-                # 4 byte address placeholder
-                continue  # don't want the extra space in the operands
-            #NEW: exclude -1 offsets for non-local variables, because that operand
-            #     isn't used. still output erroneous var offsets
-            if operand == 'o' and not options.explicit_varoffset and self.var_offset == -1 and self.flags.scope is not MjoScope.LOCAL:
-                continue  # don't want the extra space in the operands
+            op = None  # if assigned, append to operands at bottom of loop
 
-            sb += ' '
             if operand == 't':
                 # type list
-                sb += '[{!s}]'.format(', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.getname(options.typelist_aliases), **colors) for t in self.type_list))
+                types = ', '.join('{BRIGHT}{CYAN}{}{RESET_ALL}'.format(t.getname(options.typelist_aliases), **colors) for t in self.type_list)
+                op = '[{}]'.format(types)
             elif operand == 's':
                 # string data
-                sb += self.format_string(self.string, options=options)
+                op = self.format_string(self.string, options=options)
             elif operand == 'f':
                 # flags
                 flags = self.flags
@@ -248,7 +249,8 @@ class Instruction:
                 if flags.modifier:
                     keywords.append(flags.modifier.getname(options.modifier_aliases))
 
-                sb += '{BRIGHT}{CYAN}{}{RESET_ALL}'.format(' '.join(k for k in keywords if k), **colors)
+                # push joined flag keywords as one operand, since technically it is only one
+                op = '{BRIGHT}{CYAN}{}{RESET_ALL}'.format(' '.join(keywords), **colors)
             elif operand == 'h':
                 # hash value
                 if self.is_syscall:
@@ -262,18 +264,20 @@ class Instruction:
                     if self.is_syscall:
                         known_hash_name2 = known_hash_name.lstrip('$') # requirement for syscall hash lookup syntax
                     if options.needs_explicit_hash(known_hash_name2):
-                        sb += '{BRIGHT}{CYAN}${{{RESET_ALL}{}{}{RESET_ALL}{BRIGHT}{CYAN}}}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
+                        op = '{BRIGHT}{CYAN}${{{RESET_ALL}{}{}{RESET_ALL}{BRIGHT}{CYAN}}}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                     else:
-                        sb += '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
+                        op = '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                 else:
-                    sb += '${:08x}{RESET_ALL}'.format(self.hash, **colors)
+                    op = '${:08x}{RESET_ALL}'.format(self.hash, **colors)
             elif operand == 'o':
                 # variable offset
-                #NOTE: exclusion of -1 for non-locals handled at top of for loop
-                sb += '{:d}'.format(self.var_offset)
-            # elif operand == '0':
-            #     # 4 byte address placeholder
-            #     pass
+                #NEW: exclude -1 offsets for non-local variables, because that operand
+                #     isn't used. still output erroneous var offsets (aka anything other than -1)
+                if options.explicit_varoffset or self.var_offset != -1 or self.flags.scope is MjoScope.LOCAL:
+                    op = '{:d}'.format(self.var_offset)
+            elif operand == '0':
+                # 4 byte address placeholder
+                pass
             elif operand == 'i':
                 # integer constant
                 # integer literals will sometimes use hashes for usercall function pointers
@@ -291,70 +295,76 @@ class Instruction:
                         if known_hash_is_syscall:
                             known_hash_name2 = known_hash_name.lstrip('$') # requirement for syscall hash lookup syntax
                         if options.needs_explicit_hash(known_hash_name2):
-                            sb += '{BRIGHT}{CYAN}${{{RESET_ALL}{}{}{RESET_ALL}{BRIGHT}{CYAN}}}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
+                            op = '{BRIGHT}{CYAN}${{{RESET_ALL}{}{}{RESET_ALL}{BRIGHT}{CYAN}}}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                         else:
-                            sb += '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
+                            op = '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                     else:
-                        # print as hex for simplicity
-                        sb += '0x{:08x}'.format(unsigned_I(self.int_value))
+                        # print as hex for simplicity (this can also be printed with $XXXXXXXX notation)
+                        op = '0x{:08x}'.format(unsigned_I(self.int_value))
                 else:
-                    sb += '{:d}'.format(signed_i(self.int_value))
+                    op = '{:d}'.format(signed_i(self.int_value))
             elif operand == 'r':
                 # float constant
                 if self.float_value == float('inf'):
-                    sb += '+Inf'
+                    op = '+Inf'
                 elif self.float_value == float('-inf'):
-                    sb += '-Inf'
+                    op = '-Inf'
                 elif math.isnan(self.float_value):
-                    sb += 'NaN'
+                    op = 'NaN'
                 else:
-                    fltstr = '{:g}'.format(self.float_value)  # fixed or exponential
+                    op = '{:g}'.format(self.float_value)  # fixed or exponential
                     try:
-                        int(fltstr, 10)  # test if no decimal or exponent
-                        sb += fltstr + '.0'  # add '.0' for all floats
+                        int(op, 10)  # test if no decimal or exponent
+                        op += '.0'  # append '.0' for all floats that parse to integers
                     except:
-                        sb += fltstr
-                    #sb += '{:g}'.format(self.float_value)  # fixed or exponential
+                        pass  # fine just the way it is
             elif operand == 'a':
                 # argument count
-                sb += '({:d})'.format(self.argument_count)
+                op = '({:d})'.format(self.argument_count)
             elif operand == 'j':
                 # jump offset
                 if self.jump_target is not None:
-                    sb += '{BRIGHT}{MAGENTA}@{}{RESET_ALL}'.format(self.jump_target.name, **colors)
+                    op = '{BRIGHT}{MAGENTA}@{}{RESET_ALL}'.format(self.jump_target.name, **colors)
                 else:
-                    sb += '{BRIGHT}{MAGENTA}@~{:+04x}{RESET_ALL}'.format(self.jump_offset, **colors)
+                    op = '{BRIGHT}{MAGENTA}@~{:+04x}{RESET_ALL}'.format(self.jump_offset, **colors)
             elif operand == 'l':
                 # line number
-                sb += '{BRIGHT}{BLACK}#{:d}{RESET_ALL}'.format(self.line_number, **colors)
+                op = '{BRIGHT}{BLACK}#{:d}{RESET_ALL}'.format(self.line_number, **colors)
             elif operand == 'c':
                 # switch case table
                 if self.switch_targets: # is not None:
-                    sb += ', '.join('{BRIGHT}{MAGENTA}@{}{RESET_ALL}'.format(t.name, **colors) for t in self.switch_targets) # pylint: disable=not-an-iterable
+                    op = ', '.join('{BRIGHT}{MAGENTA}@{}{RESET_ALL}'.format(t.name, **colors) for t in self.switch_targets) # pylint: disable=not-an-iterable
                 else:
-                    sb += ', '.join('{BRIGHT}{MAGENTA}@~{:+04x}{RESET_ALL}'.format(o, **colors) for o in self.switch_cases)
+                    op = ', '.join(', '.join('{BRIGHT}{MAGENTA}@~{:+04x}{RESET_ALL}'.format(o, **colors) for o in self.switch_cases))
             else:
                 raise Exception('Unrecognized encoding specifier: {!r}'.format(operand))
+            
+            # append operand (if defined)
+            if op is not None:
+                operands.append(op)
         
+        if operands: # append space-separated operands
+            sb += ' '.join(operands)
+
         if known_hash_name is None or not options.annotations:
             pass  # no hash name comments
         elif self.is_syscall: # 0x834, 0x835
-            if options.inline_hash and options.syscall_inline_hash:
+            if not options.inline_hash or not options.syscall_inline_hash:
+                # sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
+                sb += '  {BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_hash_name, **colors)
+            elif options.annotate_hex:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{YELLOW}${:08x}{RESET_ALL}'.format(self.hash, **colors)
-            else:
-                sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["YELLOW"]) + len(colors["RESET_ALL"]))
-                sb += '{BRIGHT}{BLACK}; {DIM}{YELLOW}{}{RESET_ALL}'.format(known_hash_name, **colors)
         elif self.is_call: # 0x80f, 0x810
-            if options.inline_hash:
+            if not options.inline_hash:
+                # sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["BLUE"]) + len(colors["RESET_ALL"]))
+                sb += '  {BRIGHT}{BLACK}; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash_name, **colors)
+            elif options.annotate_hex:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{BLUE}${:08x}{RESET_ALL}'.format(self.hash, **colors)
-            else:
-                sb = sb.ljust(ops_offset + 16 + len(colors["BRIGHT"]) + len(colors["BLUE"]) + len(colors["RESET_ALL"]))
-                sb += '{BRIGHT}{BLACK}; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash_name, **colors)
         elif self.is_load or self.is_store:
-            if options.inline_hash:
-                sb += '  {BRIGHT}{BLACK}; {DIM}{RED}${:08x}{RESET_ALL}'.format(self.hash, **colors)
-            else:
+            if not options.inline_hash:
                 sb += '  {BRIGHT}{BLACK}; {DIM}{RED}{}{RESET_ALL}'.format(known_hash_name, **colors)
+            elif options.annotate_hex:
+                sb += '  {BRIGHT}{BLACK}; {DIM}{RED}${:08x}{RESET_ALL}'.format(self.hash, **colors)
         elif self.opcode.mnemonic == "ldc.i": # 0x800
             # check for loading function hashes (which are often passed to )
             if known_hash_is_syscall:
@@ -364,11 +374,14 @@ class Instruction:
             else: #elif self.is_load or self.is_store:
                 hash_color = '{DIM}{RED}'.format(**colors)
 
-            if options.inline_hash and options.int_inline_hash and (not known_hash_is_syscall or options.syscall_inline_hash):
+            ## testing reversal of the conditional branching behemoth below:
+            # def test(a,b,c,d): return (not a or not b or (c and not d)) == (a and b and (not c or d))
+            # [tuple(o) for o in combos if test(*o)]
+            if not options.inline_hash or not options.int_inline_hash or (known_hash_is_syscall and not options.syscall_inline_hash):
+                #sb = sb.ljust(ops_offset + 16)
+                sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
+            elif options.annotate_hex:
                 sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}${:08x}{RESET_ALL}'.format(hash_color, unsigned_I(self.int_value), **colors)
-            else:
-                sb = sb.ljust(ops_offset + 16)
-                sb += '{BRIGHT}{BLACK}; {RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
         return sb
 
     @classmethod
@@ -665,7 +678,7 @@ class BasicBlock(_Block):
         print(self.format_basic_block(options=options), **kwargs)
     def format_basic_block(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
         colors:dict = options.colors
-        return '{BRIGHT}{MAGENTA}{.name!s}:{RESET_ALL}'.format(self, **colors)
+        return '{BRIGHT}{MAGENTA}{.name}:{RESET_ALL}'.format(self, **colors)
 
 class _BlockContainer(_Block):
     """Block, and container for nested instruction blocks
@@ -703,7 +716,6 @@ class Function(_BlockContainer):
 
         # always "func" as, "void" can only be confirmed by all-zero return values
         s = '{BRIGHT}{BLUE}func '.format(**colors)
-        # s = '{BRIGHT}{BLUE}func ${.name_hash:08x}{RESET_ALL}({!s})'.format(self, args, **colors)
 
         known_hash:str = None
         if options.known_hashes:
@@ -719,8 +731,8 @@ class Function(_BlockContainer):
         else:
             s += '${.name_hash:08x}'.format(self)
 
-        args = ', '.join('{BRIGHT}{CYAN}{!s}{RESET_ALL}'.format(t.getname(options.functype_aliases), **colors) for t in self.parameter_types) # pylint: disable=not-an-iterable
-        s += '{RESET_ALL}({!s})'.format(args, **colors)
+        args = ', '.join('{BRIGHT}{CYAN}{}{RESET_ALL}'.format(t.getname(options.functype_aliases), **colors) for t in self.parameter_types) # pylint: disable=not-an-iterable
+        s += '{RESET_ALL}({})'.format(args, **colors)
 
         # "entrypoint" states which function to declare as "main" to the IL assembler
         if self.is_entrypoint:
@@ -730,12 +742,11 @@ class Function(_BlockContainer):
         if options.braces:
             s += ' {'
 
-        #known_hash = known_hashes.USERCALLS.get(self.name_hash, None)
         if known_hash is not None and options.annotations:
-            if options.inline_hash:
-                s += '  {BRIGHT}{BLACK}; {DIM}{BLUE}${.name_hash:08x}{RESET_ALL}'.format(self, **colors)
-            else:
+            if not options.inline_hash:
                 s += '  {BRIGHT}{BLACK}; {DIM}{BLUE}{}{RESET_ALL}'.format(known_hash, **colors)
+            elif options.annotate_hex:
+                s += '  {BRIGHT}{BLACK}; {DIM}{BLUE}${.name_hash:08x}{RESET_ALL}'.format(self, **colors)
     
         return s
     def print_function_close(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:

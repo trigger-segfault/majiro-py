@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from typing import Any, List, NoReturn, Union
 
 
-## FILE HELPERS ##
+#region ## FILE HELPERS ##
 
 class StructIO:
     """IO wrapper with built-in struct packing and unpacking.
@@ -40,14 +40,33 @@ class StructIO:
     def pack(self, fmt:str, *v) -> NoReturn:
         return self._stream.write(struct.pack(fmt, *v))
 
+#endregion
 
-## INT SIGNEDNESS HELPERS ##
+#region ## INT SIGNEDNESS HELPERS ##
+
+def signed_b(num:int) -> int:
+    """Return signed value of unsigned (or signed) 8-bit integer (struct fmt 'b')
+    also performs bounds checking
+    """
+    if num > 0x7f: # greater than SCHAR_MAX
+        return struct.unpack('<b', struct.pack('<B', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<b', struct.pack('<b', num))[0]
+
+def unsigned_B(num:int) -> int:
+    """Return unsigned value of signed (or unsigned) 8-bit integer (struct fmt 'B')
+    also performs bounds checking
+    """
+    if num < 0: # signed
+        return struct.unpack('<B', struct.pack('<b', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<B', struct.pack('<B', num))[0]
 
 def signed_h(num:int) -> int:
     """Return signed value of unsigned (or signed) 16-bit integer (struct fmt 'h')
     also performs bounds checking
     """
-    if num >= 0x8000: # greater than SHRT_MAX
+    if num > 0x7fff: # greater than SHRT_MAX
         return struct.unpack('<h', struct.pack('<H', num))[0]
     else: # lazy limits bounds checking
         return struct.unpack('<h', struct.pack('<h', num))[0]
@@ -56,7 +75,7 @@ def unsigned_H(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 16-bit integer (struct fmt 'H')
     also performs bounds checking
     """
-    if num < 0:
+    if num < 0: # signed
         return struct.unpack('<H', struct.pack('<h', num))[0]
     else: # lazy limits bounds checking
         return struct.unpack('<H', struct.pack('<H', num))[0]
@@ -65,7 +84,7 @@ def signed_i(num:int) -> int:
     """Return signed value of unsigned (or signed) 32-bit integer (struct fmt 'i')
     also performs bounds checking
     """
-    if num >= 0x80000000: # greater than INT_MAX
+    if num > 0x7fffffff: # greater than INT_MAX
         return struct.unpack('<i', struct.pack('<I', num))[0]
     else: # lazy limits bounds checking
         return struct.unpack('<i', struct.pack('<i', num))[0]
@@ -74,13 +93,32 @@ def unsigned_I(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 32-bit integer (struct fmt 'I')
     also performs bounds checking
     """
-    if num < 0:
+    if num < 0: # signed
         return struct.unpack('<I', struct.pack('<i', num))[0]
     else: # lazy limits bounds checking
         return struct.unpack('<I', struct.pack('<I', num))[0]
 
+def signed_q(num:int) -> int:
+    """Return signed value of unsigned (or signed) 64-bit integer (struct fmt 'q')
+    also performs bounds checking
+    """
+    if num > 0x7fffffffffffffff: # greater than LLONG_MAX
+        return struct.unpack('<q', struct.pack('<Q', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<q', struct.pack('<q', num))[0]
 
-## STRING HELPERS ##
+def unsigned_Q(num:int) -> int:
+    """Return unsigned value of signed (or unsigned) 64-bit integer (struct fmt 'Q')
+    also performs bounds checking
+    """
+    if num < 0: # signed
+        return struct.unpack('<Q', struct.pack('<q', num))[0]
+    else: # lazy limits bounds checking
+        return struct.unpack('<Q', struct.pack('<Q', num))[0]
+
+#endregion
+
+#region ## STRING HELPERS ##
 
 def strip_ansi(string:str) -> str:
     r"""Strips all basic terminal ANSI "\x1b[...m" escapes from a string
@@ -171,9 +209,9 @@ def sub_escapes(repl:str, string:str, useless_escapes:bool=False, count:int=0) -
     else:
         return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|.)''', repl, string, count=count)
 
+#endregion
 
-
-## COLOR HELPERS ##
+#region ## COLOR HELPERS ##
 
 # dummy color namespaces for disabled color
 DummyFore = SimpleNamespace(RESET='', BLACK='', BLUE='', CYAN='', GREEN='', MAGENTA='', RED='', WHITE='', YELLOW='', LIGHTBLACK_EX='', LIGHTBLUE_EX='', LIGHTCYAN_EX='', LIGHTGREEN_EX='', LIGHTMAGENTA_EX='', LIGHTRED_EX='', LIGHTWHITE_EX='', LIGHTYELLOW_EX='')
@@ -198,8 +236,9 @@ except ImportError:
 DummyColors = dict(**DummyFore.__dict__, **DummyStyle.__dict__)
 Colors = dict(**Fore.__dict__, **Style.__dict__)
 
+#endregion
 
-## HEXDUMP HELPERS ##
+#region ## HEXDUMP HELPERS ##
 
 _hexdump_span = namedtuple('_hexdump_span', ('start', 'stop', 'text', 'left', 'right'))
 
@@ -275,6 +314,8 @@ def print_hexdump(data:bytes, start:int=None, stop:int=None, *highlights:List[hd
         rowchars = ''.join((CHARMAP[data[i]] if (start<=i<stop) else ' ') for i in range(off,off+16))
 
         print('{BRIGHT}{BLUE}{:08x}:{RESET_ALL}{}   {BRIGHT}{GREEN}{!s}{RESET_ALL}'.format(off, rowbytes, rowchars, **colors))
+
+#endregion
 
 
 del namedtuple, SimpleNamespace, Any, List, NoReturn, Union  # cleanup declaration-only imports

@@ -12,7 +12,7 @@ Converted to Python library by Robert Jordan - 2021
 
 #######################################################################################
 
-import os
+import copy, csv, os
 from ._util import DummyColors, Colors
 from .script import MjoScript, ILFormat
 from .analysis import ControlFlowGraph
@@ -63,8 +63,9 @@ def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DE
             print(' ', end='')
             basic_block.print_basic_block(options=options)
             for instruction in basic_block.instructions:
+                reskey = script.get_resource_key(instruction, options=options)
                 print('  ', end='')
-                instruction.print_instruction(options=options)
+                instruction.print_instruction(options=options, resource_key=reskey)
             if i + 1 < len(function.basic_blocks):
                 print(' ')
         function.print_function_close(options=options)
@@ -80,7 +81,16 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
     options.set_address_len(script.bytecode_size)
     cfg:ControlFlowGraph = analyze_script(script)
 
+    resfile = reswriter = None
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
+      try:
+        if options.resfile_directive is not None:
+            #respath = os.path.join(os.path.split(filename)[0], options.resfile_directive)
+            res_f = open(options._resfile_path or options.resfile_directive, 'wt+', encoding='utf-8')
+            # sigh, no way to force quotes for one line
+            # lineterminator='\n' is required to stop double-line termination caused by default behavior of "\r\n" on Windows
+            reswriter = csv.writer(res_f, quoting=csv.QUOTE_MINIMAL, delimiter=',', quotechar='"', lineterminator='\n')
+            reswriter.writerow(['Key','Value'])
         # include extra indentation formatting for language grammar VSCode extension
         writer.write('/// {}\n'.format(os.path.basename(filename)))
         writer.write(script.format_readmark(options=options) + '\n')
@@ -92,12 +102,22 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
             for i,basic_block in enumerate(function.basic_blocks):
                 writer.write(' ' + basic_block.format_basic_block(options=options) + '\n')
                 for instruction in basic_block.instructions:
-                    writer.write('  ' + instruction.format_instruction(options=options) + '\n')
+                    reskey = script.get_resource_key(instruction, options=options) if reswriter is not None else None
+                    if reskey is not None:
+                        reswriter.writerow([reskey, instruction.string])
+                    writer.write('  ' + instruction.format_instruction(options=options, resource_key=reskey) + '\n')
                 if i + 1 < len(function.basic_blocks):
                     writer.write(' \n')
             writer.write(function.format_function_close(options=options) + '\n')
             # writer.write('\n')
         writer.flush()
+        if resfile is not None:
+            resfile.flush()
+      finally:
+        if resfile is not None:
+            reswriter = None
+            #reswriter.close()
+            resfile.close()
 
 def assemble_script(script:MjoScript, outfilename:str):
     """Write script to .mjo file
@@ -145,6 +165,7 @@ on|off [-A|--alias] aliasing/shorthand options
 on|off [-F|--format] formatting options
 --------------------------------------------
 >a| A  : address_labels     (show bytecode addresses before opcodes)
+>r| R  : explicit_inline_resource (explicit inline resource function %{name})
 """)
     #~~ i|>I  : invert_aliases~~
     parser.add_argument('-p','--print', metavar='MJO', action='append',
@@ -155,6 +176,8 @@ on|off [-F|--format] formatting options
         help='assemble mjil script file/directory to output file/directory')
     # parser.add_argument('input', metavar='MJO', action='store', nargs='+',
     #     help='.mjo script file/directory to read')
+    parser.add_argument('-r', '--resfile', metavar='MJRESFILE', dest='resfile', action='store', default=None,
+        required=False, help='output resfile directive option (\'*\' expands to mjil name, no ext)')
     parser.add_argument('-G', '--group', metavar='NAME', dest='group', action='store', default=None,
         required=False, help='group name directive disassembler option')
     parser.add_argument('-O', '--opcode-pad', metavar='PADDING', dest='opcode_pad', type=int, action='store', default=None,
@@ -191,6 +214,7 @@ on|off [-F|--format] formatting options
     }
     FORMAT_FLAGNAMES:dict = {
         'a': 'address_labels',
+        'r': 'explicit_inline_resource',
     }
 
     HASH_FLAGNAME_LEN:int = max(len(n) for n in HASH_FLAGNAMES.values())
@@ -238,6 +262,8 @@ on|off [-F|--format] formatting options
     options.address_labels       = True   # print bytecode address offset labels before opcodes
     options.opcode_padding       = 13     # number of absolute padding added from start of opcode (always adds one space after)
     
+    options.explicit_inline_resource = True  # always use %{name} over %name
+    options.resfile_directive    = None   # output all `text` opcode string operands to csv resource file
     options.group_directive      = None   # removes @GROUP for that matching this setting (DO NOT INCLUDE "@" in NAME)
     # options.group_directive      = "CONSOLE"
     ###########################################################################
@@ -249,6 +275,13 @@ on|off [-F|--format] formatting options
             raise argparse.ArgumentError('--group', f'"@" character cannot be present in name : {args.group!r}')
         options.group_directive = args.group
         print('{DIM}{CYAN}group name:{RESET_ALL}'.format(**colors), '{DIM}{GREEN}{!r}{RESET_ALL}'.format(args.group, **colors))
+
+    if args.resfile is not None:
+        if not args.resfile:
+            raise argparse.ArgumentError('--resfile', f'resfile name is empty : {args.resfile!r}')
+        options.resfile_directive = args.resfile
+        resfile_fmt = repr(args.resfile).replace('*', '{BRIGHT}{CYAN}*{DIM}{GREEN}'.format(**colors))
+        print('{DIM}{CYAN}rsrc  file:{RESET_ALL}'.format(**colors), '{DIM}{GREEN}{}{RESET_ALL}'.format(resfile_fmt, **colors))
 
     if args.opcode_pad is not None:
         if args.opcode_pad < 0:
@@ -310,8 +343,21 @@ on|off [-F|--format] formatting options
     if research:
         _init_args(args)  # research one-time setup
 
+    base_options = options
+
+    def prepare_options(base_options, filename:str=None, *, color:bool=...):
+        new_options = copy.copy(base_options)
+        if color is not Ellipsis:
+            new_options.color = color
+        if new_options.resfile_directive and filename is not None:
+            new_options.resfile_directive = new_options.resfile_directive.replace('*', os.path.splitext(os.path.basename(filename))[0])
+            new_options._resfile_path = os.path.join(os.path.split(filename)[0], new_options.resfile_directive)
+        return new_options
+
+
     # [--print]  loop through input files/directories
     for infile in (args.print or []):
+        options = prepare_options(base_options, infile)
         if not research:
             print('Printing:', infile)
         if os.path.isdir(infile):  # directory of .mjo files
@@ -336,6 +382,7 @@ on|off [-F|--format] formatting options
 
     # [--disasm]  loop through input files/directories
     for infile,outfile in (args.disasm or []):
+        options = prepare_options(base_options, outfile)
         if not research:
             print('Disassembling:', infile)
         if os.path.isdir(infile):  # directory of .mjo files
@@ -364,6 +411,7 @@ on|off [-F|--format] formatting options
 
     # [--asm]  loop through input files/directories
     for infile,outfile in (args.asm or []):
+        options = prepare_options(base_options, infile)
         if not research:
             print('Assembling:', infile)
         if os.path.isdir(infile):  # directory of .mjil files

@@ -11,7 +11,7 @@ __all__ = ['MjILAssembler']
 
 #######################################################################################
 
-import enum, io, math, re, struct  # math used for isnan()
+import csv, enum, io, math, os, re, struct  # math used for isnan()
 from abc import abstractproperty
 from collections import namedtuple, OrderedDict
 from typing import Any, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union  # for hinting in declarations
@@ -20,7 +20,7 @@ from typing import Match, Pattern  # for regex type hinting
 from enum import auto
 from struct import calcsize
 
-from ._util import StructIO, DummyColors, Colors, signed_i, unsigned_I, doublequote, sub_escapes, strip_ansi, len_ansi, repl_tabs, len_tabs
+from ._util import StructIO, DummyColors, Colors, signed_i, unsigned_I, doublequote, sub_escapes, strip_ansi, len_ansi, repl_tabs, len_tabs, escape_ignorequotes, unescape
 from .flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
 from .opcodes import Opcode
 from . import crypt
@@ -84,8 +84,7 @@ class TokenKind(enum.IntEnum):
     # HASH:
     LITERAL_HASH   = auto()
     INLINE_HASH    = auto()
-    #TODO: RESOURCE:
-    #RESOURCE       = auto()
+    INLINE_RESOURCE= auto()
     # PUNCTUATION:
     PUNCTUATION    = auto()  # nothing special, check by character
 
@@ -104,7 +103,7 @@ class TokenType(enum.IntEnum):
     FLOAT        = auto() # [+-].0, [+-]0.0, 
     INT          = auto() # [+-]0, [+-]0x0  (all ranges outside )
     HASH         = auto() # $XXXXXXXX, $_hashname%, ${anotherhashname}
-    RESOURCE     = auto() # unimplemented
+    RESOURCE     = auto() # %L543, %{anythinggoes}
     PUNCTUATION  = auto() # ()[]{}, etc. for function/array syntax etc.
 
 
@@ -149,6 +148,7 @@ DIRECTIVE_KEYWORDS:Dict[str,str] = OrderedDict({
     'readmark':   'readmark',
     'entrypoint': 'entrypoint',
     'group':      'group',
+    'resfile':    'resfile',
 })
 
 DIRECTIVE_ARG_KEYWORDS:Dict[str,bool] = OrderedDict({
@@ -206,7 +206,7 @@ RE_LITERAL_FLOAT = re.compile(r"^(([+-]?[0-9]*\.[0-9]+)|([+-]?\d*\.\d+[Ee][+-]?\
 # value, (prefixed hex | dec)
 RE_LITERAL_INT = re.compile(r"^((?P<hex>[+-]?0[Xx][0-9A-Fa-f]+)|(?P<dec>[+-]?[0-9]+))\b(?!\.)")
 
-# no-$-prefix hash, (hex | implicit name | explicit name)
+# no-$-prefix hash, (hex | implicit name | explicit name w/o {})
 RE_ANY_HASH = re.compile(r'^\$(([0-9A-Fa-f]{8})|([_%@#$0-9A-Za-z]+)|\{([^}]+)\})(?=$|\s|[\/;(){}\[\],])')
 # RE_LITERAL_HASH = re.compile(r'^\$(?P<value>[0-9A-Fa-f]{8})\b')
 # # name
@@ -214,8 +214,8 @@ RE_ANY_HASH = re.compile(r'^\$(([0-9A-Fa-f]{8})|([_%@#$0-9A-Za-z]+)|\{([^}]+)\})
 # # name
 # RE_INLINE_HASH_EXPLICIT = re.compile(r'^\$\{(?P<name>(?:[^}]+)\}(?=$|\s|[\/;(){}\[\],])')
 
-#TODO:
-#RE_RESOURCE = re.compile(r"^")
+# no-%-prefix hash, (implicit name | explicit name w/o {})
+RE_RESOURCE = re.compile(r'^%(([_%@#$0-9A-Za-z]+)|\{([^}]+)\})(?=$|\s|[\/;(){}\[\],])')
 
 RE_PUNCTUATION = re.compile(r"^[(){}\[\],]")
 
@@ -324,9 +324,13 @@ def parse_hash(token:ParseToken) -> NoReturn:
 
 def parse_resource(token:ParseToken) -> NoReturn:
     ## pattern: RE_RESOURCE
-    token.value = token.text
-    token.kind = None #TokenKind.RESOURCE
-    # pass  # dummy method, unimplemented
+    m:Match = token.match
+    if m[2]: # inline implicit
+        token.value = m[2]
+        token.kind = TokenKind.INLINE_RESOURCE
+    else: #elif m[3]: # inline explicit
+        token.value = m[3]
+        token.kind = TokenKind.INLINE_RESOURCE
 
 def parse_punctuation(token:ParseToken) -> NoReturn:
     # pattern: RE_PUNCTUATION
@@ -359,10 +363,8 @@ MATCHING:Dict[TokenType, Tuple[Pattern,Callable]] = OrderedDict({
     TokenType.STRING:      (RE_LITERAL_STRING, parse_string),   # [""] surrounds
     TokenType.INT:         (RE_LITERAL_INT, parse_int),         # [^.] postfix
     TokenType.HASH:        (RE_ANY_HASH, parse_hash),           # [$] prefix
+    TokenType.RESOURCE:    (RE_RESOURCE, parse_resource),       # [%] prefix
     TokenType.PUNCTUATION: (RE_PUNCTUATION, parse_punctuation), # [(){}[],]
-
-    # unimplemented:
-    #TokenType.RESOURCE:    (RE_RESOURCE, parse_resource),       # [%] prefix
 })
 
 # MATCHING:Dict[TokenType, Tuple[Pattern,Callable]] = OrderedDict({
@@ -379,7 +381,7 @@ MATCHING:Dict[TokenType, Tuple[Pattern,Callable]] = OrderedDict({
 #     TokenType.PUNCTUATION: RE_PUNCTUATION,    # [(){}[],]
 
 #     # unimplemented:
-#     #TokenType.RESOURCE: RE_RESOURCE,          # [%] prefix
+#     #TokenType.RESOURCE:    RE_RESOURCE,       # [%] prefix
 # })
 
 #endregion
@@ -585,6 +587,8 @@ class MjILAssembler:
         # IL script:
         self.script:MjoScript = MjoScript(MjoScript.SIGNATURE_DECRYPTED, None, 0, None, None, [], [])
         self.group_directive:Optional[str] = None
+        self.resfile_directive:Optional[str] = None
+        self.resource_dict:dict = None
         self.readmark_directive:Optional[bool] = None
         self.max_line:int = 0 # used for readmark enable
 
@@ -700,8 +704,47 @@ class MjILAssembler:
             #FIXME: Current syscall database always contains $ prefixes
             syscall = known_hashes.SYSCALLS_LOOKUP.get(f'${name}', None)
             if syscall is None:
-                raise Exception(f'Inline hash syscall ${name!r} could not be identied')
+                raise Exception(f'Inline hash syscall {name!s} could not be identied')
             return syscall
+    #
+    def inline_resource(self, name:str) -> str:
+        if self.resfile_directive is None:
+            raise Exception(f'Missing resfile directive, cannot lookup resource {name!r}')
+        value = self.resource_dict.get(name, None)
+        if value is None:
+            raise Exception(f'Inline resource {name!s} could not be found')
+        return value
+    #
+    def load_resources(self, resfile:str, *, delimiter:str=',', strict:bool=True, escaped:bool=False) -> dict:#, keyname:Union[str,int]='Key', valname:Union[str,int]='Value') -> dict:
+        resources:dict = {}
+        respath:str = os.path.join(os.path.split(self.filename)[0], resfile)
+        # keycol = keyname if isinstance(keyname, int) else None
+        # valcol = valname if isinstance(valname, int) else None
+        with open(respath, 'rt', encoding='utf-8') as f:
+            print('Resources:')
+            reader = csv.reader(f, delimiter=delimiter or ',')
+            first = True
+            for i,row in enumerate(reader):
+                if not row: #TODO: is this possible?
+                    continue
+                if first:
+                    keyname_, valname_ = row
+                    print(keyname_, valname_)
+                    first = False
+                    if strict and tuple(r.lower() for r in row) != ('key', 'value'):
+                        raise Exception(f'Invalid resource file {resfile!r}. Expected first row to have column names [\'Key\',\'Value\'], not {row!r}')
+                    continue
+                if not strict and len(row) == 1:
+                    key, value = row[0], ''
+                else:
+                    key, value = row
+                    if escaped:
+                        value = unescape(value, not strict)
+                if strict and key in resources:
+                    raise Exception(f'Resource file {resfile!r} defines duplicate key {key!r} on line {(i+1)}')
+                print(f'[{key!r}] {escape_ignorequotes(value)}')
+                resources[key] = value
+        return resources
     #
     #endregion
     #
@@ -948,7 +991,7 @@ class MjILAssembler:
         if token.type is TokenType.EOL:
             return
         if token.kind is TokenKind.DIRECTIVE:
-            if token.value in ('readmark', 'group'):
+            if token.value in ('readmark', 'group', 'resfile'):
                 directive = token
                 self.require_ws(directive)
                 token = self.next_token()
@@ -957,16 +1000,27 @@ class MjILAssembler:
                         if token.value is not None:
                             raise Exception(f'invalid argument {token.text!r} for {directive.value} directive')
                         self.group_directive = token.value
+                    elif directive.value == 'resfile':
+                        if token.value is not None:
+                            raise Exception(f'invalid argument {token.text!r} for {directive.value} directive')
+                        self.resfile_directive = token.value
+                        self.resource_dict = None #TODO: unload this?
                     else:
                         if token.value is None:
                             raise Exception(f'invalid argument {token.text!r} for {directive.value} directive')
                         if self.readmark_directive is not None:
                             raise Exception(f'readmark directive already previously defined as {self.readmark_directive!r}')
                         self.readmark_directive = token.value
-                elif token.kind is TokenKind.LITERAL_STRING and directive.value == 'group':
-                    if '@' in token.value:
-                        raise Exception(f'group directive cannot contain \'@\' character')
-                    self.group_directive = token.value
+                elif token.kind is TokenKind.LITERAL_STRING and directive.value in ('group', 'resfile'):
+                    if directive.value == 'group':
+                        if '@' in token.value:
+                            raise Exception(f'group directive cannot contain \'@\' character')
+                        self.group_directive = token.value
+                    else: #elif directive.value == 'resfile':
+                        if not token.value:
+                            raise Exception(f'empty resfile directive name')
+                        self.resource_dict = self.load_resources(token.value, strict=True)
+                        self.resfile_directive = token.value
                 else:
                     raise Exception(f'unexpected token {token!r} for {directive.value} directive')
                 self.require_eol(directive)
@@ -1084,9 +1138,13 @@ class MjILAssembler:
                 # string data
                 # self.require_ws(last_token)
                 # token = self.next_token()
-                if token.type is not TokenType.STRING:
+                if token.type is TokenType.RESOURCE:
+                    #NOTE: Currently inline resource lookup function is only use of resource
+                    instr.string = self.inline_resource(token.value)
+                elif token.type is TokenType.STRING:
+                    instr.string = token.value
+                else:
                     raise Exception(f'expected string operand, not token {token!r}')
-                instr.string = token.value
             elif operand == 'f':
                 # flags
                 invert:MjoInvert = None

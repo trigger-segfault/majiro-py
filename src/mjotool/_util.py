@@ -14,7 +14,7 @@ __all__ = ['StructIO', 'Colors', 'DummyColors', 'hd_span', 'print_hexdump']
 import io, re, struct
 from collections import namedtuple
 from types import SimpleNamespace
-from typing import Any, List, NoReturn, Union
+from typing import Any, List, Match, NoReturn, Union
 
 
 #region ## FILE HELPERS ##
@@ -209,6 +209,65 @@ def sub_escapes(repl:str, string:str, useless_escapes:bool=False, count:int=0) -
     else:
         return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|.)''', repl, string, count=count)
 
+LITERAL_ESCAPES:dict = {
+    '\\': '\\',
+    '\'': '\'',
+    '\"': '\"',
+    'a': '\a',
+    'b': '\b',
+    'f': '\f',
+    'n': '\n',
+    'r': '\r',
+    't': '\t',
+    'v': '\v',
+}
+
+def escape_ignorequotes(string:str) -> str:
+    return repr(string)[1:-1].replace('\\\'', '\'')
+
+def unescape(string:str, useless_escapes:bool=False) -> str:
+    r"""Unescape for all (Python) string escapes
+
+    ESCAPES: \xFF, \uFFFF, \UFFFFFFFF, \777{1,3}, \\, \', \", \a, \b, \f, \n, \r, \t, \v
+
+    useless_escapes will match any character pattern \.
+    """
+    # \xXX, \uXXXX, \UXXXXXXXX, \ooo{1,3}, \\, \', \", \a, \b, \f, \n, \r, \t, \v
+    # match no '\', ( hex with prefix char | octal | literal | invalid )
+    PATTERN = r'''\\((x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})|([0-7]{1,3})|([\\\'\"abfnrtv])|(.|$))'''
+    
+    parts = []
+    last_end = 0
+    for m in re.finditer(PATTERN, string):
+        if m.start() != last_end:
+            parts.append(string[last_end:m.start()])
+        if m[2]: # hex: [xuU](\h+)
+            if m[2][0] == 'U':
+                raise ValueError(f'UTF-32 escape {m[0]!r} is not supported by Python')
+            c = chr(int(m[2][1:], 16))
+        elif m[3]:
+            c = chr(int(m[3], 8))
+        elif m[4]:
+            c = LITERAL_ESCAPES[m[4]]
+        elif m[5] is not None: # match could be empty
+            if not useless_escapes:
+                raise ValueError(f'Invalid escape {m[0]!r}')
+            c = m[5] # treat as literal (same goes for EOL, just "")
+        parts.append(c)
+        last_end = m.end()
+    
+    if last_end != 0:
+        if last_end < len(string):
+            parts.append(string[last_end:])
+        return ''.join(parts)
+    return string
+    
+    # [s[:m.start()] + r + s[m.end():] for m in re.finditer(p,s)]
+    # if not useless_escapes:
+    #     return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|[\\\'\"abfnrtv])''', repl, string, count=count)
+    # else:
+    #     return re.sub(r'''\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[0-7]{1,3}|.|$)''', repl, string, count=count)
+
 #endregion
 
 #region ## COLOR HELPERS ##
@@ -318,4 +377,4 @@ def print_hexdump(data:bytes, start:int=None, stop:int=None, *highlights:List[hd
 #endregion
 
 
-del namedtuple, SimpleNamespace, Any, List, NoReturn, Union  # cleanup declaration-only imports
+del namedtuple, SimpleNamespace, Any, List, Match, NoReturn, Union  # cleanup declaration-only imports

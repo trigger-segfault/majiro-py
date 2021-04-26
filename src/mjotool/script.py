@@ -44,6 +44,9 @@ class ILFormat:
                                                # this will lose backwards compatibility as known hash names are updated
         self.int_inline_hash:bool = True  # inline hashes for integer literals
         self.group_directive:str = None  # default group to disassemble with (removes @GROUPNAME when found)
+        self.resfile_directive:str = None  # output all `text` opcode lines to a csv file with the given name
+        self._resfile_path:str = None  # defined by __main__ for quick access
+        self.explicit_inline_resource:bool = False  # %{hashname}  [requires: resfile_directive="anything"]
         self.implicit_local_groups:bool = False  # always exclude empty group name from known local names
         self.annotate_hex:bool     = True  # enables/disables ; $XXXXXXXX annotations when using inline hashes
 
@@ -201,9 +204,9 @@ class Instruction:
 
         return (self.check_hash_group(name, syscall, options=options), syscall)
 
-    def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
-        print(self.format_instruction(options=options), **kwargs)
-    def format_instruction(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
+    def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, **kwargs) -> NoReturn:
+        print(self.format_instruction(options=options), resource_key=resource_key, **kwargs)
+    def format_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None) -> str:
         colors:dict = options.colors
         sb:str = ''
 
@@ -235,7 +238,12 @@ class Instruction:
                 op = '[{}]'.format(types)
             elif operand == 's':
                 # string data
-                op = self.format_string(self.string, options=options)
+                if resource_key is None:
+                    op = self.format_string(self.string, options=options)
+                elif options.explicit_inline_resource:
+                    op = '{BRIGHT}{CYAN}%{{{RESET_ALL}{}{BRIGHT}{CYAN}}}{RESET_ALL}'.format(resource_key, **colors)
+                else:
+                    op = '{BRIGHT}{CYAN}%{RESET_ALL}{}'.format(resource_key, **colors)
             elif operand == 'f':
                 # flags
                 flags = self.flags
@@ -507,6 +515,22 @@ class MjoScript:
         self.functions:List[FunctionEntry] = functions
         self.instructions:List[Instruction] = instructions
 
+    def get_resource_key(self, instruction:Instruction, *, options:ILFormat=ILFormat.DEFAULT) -> str:
+        if options.resfile_directive and instruction.opcode.mnemonic == "text": # 0x840
+            # count = 0
+            number = 0
+            for instr in self.instructions:
+                if instr.opcode.mnemonic == "text": # 0x840
+                    # count += 1
+                    number += 1
+                    if instr.offset == instruction.offset:
+                        # number = count
+                        # break
+                        return f'L{number}' # number will be 1-indexed
+            # return f'L{number}'
+        return None
+        # index = self.instruction_index_from_offset(instruction.offset)
+        # number = len([1 for i in range(index) if self.instructions[i].opcode.mnemonic == "text"]) # 0x840
     @property
     def is_readmark(self) -> bool:
         # preprocessor "#use_readflg on" setting, we need to export this with IL
@@ -615,6 +639,9 @@ class MjoScript:
             s += '{DIM}{YELLOW}group{RESET_ALL} {BRIGHT}{RED}none{RESET_ALL}'.format(**colors)
         else:
             s += '{DIM}{YELLOW}group{RESET_ALL} {}'.format(Instruction.format_string(options.group_directive, options=options), **colors)
+        if options.resfile_directive is not None:
+            s += '\n'
+            s += '{DIM}{YELLOW}resfile{RESET_ALL} {}'.format(Instruction.format_string(options.resfile_directive, options=options), **colors)
         return s
 
 

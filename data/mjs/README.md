@@ -12,6 +12,7 @@ These files also made it possible to identify how name hashes are formatted. All
 * `console.mjs.old` (the newer of the two "old" files)
 * `console.mjs.old2` (the older of the two "old" files, contains more code examples, but aligns left with the disassembled `console.mjo`)
 * `console.mjil` (disassembled `console.mjo`. see [List of Majiro IL instructions](https://github.com/AtomCrafty/MajiroTools/wiki/List-of-Majiro-IL-instructions) for an explanation of the opcodes, most follow CIL instructions' naming patterns)
+* `new_order.txt.t` (probably notes written by a dev while making changes in other scripts. original name: `新命令？.txt.t`)
 
 **Important:** `console.mjs.old*` scripts have had their text encoding changed to UTF-8.
 

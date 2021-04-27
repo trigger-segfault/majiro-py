@@ -75,8 +75,11 @@
       "*.mjs.old": "javascript",
       "*.mjs.old2": "javascript",
       "*.mjh.bak": "javascript",
-      "*.mjil": "majiro-mjil"
+      "*.mjil": "majiro-mjil",
+      "*.mjres": "csv"
     },
+
+    "csv-preview.formatValues": "never",
 
     // VSIcons extension
     "vsicons.associations.files": [

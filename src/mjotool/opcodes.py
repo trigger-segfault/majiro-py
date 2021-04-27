@@ -210,7 +210,7 @@ define_assignment_operator(0x258, "stp.xor", "^=",  MjoTypeMask.INT, True)
 define_assignment_operator(0x260, "stp.or",  "|=",  MjoTypeMask.INT, True)
 
 # array assignment operators #
-define_array_assignment_operator(0x270, "stelem",     "=",   MjoTypeMask.ALL, False)
+define_array_assignment_operator(0x270, "stelem",     "=",   MjoTypeMask.PRIMITIVE, False)
 define_array_assignment_operator(0x278, "stelem.mul", "*=",  MjoTypeMask.NUMERIC, False)
 define_array_assignment_operator(0x280, "stelem.div", "/=",  MjoTypeMask.NUMERIC, False)
 define_array_assignment_operator(0x288, "stelem.rem", "%=",  MjoTypeMask.INT, False, "stelem.mod")
@@ -222,7 +222,7 @@ define_array_assignment_operator(0x2b0, "stelem.and", "&=",  MjoTypeMask.INT, Fa
 define_array_assignment_operator(0x2b8, "stelem.xor", "^=",  MjoTypeMask.INT, False)
 define_array_assignment_operator(0x2c0, "stelem.or",  "|=",  MjoTypeMask.INT, False)
 
-define_array_assignment_operator(0x2d0, "stelemp",     "=",   MjoTypeMask.ALL, True)
+define_array_assignment_operator(0x2d0, "stelemp",     "=",   MjoTypeMask.PRIMITIVE, True)
 define_array_assignment_operator(0x2d8, "stelemp.mul", "*=",  MjoTypeMask.NUMERIC, True)
 define_array_assignment_operator(0x2e0, "stelemp.div", "/=",  MjoTypeMask.NUMERIC, True)
 define_array_assignment_operator(0x2e8, "stelemp.rem", "%=",  MjoTypeMask.INT, True, "stelemp.mod")

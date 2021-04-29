@@ -205,7 +205,7 @@ class Instruction:
         return (self.check_hash_group(name, syscall, options=options), syscall)
 
     def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, **kwargs) -> NoReturn:
-        print(self.format_instruction(options=options), resource_key=resource_key, **kwargs)
+        print(self.format_instruction(options=options, resource_key=resource_key), **kwargs)
     def format_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None) -> str:
         colors:dict = options.colors
         sb:str = ''

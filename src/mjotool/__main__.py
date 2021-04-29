@@ -85,7 +85,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
       try:
         if options.resfile_directive is not None:
-            #respath = os.path.join(os.path.split(filename)[0], options.resfile_directive)
+            #respath = os.path.join(os.path.dirname(filename), options.resfile_directive)
             res_f = open(options._resfile_path or options.resfile_directive, 'wt+', encoding='utf-8')
             # sigh, no way to force quotes for one line
             # lineterminator='\n' is required to stop double-line termination caused by default behavior of "\r\n" on Windows
@@ -168,14 +168,24 @@ on|off [-F|--format] formatting options
 >r| R  : explicit_inline_resource (explicit inline resource function %{name})
 """)
     #~~ i|>I  : invert_aliases~~
+
+    class NArgs1or2AppendAction(argparse._AppendAction):
+        def __call__(self, parser, args, values, option_string=None):
+            #source: <https://stackoverflow.com/a/4195302/7517185>
+            if not (1 <= len(values) <= 2):
+                raise argparse.ArgumentError(self, 'requires between 1 and 2 arguments')
+            if len(values) == 1:
+                values.append(None)
+                # values = [values[0], values[0]]
+            super().__call__(parser, args, values, option_string)
+
     parser.add_argument('-p','--print', metavar='MJO', action='append',
         help='print mjo script file/directory to the console')
-    parser.add_argument('-d','--disasm', metavar=('MJO','MJIL'), action='append', nargs=2,
+    parser.add_argument('-d','--disasm', metavar=('MJO','MJIL'), nargs='+', action=NArgs1or2AppendAction,
         help='disassemble mjo script file/directory to output file/directory')
-    parser.add_argument('-a','--asm', metavar=('MJIL','MJO'), action='append', nargs=2,
+    parser.add_argument('-a','--asm', metavar=('MJIL','MJO'), nargs='+', action=NArgs1or2AppendAction,
         help='assemble mjil script file/directory to output file/directory')
-    # parser.add_argument('input', metavar='MJO', action='store', nargs='+',
-    #     help='.mjo script file/directory to read')
+
     parser.add_argument('-r', '--resfile', metavar='MJRESFILE', dest='resfile', action='store', default=None,
         required=False, help='output resfile directive option (\'*\' expands to mjil name, no ext)')
     parser.add_argument('-G', '--group', metavar='NAME', dest='group', action='store', default=None,
@@ -190,8 +200,6 @@ on|off [-F|--format] formatting options
         required=False, help='formatting disassembler options')
     parser.add_argument('-C', '--no-color', dest='color', action='store_false', default=True,
         required=False, help='disable color printing')
-    # parser.add_argument('-o', '--output', metavar='MJIL', action='store', default=None,
-    #     required=False, help='write to output file/directory instead of console')
 
     HASH_FLAGNAMES:dict = {
         'a': 'annotations',
@@ -273,6 +281,8 @@ on|off [-F|--format] formatting options
     if args.group is not None:
         if '@' in args.group:
             raise argparse.ArgumentError('--group', f'"@" character cannot be present in name : {args.group!r}')
+        if args.group == 'GROUP':  # special warning just for me :)
+            print('{DIM}{YELLOW}[WARNING]{RESET_ALL} {BRIGHT}{RED}specified group name {DIM}{GREEN}{!r}{BRIGHT}{RED}, did you mean {DIM}{GREEN}{!r}{BRIGHT}{RED}?{RESET_ALL}'.format(args.group, 'GLOBAL', **colors))
         options.group_directive = args.group
         print('{DIM}{CYAN}group name:{RESET_ALL}'.format(**colors), '{DIM}{GREEN}{!r}{RESET_ALL}'.format(args.group, **colors))
 
@@ -332,12 +342,6 @@ on|off [-F|--format] formatting options
         setattr(options, opt_name, opt_on)  # lower=True
         print('{BRIGHT}{MAGENTA}format opt:{RESET_ALL}'.format(**colors), opt_name.ljust(FLAGNAME_LEN), '=', ONOFF[opt_on])
 
-    # color:bool = args.color
-    # infiles:list = args.input
-    # outfile:str  = args.output
-
-    # if outfile is not None and len(infiles) > 1:
-    #     raise Exception('--output option only supports one input file/directory')
 
     research:bool = getattr(args, 'research', False)
     if research:
@@ -351,7 +355,7 @@ on|off [-F|--format] formatting options
             new_options.color = color
         if new_options.resfile_directive and filename is not None:
             new_options.resfile_directive = new_options.resfile_directive.replace('*', os.path.splitext(os.path.basename(filename))[0])
-            new_options._resfile_path = os.path.join(os.path.split(filename)[0], new_options.resfile_directive)
+            new_options._resfile_path = os.path.join(os.path.dirname(filename), new_options.resfile_directive)
         return new_options
 
 
@@ -382,105 +386,89 @@ on|off [-F|--format] formatting options
 
     # [--disasm]  loop through input files/directories
     for infile,outfile in (args.disasm or []):
-        options = prepare_options(base_options, outfile)
         if not research:
             print('Disassembling:', infile)
         if os.path.isdir(infile):  # directory of .mjo files
-            if outfile is not None:
-                if os.path.isfile(outfile):
-                    raise Exception('Cannot use output "{!s}" because it is not a directory'.format(outfile))
-                elif not os.path.exists(outfile):
-                    raise Exception('Output directory "{!s}" does not exist'.format(outfile))
+            if outfile is None:
+                outfile = infile
+            elif os.path.isfile(outfile):
+                raise Exception('Cannot use output "{!s}" because it is not a directory'.format(outfile))
+            elif not os.path.exists(outfile):
+                raise Exception('Output directory "{!s}" does not exist'.format(outfile))
+
+            last_name = ''
             for name in os.listdir(infile):
+                options = prepare_options(base_options, name)
+
                 path = os.path.join(infile, name)
                 if not os.path.isfile(path) or not os.path.splitext(path)[1].lower() == '.mjo':
                     continue
+                print('Disassembling:', name.ljust(len(last_name)*2), end='\r')  #HACK: *2 to handle double-width CJK
+                last_name = name
 
+                outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjil')
                 script = read_script(path)
-                outpath = os.path.join(infile, os.path.splitext(name)[0] + '.mjil')
                 disassemble_script(path, script, outpath, options=options)
+            print('Done'.ljust(len(f'Disassembling: ') + len(last_name)*2))  #HACK: *2 to handle double-width CJK
         else:  # single file
-            script = read_script(infile)
+            options = prepare_options(base_options, outfile)
+
             outpath = outfile
-            if os.path.isdir(outfile):  # write to outfile/infilename.mjil
+            if outfile is None:
+                if os.path.splitext(infile)[1].lower() == '.mjil':  # avoid overwriting input file by accident
+                    raise Exception(f'--disasm file {infile!r} has \'.mjil\' extension, with no output file passed')
+                outpath = os.path.splitext(infile)[0] + '.mjil'
+            elif os.path.isdir(outfile):  # write to outfile/infilename.mjil
                 name = os.path.basename(infile)
                 outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjil')
+            script = read_script(infile)
             disassemble_script(infile, script, outpath, options=options)
         if not research:
             print()
 
     # [--asm]  loop through input files/directories
     for infile,outfile in (args.asm or []):
-        options = prepare_options(base_options, infile)
         if not research:
             print('Assembling:', infile)
         if os.path.isdir(infile):  # directory of .mjil files
-            if outfile is not None:
-                if os.path.isfile(outfile):
-                    raise Exception('Cannot use output "{!s}" because it is not a directory'.format(outfile))
-                elif not os.path.exists(outfile):
-                    raise Exception('Output directory "{!s}" does not exist'.format(outfile))
+            if outfile is None:
+                outfile = infile
+            elif os.path.isfile(outfile):
+                raise Exception('Cannot use output "{!s}" because it is not a directory'.format(outfile))
+            elif not os.path.exists(outfile):
+                raise Exception('Output directory "{!s}" does not exist'.format(outfile))
+
+            last_name = ''
             for name in os.listdir(infile):
+                options = prepare_options(base_options, name)
+
                 path = os.path.join(infile, name)
                 if not os.path.isfile(path) or not os.path.splitext(path)[1].lower() == '.mjil':
                     continue
+                print('Assembling:', name.ljust(len(last_name)*2), end='\r')  #HACK: *2 to handle double-width CJK
+                last_name = name
                 
+                outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjo')
                 assembler = parse_script(path)
                 assembler.read()
-                outpath = os.path.join(infile, os.path.splitext(name)[0] + '.mjo')
                 assemble_script(assembler.script, outpath)
+            print('Done'.ljust(len('Assembling: ') + len(last_name)*2))  #HACK: *2 to handle double-width CJK
         else:  # single file
-            assembler = parse_script(infile)
-            assembler.read()
+            options = prepare_options(base_options, infile)
+
             outpath = outfile
-            if os.path.isdir(outfile):  # write to outfile/infilename.mjil
+            if outfile is None:
+                if os.path.splitext(infile)[1].lower() == '.mjo':  # avoid overwriting input file by accident
+                    raise Exception(f'--asm file {infile!r} has \'.mjo\' extension, with no output file passed')
+                outpath = os.path.splitext(infile)[0] + '.mjo'
+            elif os.path.isdir(outfile):  # write to outfile/infilename.mjil
                 name = os.path.basename(infile)
                 outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjo')
+            assembler = parse_script(infile)
+            assembler.read()
             assemble_script(assembler.script, outpath)
         if not research:
             print()
-
-    # # loop through input files/directories
-    # for infile in infiles:
-    #     if not research:
-    #         print(infile)
-
-    #     if os.path.isdir(infile):  # directory of .mjo files
-    #         if outfile is not None:
-    #             if os.path.isfile(outfile):
-    #                 raise Exception('Cannot use output "{!s}" because it is not a directory'.format(outfile))
-    #             elif not os.path.exists(outfile):
-    #                 raise Exception('Output directory "{!s}" does not exist'.format(outfile))
-    #         for name in os.listdir(infile):
-    #             path = os.path.join(infile, name)
-    #             if not os.path.isfile(path) or not os.path.splitext(path)[1].lower() == '.mjo':
-    #                 continue
-                
-    #             if research:
-    #                 do_research(args, path, options=options)
-    #             else:
-    #                 script = read_script(path)
-    #                 if outfile is not None:
-    #                     outpath = os.path.join(infile, os.path.splitext(name)[0] + '.mjil')
-    #                     disassemble_script(path, script, outpath, options=options)
-    #                 else:
-    #                     print_script(path, script, options=options)
-    #     else:  # single file
-    #         if research:
-    #             do_research(args, infile, options=options)
-    #         else:
-    #             script = read_script(infile)
-    #             if outfile is not None:
-    #                 outpath = outfile
-    #                 if os.path.isdir(outfile):  # write to outfile/infilename.mjil
-    #                     name = os.path.basename(infile)
-    #                     outpath = os.path.join(outfile, os.path.splitext(name)[0] + '.mjil')
-    #                 disassemble_script(infile, script, outpath, options=options)
-    #             else:
-    #                 print_script(infile, script, options=options)
-
-    #     if not research:
-    #         print()
 
     return 0
 

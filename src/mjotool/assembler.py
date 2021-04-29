@@ -717,7 +717,7 @@ class MjILAssembler:
     #
     def load_resources(self, resfile:str, *, delimiter:str=',', strict:bool=True, escaped:bool=False) -> dict:#, keyname:Union[str,int]='Key', valname:Union[str,int]='Value') -> dict:
         resources:dict = {}
-        respath:str = os.path.join(os.path.split(self.filename)[0], resfile)
+        respath:str = os.path.join(os.path.dirname(self.filename), resfile)
         # keycol = keyname if isinstance(keyname, int) else None
         # valcol = valname if isinstance(valname, int) else None
         with open(respath, 'rt', encoding='utf-8') as f:

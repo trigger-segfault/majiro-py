@@ -130,7 +130,7 @@ def hash64(text:StrBytes, init:int=0) -> int:
 
 # inverse CRC-32 hash accumulator when N postfix bytes and CRC-32 result are known
 def invhash32(text:StrBytes, init:int) -> int:
-    """inverse_hash32(b'@HELLO', hash32(b'$rgb@HELLO')) -> hash32(b'$rgb')
+    """invhash32(b'@HELLO', hash32(b'$rgb@HELLO')) -> hash32(b'$rgb')
 
     inverse CRC-32 operation, this can be used to find an original accumulator at (end-N) if N postfix bytes are known.
     """

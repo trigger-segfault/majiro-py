@@ -40,9 +40,9 @@
 |`ne !=`|`160`|`161`|`162`|`163`|`164`|`165`|
 |`xor  ^`|`168`|-|-|-|-|-|
 |`andl &&`|`170`|-|-|-|-|-|
-|`orl ||`|`178`|-|-|-|-|-|
+|`orl \|\|`|`178`|-|-|-|-|-|
 |`and &`|`180`|-|-|-|-|-|
-|`or |`|`188`|-|-|-|-|-|
+|`or \|`|`188`|-|-|-|-|-|
 |`notl !`|`190`| ~~`191`~~ |-|-|-|-|
 |`not ~`|`198`|-|-|-|-|-|
 |`neg -`|`1a0`|`1a1`|-|-|-|-|
@@ -66,9 +66,9 @@
 |`ne`  |`!=`|<kbd>not equals</kbd>|
 |`xor` |`^` |<kbd>bitwise xor</kbd>|
 |`andl`|`&&`|<kbd>boolean and</kbd>|
-|`orl` |`||`|<kbd>boolean or</kbd>|
+|`orl` |`\|\|`|<kbd>boolean or</kbd>|
 |`and` |`&` |<kbd>bitwise and</kbd>|
-|`or`  |`|` |<kbd>bitwise or</kbd>|
+|`or`  |`\|` |<kbd>bitwise or</kbd>|
 |`notl`|`!` |<kbd>boolean not</kbd>|
 |`not` |`~` |<kbd>bitwise not</kbd>, <kbd>bitwise negate</kbd>|
 |`neg` |`-` |<kbd>negate</kbd>, <kbd>negative</kbd>, <kbd>unary minus</kbd>|
@@ -94,9 +94,9 @@
 |`ne(!=)`  |`!=`|
 |`xor(^)`  |`^` |
 |`andl(&&)`|`&&`|
-|`orl(||)` |`||`|
+|`orl(\|\|)` |`\|\|`|
 |`and(&)`  |`&` |
-|`or(|)`   |`|` |
+|`or(\|)`   |`\|` |
 |`notl(!)` |`!` |
 |`not(~)`  |`~` |
 |`neg(-)`  |`-` *(unary)*|
@@ -108,7 +108,7 @@
 |`ldvar(@)`
 |`ldelem([])`
 
-`mul *`, `div /`, `rem %`, `add +`, `sub -`, `shr >>`, `shl <<`, `le <=`, `lt <`, `ge >=`, `gt >`, `eq ==`, `ne !=`, `xor ^`, `andl &&`, `orl ||`, `and &`, `or |`, `notl !`, `not ~`, `neg -`, *`pos +`*
+`mul *`, `div /`, `rem %`, `add +`, `sub -`, `shr >>`, `shl <<`, `le <=`, `lt <`, `ge >=`, `gt >`, `eq ==`, `ne !=`, `xor ^`, `andl &&`, `orl \|\|`, `and &`, `or \|`, `notl !`, `not ~`, `neg -`, *`pos +`*
 
 
 ## Operator Opcode Names
@@ -316,7 +316,7 @@
 |`shr>>=`|`1e8`|-|-|-|-|-|
 |`and&=`|`1f0`|-|-|-|-|-|
 |`xor^=`|`1f8`|-|-|-|-|-|
-|`or |=`|`120`|-|-|-|-|-|
+|`or \|=`|`120`|-|-|-|-|-|
 
 Final results. I'm positive 0x110 is modulus, as it's the only conceivable operator you'd place with the rest of the arithmetic ones:
 

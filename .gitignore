@@ -16,6 +16,10 @@ _backup/
 *.exe
 *.dll
 
+# Cached Google Sheet files from syscalls_reader.py
+*_cached.csv
+src/*.csv
+
 
 # C extensions
 *.so

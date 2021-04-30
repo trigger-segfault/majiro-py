@@ -1,0 +1,3606 @@
+Python 3.6.8 (tags/v3.6.8:3c6b436a57, Dec 24 2018, 00:16:47) [MSC v.1916 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from zlib import crc32 as z_crc32
+>>> from zlib import crc32
+>>> def _calc_crc32f(num:int) -> int:
+...     """_calc_crc32(num) -> CRC_TABLE[num]
+...     calculate the value of an entry in the CRC_TABLE, at CRC_TABLE[num]
+...     """
+...     # POLY = 0x04C11DB7  # forward polynomial
+...     POLY = 0x04c11db7  # forward polynomial
+...     num <<= 24
+...     for _ in range(8):
+...         if num & 0x80000000: num = (num << 1) ^ POLY
+...         else:                num <<= 1
+...     return num & 0xffffffff  # bits beyond 0:31 don't affect processing
+...
+>>> def _find_crc32f(num:int) -> int:
+...     """_find_crc32(_calc_crc32(0xd7)) -> 0xd7
+...     finds the index of the most significant byte in the CRC_TABLE
+...     """
+...     for x in range(256):
+...         y = _calc_crc32f(x)
+...         if (y & 0xff) == num:
+...             return x
+...     raise Exception('not found')
+...
+>>> def crc32_fwd(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     # crc = 0xffffffff if init is None else init
+...     POLY = 0x04c11db7  # forward polynomial
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc ^= (o << 24)
+...         for _ in range(8):
+...             # check MSB
+...             if crc & 0x80000000: crc = (crc << 1) ^ POLY
+...             else:                crc <<= 1
+...         # crc &= 0xffffffff
+...     return ~crc & 0xffffffff  # xorout
+...
+>>> # CRC-32 FORWARD TABLES for forward and inverse lookup
+... CRC_FTABLE:list   = tuple(_calc_crc32f(n) for n in range(256))
+>>> CRC_FINDICES:list = tuple(_find_crc32f(n) for n in range(256))  # indices for most-significant bytes in CRC_FTABLE
+>>>
+>>> #endregion
+...
+>>> #region ## CRC-32 FUNCTIONS ##
+...
+>>> def crc32f(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     #include if: from zlib import crc32 as z_crc32 is uncommented
+...     #return z_crc32(data, init)
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc = ((crc << 8) ^ CRC_FTABLE[(crc ^ o) & 0xff]) & 0xffffffff # masking to 32-bits, not required here
+...     # return crc ^ 0xffffffff  # xorout
+...     return ~crc & 0xffffffff  # xorout + masking to 32-bits
+...
+>>> #include if: from zlib import crc32 as z_crc32 is uncommented
+... #assert(crc32(b'123456789') == z_crc32(b'123456789'))
+...
+>>> def inverse_crc32f(accum:int, data:bytes=b'') -> int:
+...     """inverse_crc32f(crc32(b'$rgb@HELLO'), b'@HELLO') -> crc32(b'$rgb')
+...     inverse crc32 operation, this can be used to find an original accumulator at (end-N) if N postfix bytes are known
+...
+...     another way to look at this function is naming it `backout_accum()`
+...     """
+...     if isinstance(data, str): data = data.encode('cp932')
+...     crc = accum ^ 0xffffffff  # xorout
+...     for o in reversed(data):
+...         x = CRC_FINDICES[crc >> 24]
+...         y = CRC_FTABLE[x]
+...         crc = (((crc ^ y) << 8) & 0xffffffff) | ((o ^ x))
+...     return crc ^ 0xffffffff  # xorout or init??
+...
+>>> hex(crc32_fwd(b'$rgb'))
+'0xeefd1c7'
+>>> hex(z_crc32(b'$rgb'))
+'0xd061a65f'
+>>> hex(crc32f(b'$rgb'))
+'0x886b192d'
+>>>
+>>> ## standard CRC-32 (forward) table calculation
+... def _calc_crc32f(num:int) -> int:
+...     """_calc_crc32(num) -> CRC_TABLE[num]
+...     calculate the value of an entry in the CRC_TABLE, at CRC_TABLE[num]
+...     """
+...     # POLY = 0x04C11DB7  # forward polynomial
+...     POLY = 0x04c11db7  # forward polynomial
+...     num <<= 24
+...     for _ in range(8):
+...         if num & 0x80000000: num = (num << 1) ^ POLY
+...         else:                num <<= 1
+...     return num & 0xffffffff  # bits beyond 0:31 don't affect processing
+...
+>>> def _find_crc32f(num:int) -> int:
+...     """_find_crc32(_calc_crc32(0xd7)) -> 0xd7
+...     finds the index of the most significant byte in the CRC_TABLE
+...     """
+...     for x in range(256):
+...         y = _calc_crc32f(x)
+...         if (y & 0xff) == num:
+...             return x
+...     raise Exception('not found')
+...
+>>> def crc32_fwd(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     # crc = 0xffffffff if init is None else init
+...     POLY = 0x04c11db7  # forward polynomial
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc ^= (o << 24)
+...         for _ in range(8):
+...             # check MSB
+...             if crc & 0x80000000: crc = (crc << 1) ^ POLY
+...             else:                crc <<= 1
+...         crc &= 0xffffffff
+...     # return ~crc & 0xffffffff  # xorout
+...     return crc ^ 0xffffffff  # xorout
+...
+>>> # CRC-32 FORWARD TABLES for forward and inverse lookup
+... CRC_FTABLE:list   = tuple(_calc_crc32f(n) for n in range(256))
+>>> CRC_FINDICES:list = tuple(_find_crc32f(n) for n in range(256))  # indices for most-significant bytes in CRC_FTABLE
+>>>
+>>> #endregion
+...
+>>> #region ## CRC-32 FUNCTIONS ##
+...
+>>> def crc32f(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     #include if: from zlib import crc32 as z_crc32 is uncommented
+...     #return z_crc32(data, init)
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc = ((crc << 8) ^ CRC_FTABLE[((crc >> 24) ^ o) & 0xff]) & 0xffffffff # masking to 32-bits, not required here
+...     # return crc ^ 0xffffffff  # xorout
+...     return ~crc & 0xffffffff  # xorout + masking to 32-bits
+...
+>>> #include if: from zlib import crc32 as z_crc32 is uncommented
+... #assert(crc32(b'123456789') == z_crc32(b'123456789'))
+...
+>>> def inverse_crc32f(accum:int, data:bytes=b'') -> int:
+...     """inverse_crc32f(crc32(b'$rgb@HELLO'), b'@HELLO') -> crc32(b'$rgb')
+...     inverse crc32 operation, this can be used to find an original accumulator at (end-N) if N postfix bytes are known
+...
+...     another way to look at this function is naming it `backout_accum()`
+...     """
+...     if isinstance(data, str): data = data.encode('cp932')
+...     crc = accum ^ 0xffffffff  # xorout
+...     for o in reversed(data):
+...         x = CRC_FINDICES[crc >> 24]
+...         y = CRC_FTABLE[x]
+...         crc = (((crc ^ y) << 8) & 0xffffffff) | ((o ^ x))
+...     return crc ^ 0xffffffff  # xorout or init??
+...
+>>> #endregion
+...
+>>> crcf(b'$rgb')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'crcf' is not defined
+>>> hex(crc32f(b'$rgb'))
+'0xeefd1c7'
+>>> hex(crc32_fwd(b'$rgb'))
+'0xeefd1c7'
+>>> hex(z_crc32(b'$rgb'))
+'0xd061a65f'
+>>>
+>>> def crc32f(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     #include if: from zlib import crc32 as z_crc32 is uncommented
+...     #return z_crc32(data, init)
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc = ((crc << 8) ^ CRC_FTABLE[((crc >> 24) ^ o) & 0xff]) & 0xffffffff # masking to 32-bits, not required here
+...     return crc ^ 0xffffffff  # xorout
+...     # return ~crc & 0xffffffff  # xorout + masking to 32-bits
+...
+>>> hex(crc32f(b'$rgb'))
+'0xeefd1c7'
+>>> hex(crc32f(b'$rgb',crc32(b'$rgb')))
+'0xc5c90b29'
+>>> hex(crc32f(b'bgr$',crc32(b'$rgb')))
+'0x66696fe8'
+>>> hex(z_crc32(b'$rgb'))
+'0xd061a65f'
+>>> hex(z_crc32(b'$rgb@HELLO'))
+'0xb5504da6'
+>>> hex(z_crc32(b'$rgb@HELL'))
+'0x8fe8e7d4'
+>>> z_crc32(b'$rgb@HELL') == 0x8fe8e7d4
+True
+>>> CRC_TABLE[0]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'CRC_TABLE' is not defined
+>>> CRC_FTABLE[0]
+0
+>>> [0x959b0a16, 0x109ca5db, 0xdecb9c75, 0xdca7da63, 0xcb8ab2a3, 0x8c283f7f, 0xe06200c4, 0xa90f0e05, 0x12877048, 0x4694366a, 0xf3679c34, 0xdcc0d033, 0x67444f84, 0x1576ccec, 0x5f7ffd3b, 0xdf644f85, 0xb5551fdf, 0x4020c370, 0x65d3b77c, 0x7f01f772, 0x4d2d4277, 0x0d141855, 0xe218ba5f, 0xd0f4b51a, 0xedfd552c, 0x253982f4, 0x8dc0d2cd, 0x693d9729, 0xe2413ef9, 0x7fcf3c82, 0x5bbae511, 0xa6ac6ccc, 0x96b07aee, 0x1f57b724, 0xaab68e6d, 0x3a49e325, 0x134d5585, 0x42d7c922, 0x87a631a6, 0xd6333b3c, 0xe4e3b40d, 0x63b8cb23, 0x2539d212, 0xe8a6a59f, 0x6008bebb, 0x55232561, 0xd1921ed9, 0xc46925cf, 0xf103c078, 0xc47dbe4b, 0xc32e286f, 0x3e11f2c5, 0xf66cd6ea, 0x6e83677a, 0xf9a3b675, 0x86294bfe, 0x160176be, 0x4b5ac64b, 0x3d4b9052, 0x619de833, 0x067b44a4, 0x6e6c641a, 0x6f769889, 0x6cfc884a, 0x3d053317, 0x00d696cc, 0x8eb8f951, 0xb7e3e81c, 0xc6282f19, 0x46b18379, 0x80177286, 0xa2e45c9c, 0x9a1aceca, 0xedb64309, 0x4fac462c, 0xf4bb403d, 0xbc6402c9, 0xc1d2b85a, 0x2399d761, 0xd2219a75, 0xcd290aef, 0x4afc6e20, 0xfa34e434, 0xee2b6d92, 0xe90e0a19, 0x5c823701, 0xfed7bfe9, 0x45815f6d, 0x06906970, 0xb0c8f550, 0xad74d9ac, 0x4f62152a, 0x8aef9167, 0x25401a1f, 0x3fe05b39, 0x69db4512, 0x0d389c2f, 0x266a3c79, 0xbdaa8e96, 0x6584f13e, 0xee6b328d, 0x978047db, 0xdaca10af, 0x6938ef0c, 0x140c298e, 0x0692314a, 0x269bda78, 0xcd00d280, 0x9627ddc3, 0xedefb0b0, 0x76ee6c90, 0x29f1ac40, 0x078a756e, 0x1295bbda, 0xa93c9856, 0x718ef651, 0x1e24e1b6, 0x10db0a43, 0xc21f8b49, 0xa62aa5eb, 0x4662e95d, 0x3704c919, 0x3eabf498, 0x3c84073c, 0xdd2056f6, 0x42f6fddf, 0x892e9b20, 0x1204d7e8, 0x008acbc0, 0x32530606, 0x818a4b92, 0xf3d276f1, 0x62374297, 0xfac4f361, 0x9ef1ddc3, 0x86f0f608, 0x4b306c5c, 0xbc42ca9a, 0x7547c477, 0xc102bcc3, 0xab13be44, 0xf2f9daa8, 0xae497f1a, 0x4ef903f3, 0x806261ce, 0xff75cd29, 0xcf35f0e3, 0x5131e234, 0xcc3e0342, 0xb5a1e3c9, 0x5fdcccee, 0x0e42730d, 0x934d927b, 0x8d8d8817, 0x06b3c8ac, 0x82fd765b, 0x2cb1bc41, 0x5b87a41d, 0xba81ef8d, 0xf1f8a206, 0x728876a3, 0x6e080825, 0x88b4b26c, 0x3f401bbd, 0x979d1f16, 0xa2743878, 0x6621f84d, 0x0c6d0129, 0x307f28bc, 0x59180bbb, 0x5c9ed743, 0x403960f8, 0x30fa2a29, 0x35a89417, 0x90816c6e, 0xe186d19a, 0x57f6310d, 0x9a661709, 0xb75c3b5f, 0x8cfc4573, 0x05ea6e4d, 0xe6a97e70, 0xd4066e31, 0x4133d7a9, 0x877445ce, 0x7d8b2c41, 0x098399f2, 0xdf9f7749, 0xaccf4004, 0x0542e1b7, 0x824d124f, 0x25d92502, 0xbbf35806, 0xb0ce081a, 0x507f22c6, 0x29098ec0, 0x09c43040, 0x4afc5c07, 0x2159ebe0, 0xf63ed9ae, 0x70612db5, 0xe5e4e2ff, 0xd01be374, 0x56bbba3a, 0xfddf6c40, 0x30636d6e, 0x171aee22, 0xda675785, 0xac796720, 0x61bae53c, 0xa361d9f7, 0x89b59d02, 0x4c310b4b, 0x7e277952, 0x053fac99, 0x4697d2dd, 0xfd128a61, 0x87113971, 0x4fa8483f, 0x3cad3884, 0x9ac11f47, 0xa79731a2, 0x18423eaa, 0xd14a4d9c, 0xd6c3bbac, 0x221c2cc2, 0x78a31c03, 0x6f5689e4, 0xeadd9484, 0x80f94706, 0xe3605cfa, 0xf63cb36c, 0x83d81f59, 0xdad96289, 0x57efa275, 0xf94b3586, 0x5e4e3063, 0x8d84b83f, 0xf8fd08f6, 0x65f2e980, 0xc50dfd06, 0xf9705332, 0xd3c06820, 0x7a7b6ed4, 0x539b07bc, 0xce94e6ca, 0x5eb974f7, 0x924ee3eb, 0x54ef8174, 0x3670b283, 0x929a367d, 0xb1681699, 0xf9d94e91, 0xd34e9b28, 0xf65aa4c0, 0xd5999d46, 0x05b1a6e8, 0x125cfbdb, 0xca30043a, 0x9143dc9e, 0x89ce8c53, 0x490d6b50, 0x78a6a112, 0x168efcb7, 0x3cba6309, 0x8f874e29, 0x3a3ca0f1, 0x89018dd1, 0xc438ba98, 0x4c99b0ea, 0x8cd709f9, 0x65075141, 0xa549e852, 0x4ffab7c4, 0x99a5de25, 0x3378635d, 0xe91b0504, 0x7c3b36c5, 0x1bb47604, 0x44b5c4ed, 0x4d849aa6, 0xf8004993, 0x3474d65b, 0xeb5cc468, 0x9af10167, 0x3a3bfb29, 0xd538f7b5, 0x4e1eb9d0, 0xf8d18340, 0xa7c6e918, 0xefd49bc9, 0x72db7abf, 0x2075c300, 0xad0f8767, 0xaf6571ab, 0xa909a32a, 0x163c0878, 0xd08a57f8, 0xd215e29a, 0x23d5d11d, 0xaefc64da, 0xfb7fb744, 0xca5c98f2, 0x0d36e2a7, 0xbef4edfa, 0x5c9761c5, 0xb758ac4e, 0x2c18d5a9, 0x45e32ea6, 0xe316a8f2, 0xbb9d7a7f, 0x6ddeb30e, 0x1f5a14d4, 0xf5e5be93, 0xe5a2ce14, 0x850eecf4, 0xd481e1a2, 0xebb5886c, 0x50cd2dca, 0xf0fd9886, 0x2e99e98c, 0xd583668c, 0x1cd5bca8, 0x62442ec6, 0xfaf17b1c, 0xda60f137, 0xf430015b, 0x321717d1, 0x4ea2d1fc, 0x95ff28f2, 0xee154520, 0x111bd910, 0xc5270429, 0xe5c70196, 0x1f9f3d5a, 0x3513ee87, 0xf4f00701, 0x22c23fa2, 0x735c88f1, 0x68ba0964, 0xddd25909, 0x97bd691d, 0x02026ac6, 0xe5dcef92, 0xc692be76, 0x13c305da, 0x6ed38886, 0x0c93fcb4, 0xcd111b0e, 0x1ec3c6bb, 0x6501cc30, 0x0c7a0e97, 0x6fcb7185, 0xdaa321e8, 0x072e738c, 0x6eaec2a0, 0xbfa74901, 0xb3ffdffa, 0x15d07df8, 0x0dc634c4, 0x844d2028, 0xb268f04f, 0xde1e2ed0, 0x4311cfa6, 0x26dc6566, 0x4980f82c, 0x4f6367b3, 0x15eedeaa, 0x379fdb39, 0xeeaa9104, 0x2626fe02, 0xf86fc950, 0xa589dbd1, 0xabb7fcfb, 0xd011ff32, 0xf8d8925b, 0x91ceacf2, 0x0c070535, 0xe7b90df5, 0xd8279a9b, 0xf62e3ca7, 0x708b0256, 0x170b0b45, 0x2e861c51, 0xe712fec1, 0xe0aa2f52, 0xb8155ff4, 0xa0b0fead, 0x546f69c3, 0xe799eac8, 0x804ff66d, 0xed84e320, 0xc0e98b1d, 0x39ae7891, 0xf03a9a01, 0xf7824b92, 0x5747e915, 0x77527ef5, 0x838de99b, 0x08cb5c29, 0x57ad7635, 0x884949e0, 0x8ad70056, 0x5c7746d1, 0x95e3a441, 0x925b75d2, 0xb669e371, 0x3d6cf5be, 0xc9b362d0, 0xe9e5564d, 0x1d93fd7e, 0x8424cf12, 0x9cabfdf3, 0x7b657bab, 0xb2f1993b, 0xa65b03ae, 0x2b10081b, 0xdfcf9f75, 0xf9d7b692, 0x0bef00db, 0xc0c15d7c, 0x926c13e5, 0x5bf8f175, 0x5c4020e6, 0x7f918815, 0x777aa894, 0x83a53ffa, 0x201d3d29, 0x5785a054, 0x32d0236c, 0x8e8167f2, 0x19fc7cc7, 0x8f905b3f, 0x4604b9af, 0x94eaeffc, 0xae47892f, 0x5a981e41, 0xcb665ac0, 0x8eb881ef, 0x46b28fef, 0x173b92d1, 0xdeaf7041, 0xdf91cfc5, 0x90d5298a, 0xf1097a07, 0x05d6ed69, 0x801d7af9, 0xd1f672c7, 0x2bd1709d, 0x7e0b8320, 0xcf2b1e50, 0x6de6cdfc, 0xdfd5599e, 0xf80bc9b6, 0xa30a7d75, 0xff7c52e6, 0xd7771b72, 0xdfdba8e4, 0xc29b30e3, 0x52819912, 0x103edac0, 0x7b0e970d, 0xef4581dc, 0xf6a05538, 0xc2c3c4f4, 0xcd71fe7a, 0x265e07d7, 0x6b4a7873, 0xf6459905, 0xdcc706ef, 0x68ef2987, 0x63f660a2, 0xfef981d4, 0xe119d5ba, 0x40258a56, 0x4ab0caef, 0x63c341b1, 0x4a02d664, 0x5548ef5e, 0x69073588, 0x7bffc5b1, 0x721fa5b7, 0x58b31737, 0x661afb43, 0x3f34d519, 0xedca8992, 0x01b4517c, 0xe76f8a65, 0x3b1d5537, 0x6f384a3d, 0x42e41a6b, 0xba383010, 0x8838fd56, 0x81ce0485, 0x8c7f4c1e, 0x60085fa4, 0x44bc7555, 0xd4590bd3, 0x0ebc053b, 0x38721a26, 0x45acd4a7, 0x45ad5f4d, 0x461ea516, 0x50846ad3, 0x649cfc79, 0x6e7f7fb7, 0x86e933d1, 0x8d8fb32e, 0x8fe5d6e7, 0x9fb53fbe, 0xb84c9953, 0xc68c011a, 0xefd59130, 0xf6416e87]
+[2509965846, 278701531, 3737885813, 3701987939, 3414864547, 2351447935, 3764519108, 2836336133, 310865992, 1184118378, 4083653684, 3703623731, 1732530052, 360107244, 1602223419, 3747893125, 3042254815, 1075889008, 1708373884, 2130835314, 1294811767, 219420757, 3793271391, 3505698074, 3992802604, 624526068, 2378224333, 1765644073, 3795926777, 2144287874, 1538974993, 2796317900, 2528148206, 525842212, 2864090733, 977920805, 323835269, 1121437986, 2275815846, 3593681724, 3840128013, 1673055011, 624546322, 3903235487, 1611185851, 1428366689, 3516014297, 3295225295, 4043554936, 3296575051, 3274582127, 1041363653, 4134328042, 1854105466, 4188255861, 2250853374, 369194686, 1264240203, 1028362322, 1637738547, 108741796, 1852597274, 1870043273, 1828489290, 1023750935, 14063308, 2394487121, 3085166620, 3324522265, 1186038649, 2149020294, 2732874908, 2585448138, 3988144905, 1336690220, 4105912381, 3160670921, 3251812442, 597284705, 3525417589, 3442019055, 1258057248, 4197770292, 3995823506, 3910011417, 1552037633, 4275552233, 1166106477, 110127472, 2965960016, 2910116268, 1331828010, 2330956135, 624957983, 1071668025, 1775977746, 221813807, 644496505, 3182071446, 1703211326, 4000002701, 2541766619, 3670675631, 1765338892, 336341390, 110244170, 647748216, 3439383168, 2519195075, 3991908528, 1995336848, 703704128, 126514542, 311802842, 2839320662, 1905194577, 505733558, 282790467, 3256847177, 2787812843, 1180887389, 923060505, 1051456664, 1015285564, 3709884150, 1123483103, 2301532960, 302307304, 9096128, 844301830, 2173324178, 4090656497, 1647788695, 4207211361, 2666651075, 2263938568, 1261464668, 3158493850, 1967637623, 3238182083, 2870197828, 4076460712, 2924052250, 1324942323, 2153931214, 4285910313, 3476418787, 1362223668, 3426616130, 3047285705, 1608305902, 239235853, 2471334523, 2374862871, 112445612, 2197648987, 749845569, 1535616029, 3129077645, 4059603462, 1921545891, 1846020133, 2293543532, 1061166013, 2543656726, 2725525624, 1713502285, 208470313, 813639868, 1494748091, 1553913667, 1077502200, 821701161, 900240407, 2424401006, 3783709082, 1475752205, 2590381833, 3076275039, 2365343091, 99249741, 3869867632, 3557191217, 1093916585, 2272544206, 2106272833, 159619570, 3751769929, 2899263492, 88269239, 2186089039, 634987778, 3153287174, 2966292506, 1350509254, 688492224, 163852352, 1258052615, 559541216, 4131314094, 1885416885, 3856982783, 3491488628, 1455143482, 4259277888, 811822446, 387640866, 3664205701, 2893637408, 1639638332, 2741098999, 2310380802, 1278282571, 2116516178, 88059033, 1184355037, 4245850721, 2266052977, 1336428607, 1017985156, 2596347719, 2811703714, 406994602, 3511307676, 3603151788, 572271810, 2023955459, 1867942372, 3940390020, 2163820294, 3814743290, 4131173228, 2211979097, 3671679625, 1475322485, 4182455686, 1582182499, 2374285375, 4177332470, 1710418304, 3306028294, 4184888114, 3552602144, 2054909652, 1402668988, 3465864906, 1589212407, 2454643691, 1424982388, 913355395, 2459580029, 2976388761, 4191768209, 3545144104, 4133135552, 3583614278, 95528680, 308083675, 3392144442, 2437143710, 2312014931, 1225616208, 2024186130, 378469559, 1018848009, 2408009257, 977051889, 2298580433, 3292052120, 1285140714, 2362903033, 1694978369, 2773084242, 1341831108, 2577784357, 863527773, 3910862084, 2084255429, 464811524, 1152763117, 1300535974, 4160768403, 880072283, 3948725352, 2599485799, 977009449, 3577280437, 1310636496, 4174480192, 2814830872, 4023688137, 1926986431, 544588544, 2903476071, 2942661035, 2835981098, 373033080, 3498727416, 3524649626, 601215261, 2935776474, 4219451204, 3395066098, 221700775, 3203722746, 1553424837, 3076041806, 739825065, 1172516518, 3809913074, 3147659903, 1843311374, 525997268, 4125474451, 3852652052, 2232347892, 3565281698, 3954542700, 1355623882, 4043151494, 781838732, 3582158476, 483769512, 1648635590, 4210129692, 3663786295, 4096786779, 840374225, 1319293436, 2516527346, 3994371360, 287037712, 3307668521, 3855024534, 530529626, 890498695, 4109371137, 583155618, 1935444209, 1757022564, 3721550089, 2545772829, 33712838, 3856461714, 3331505782, 331548122, 1859356806, 211025076, 3440450318, 516146875, 1694616624, 209325719, 1875603845, 3668124136, 120484748, 1856946848, 3215411457, 3019890682, 365985272, 231093444, 2219647016, 2993221711, 3726520016, 1125240742, 651978086, 1233188908, 1331914675, 367976106, 933223225, 4004155652, 640089602, 4168075600, 2777275345, 2880961787, 3490840370, 4174942811, 2446241010, 201786677, 3887664629, 3626474139, 4130225319, 1888158294, 386599749, 780541009, 3876781761, 3769249618, 3088408564, 2695954093, 1416587715, 3885624008, 2152724077, 3984909088, 3236530973, 967735441, 4030372353, 4152511378, 1464330517, 2001895157, 2207115675, 147545129, 1470985781, 2286504416, 2329346134, 1551320785, 2514723905, 2455467474, 3060392817, 1030550974, 3383976656, 3924121165, 496237950, 2217004818, 2628517363, 2070248363, 3002177851, 2790982574, 722470939, 3754925941, 4191663762, 200212699, 3233897852, 2456556517, 1543041397, 1547706598, 2140243989, 2004527252, 2208645114, 538787113, 1468375124, 852501356, 2390845426, 435977415, 2408602431, 1174714799, 2498424828, 2923923759, 1519918657, 3412482752, 2394456559, 1186107375, 389780177, 3736039489, 3750875077, 2429888906, 4043930119, 97971561, 2149415673, 3522589383, 735146141, 2114683680, 3475709520, 1843842556, 3755301278, 4161522102, 2735373685, 4286337766, 3614907250, 3755714788, 3264950499, 1384225042, 272554688, 2064553741, 4014309852, 4137702712, 3267609844, 3446799994, 643696599, 1800042611, 4131756293, 3704030959, 1760504199, 1677090978, 4277764564, 3776566714, 1076202070, 1253100271, 1673740721, 1241699940, 1430843230, 1762080136, 2080359857, 1914676663, 1488131895, 1713044291, 1060427033, 3989473682, 28594556, 3882846821, 991778103, 1865959997, 1122245227, 3124244496, 2285436246, 2177762437, 2357152798, 1611161508, 1153201493, 3562605523, 247203131, 947001894, 1168954535, 1168990029, 1176413462, 1350855379, 1688009849, 1853849527, 2263430097, 2375004974, 2414204647, 2679455678, 3092027731, 3331064090, 4023750960, 4131483271]
+>>>
+>>>
+>>> ## standard CRC-32 (used by zlib) table calculation
+... def _calc_crc32(num:int) -> int:
+...     """_calc_crc32(num) -> CRC_TABLE[num]
+...     calculate the value of an entry in the CRC_TABLE, at CRC_TABLE[num]
+...     """
+...     POLY = 0xEDB88320  # reversed polynomial
+...     for _ in range(8):
+...         if num & 0x1: num = (num >> 1) ^ POLY
+...         else:         num >>= 1
+...     return num
+...
+>>> def _find_crc32(num:int) -> int:
+...     """_find_crc32(_calc_crc32(0xd7)) -> 0xd7
+...     finds the index of the most significant byte in the CRC_TABLE
+...     """
+...     for x in range(256):
+...         y = _calc_crc32(x)
+...         if (y >> 24) == num:
+...             return x
+...     raise Exception('not found')
+...
+>>> # CRC-32 TABLES for forward and inverse lookup
+... CRC_TABLE:list   = tuple(_calc_crc32(n) for n in range(256))
+>>> CRC_INDICES:list = tuple(_find_crc32(n) for n in range(256))  # indices for most-significant bytes in CRC_TABLE
+>>>
+>>> CRC_TABLE[0]
+0
+>>> SYSCALL_LIST = [0x959b0a16, 0x109ca5db, 0xdecb9c75, 0xdca7da63, 0xcb8ab2a3, 0x8c283f7f, 0xe06200c4, 0xa90f0e05, 0x12877048, 0x4694366a, 0xf3679c34, 0xdcc0d033, 0x67444f84, 0x1576ccec, 0x5f7ffd3b, 0xdf644f85, 0xb5551fdf, 0x4020c370, 0x65d3b77c, 0x7f01f772, 0x4d2d4277, 0x0d141855, 0xe218ba5f, 0xd0f4b51a, 0xedfd552c, 0x253982f4, 0x8dc0d2cd, 0x693d9729, 0xe2413ef9, 0x7fcf3c82, 0x5bbae511, 0xa6ac6ccc, 0x96b07aee, 0x1f57b724, 0xaab68e6d, 0x3a49e325, 0x134d5585, 0x42d7c922, 0x87a631a6, 0xd6333b3c, 0xe4e3b40d, 0x63b8cb23, 0x2539d212, 0xe8a6a59f, 0x6008bebb, 0x55232561, 0xd1921ed9, 0xc46925cf, 0xf103c078, 0xc47dbe4b, 0xc32e286f, 0x3e11f2c5, 0xf66cd6ea, 0x6e83677a, 0xf9a3b675, 0x86294bfe, 0x160176be, 0x4b5ac64b, 0x3d4b9052, 0x619de833, 0x067b44a4, 0x6e6c641a, 0x6f769889, 0x6cfc884a, 0x3d053317, 0x00d696cc, 0x8eb8f951, 0xb7e3e81c, 0xc6282f19, 0x46b18379, 0x80177286, 0xa2e45c9c, 0x9a1aceca, 0xedb64309, 0x4fac462c, 0xf4bb403d, 0xbc6402c9, 0xc1d2b85a, 0x2399d761, 0xd2219a75, 0xcd290aef, 0x4afc6e20, 0xfa34e434, 0xee2b6d92, 0xe90e0a19, 0x5c823701, 0xfed7bfe9, 0x45815f6d, 0x06906970, 0xb0c8f550, 0xad74d9ac, 0x4f62152a, 0x8aef9167, 0x25401a1f, 0x3fe05b39, 0x69db4512, 0x0d389c2f, 0x266a3c79, 0xbdaa8e96, 0x6584f13e, 0xee6b328d, 0x978047db, 0xdaca10af, 0x6938ef0c, 0x140c298e, 0x0692314a, 0x269bda78, 0xcd00d280, 0x9627ddc3, 0xedefb0b0, 0x76ee6c90, 0x29f1ac40, 0x078a756e, 0x1295bbda, 0xa93c9856, 0x718ef651, 0x1e24e1b6, 0x10db0a43, 0xc21f8b49, 0xa62aa5eb, 0x4662e95d, 0x3704c919, 0x3eabf498, 0x3c84073c, 0xdd2056f6, 0x42f6fddf, 0x892e9b20, 0x1204d7e8, 0x008acbc0, 0x32530606, 0x818a4b92, 0xf3d276f1, 0x62374297, 0xfac4f361, 0x9ef1ddc3, 0x86f0f608, 0x4b306c5c, 0xbc42ca9a, 0x7547c477, 0xc102bcc3, 0xab13be44, 0xf2f9daa8, 0xae497f1a, 0x4ef903f3, 0x806261ce, 0xff75cd29, 0xcf35f0e3, 0x5131e234, 0xcc3e0342, 0xb5a1e3c9, 0x5fdcccee, 0x0e42730d, 0x934d927b, 0x8d8d8817, 0x06b3c8ac, 0x82fd765b, 0x2cb1bc41, 0x5b87a41d, 0xba81ef8d, 0xf1f8a206, 0x728876a3, 0x6e080825, 0x88b4b26c, 0x3f401bbd, 0x979d1f16, 0xa2743878, 0x6621f84d, 0x0c6d0129, 0x307f28bc, 0x59180bbb, 0x5c9ed743, 0x403960f8, 0x30fa2a29, 0x35a89417, 0x90816c6e, 0xe186d19a, 0x57f6310d, 0x9a661709, 0xb75c3b5f, 0x8cfc4573, 0x05ea6e4d, 0xe6a97e70, 0xd4066e31, 0x4133d7a9, 0x877445ce, 0x7d8b2c41, 0x098399f2, 0xdf9f7749, 0xaccf4004, 0x0542e1b7, 0x824d124f, 0x25d92502, 0xbbf35806, 0xb0ce081a, 0x507f22c6, 0x29098ec0, 0x09c43040, 0x4afc5c07, 0x2159ebe0, 0xf63ed9ae, 0x70612db5, 0xe5e4e2ff, 0xd01be374, 0x56bbba3a, 0xfddf6c40, 0x30636d6e, 0x171aee22, 0xda675785, 0xac796720, 0x61bae53c, 0xa361d9f7, 0x89b59d02, 0x4c310b4b, 0x7e277952, 0x053fac99, 0x4697d2dd, 0xfd128a61, 0x87113971, 0x4fa8483f, 0x3cad3884, 0x9ac11f47, 0xa79731a2, 0x18423eaa, 0xd14a4d9c, 0xd6c3bbac, 0x221c2cc2, 0x78a31c03, 0x6f5689e4, 0xeadd9484, 0x80f94706, 0xe3605cfa, 0xf63cb36c, 0x83d81f59, 0xdad96289, 0x57efa275, 0xf94b3586, 0x5e4e3063, 0x8d84b83f, 0xf8fd08f6, 0x65f2e980, 0xc50dfd06, 0xf9705332, 0xd3c06820, 0x7a7b6ed4, 0x539b07bc, 0xce94e6ca, 0x5eb974f7, 0x924ee3eb, 0x54ef8174, 0x3670b283, 0x929a367d, 0xb1681699, 0xf9d94e91, 0xd34e9b28, 0xf65aa4c0, 0xd5999d46, 0x05b1a6e8, 0x125cfbdb, 0xca30043a, 0x9143dc9e, 0x89ce8c53, 0x490d6b50, 0x78a6a112, 0x168efcb7, 0x3cba6309, 0x8f874e29, 0x3a3ca0f1, 0x89018dd1, 0xc438ba98, 0x4c99b0ea, 0x8cd709f9, 0x65075141, 0xa549e852, 0x4ffab7c4, 0x99a5de25, 0x3378635d, 0xe91b0504, 0x7c3b36c5, 0x1bb47604, 0x44b5c4ed, 0x4d849aa6, 0xf8004993, 0x3474d65b, 0xeb5cc468, 0x9af10167, 0x3a3bfb29, 0xd538f7b5, 0x4e1eb9d0, 0xf8d18340, 0xa7c6e918, 0xefd49bc9, 0x72db7abf, 0x2075c300, 0xad0f8767, 0xaf6571ab, 0xa909a32a, 0x163c0878, 0xd08a57f8, 0xd215e29a, 0x23d5d11d, 0xaefc64da, 0xfb7fb744, 0xca5c98f2, 0x0d36e2a7, 0xbef4edfa, 0x5c9761c5, 0xb758ac4e, 0x2c18d5a9, 0x45e32ea6, 0xe316a8f2, 0xbb9d7a7f, 0x6ddeb30e, 0x1f5a14d4, 0xf5e5be93, 0xe5a2ce14, 0x850eecf4, 0xd481e1a2, 0xebb5886c, 0x50cd2dca, 0xf0fd9886, 0x2e99e98c, 0xd583668c, 0x1cd5bca8, 0x62442ec6, 0xfaf17b1c, 0xda60f137, 0xf430015b, 0x321717d1, 0x4ea2d1fc, 0x95ff28f2, 0xee154520, 0x111bd910, 0xc5270429, 0xe5c70196, 0x1f9f3d5a, 0x3513ee87, 0xf4f00701, 0x22c23fa2, 0x735c88f1, 0x68ba0964, 0xddd25909, 0x97bd691d, 0x02026ac6, 0xe5dcef92, 0xc692be76, 0x13c305da, 0x6ed38886, 0x0c93fcb4, 0xcd111b0e, 0x1ec3c6bb, 0x6501cc30, 0x0c7a0e97, 0x6fcb7185, 0xdaa321e8, 0x072e738c, 0x6eaec2a0, 0xbfa74901, 0xb3ffdffa, 0x15d07df8, 0x0dc634c4, 0x844d2028, 0xb268f04f, 0xde1e2ed0, 0x4311cfa6, 0x26dc6566, 0x4980f82c, 0x4f6367b3, 0x15eedeaa, 0x379fdb39, 0xeeaa9104, 0x2626fe02, 0xf86fc950, 0xa589dbd1, 0xabb7fcfb, 0xd011ff32, 0xf8d8925b, 0x91ceacf2, 0x0c070535, 0xe7b90df5, 0xd8279a9b, 0xf62e3ca7, 0x708b0256, 0x170b0b45, 0x2e861c51, 0xe712fec1, 0xe0aa2f52, 0xb8155ff4, 0xa0b0fead, 0x546f69c3, 0xe799eac8, 0x804ff66d, 0xed84e320, 0xc0e98b1d, 0x39ae7891, 0xf03a9a01, 0xf7824b92, 0x5747e915, 0x77527ef5, 0x838de99b, 0x08cb5c29, 0x57ad7635, 0x884949e0, 0x8ad70056, 0x5c7746d1, 0x95e3a441, 0x925b75d2, 0xb669e371, 0x3d6cf5be, 0xc9b362d0, 0xe9e5564d, 0x1d93fd7e, 0x8424cf12, 0x9cabfdf3, 0x7b657bab, 0xb2f1993b, 0xa65b03ae, 0x2b10081b, 0xdfcf9f75, 0xf9d7b692, 0x0bef00db, 0xc0c15d7c, 0x926c13e5, 0x5bf8f175, 0x5c4020e6, 0x7f918815, 0x777aa894, 0x83a53ffa, 0x201d3d29, 0x5785a054, 0x32d0236c, 0x8e8167f2, 0x19fc7cc7, 0x8f905b3f, 0x4604b9af, 0x94eaeffc, 0xae47892f, 0x5a981e41, 0xcb665ac0, 0x8eb881ef, 0x46b28fef, 0x173b92d1, 0xdeaf7041, 0xdf91cfc5, 0x90d5298a, 0xf1097a07, 0x05d6ed69, 0x801d7af9, 0xd1f672c7, 0x2bd1709d, 0x7e0b8320, 0xcf2b1e50, 0x6de6cdfc, 0xdfd5599e, 0xf80bc9b6, 0xa30a7d75, 0xff7c52e6, 0xd7771b72, 0xdfdba8e4, 0xc29b30e3, 0x52819912, 0x103edac0, 0x7b0e970d, 0xef4581dc, 0xf6a05538, 0xc2c3c4f4, 0xcd71fe7a, 0x265e07d7, 0x6b4a7873, 0xf6459905, 0xdcc706ef, 0x68ef2987, 0x63f660a2, 0xfef981d4, 0xe119d5ba, 0x40258a56, 0x4ab0caef, 0x63c341b1, 0x4a02d664, 0x5548ef5e, 0x69073588, 0x7bffc5b1, 0x721fa5b7, 0x58b31737, 0x661afb43, 0x3f34d519, 0xedca8992, 0x01b4517c, 0xe76f8a65, 0x3b1d5537, 0x6f384a3d, 0x42e41a6b, 0xba383010, 0x8838fd56, 0x81ce0485, 0x8c7f4c1e, 0x60085fa4, 0x44bc7555, 0xd4590bd3, 0x0ebc053b, 0x38721a26, 0x45acd4a7, 0x45ad5f4d, 0x461ea516, 0x50846ad3, 0x649cfc79, 0x6e7f7fb7, 0x86e933d1, 0x8d8fb32e, 0x8fe5d6e7, 0x9fb53fbe, 0xb84c9953, 0xc68c011a, 0xefd59130, 0xf6416e87]
+>>>
+>>> [print(f'[{i:>3}] 0x{v:08x}', end=', ') for i,v in enumerate(SYSCALL_LIST) if (v>>24)==0] or None
+[ 65] 0x00d696cc, [128] 0x008acbc0, [None, None]
+>>> CRC_INDICES[0]
+0
+>>> from crcsolver import solve
+>>> from zlib import crc32
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb______', range(4*8,4*8+7*8), crc32(b'$rgb@HELLO'), crc32)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "%PYTHONPATH%\lib\site-packages\crcsolver\__init__.py", line 6, in solve
+    return main.solve(data, unknowns, desired, crc_func)
+  File "%PYTHONPATH%\lib\site-packages\crcsolver\main.py", line 23, in solve
+    emptied[position//8] &= ~bit
+IndexError: list index out of range
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb______', range(4*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> import os
+>>> os.chdir(r"%REPOPATH%\majiro-py\src\unhash_research")
+>>> import crcsolver2
+>>> solve(b'$rgb@H____', range(6*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb@HELLO'
+>>> solve(b'$rgb@_____', range(5*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb@\xeb\x17\xbe\x93\x00'
+>>> solve(b'$rgb@\x80\x80\x80\x80\x80', range(5*8,4*8+6*8), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb@\xeb\x17\xbe\x93\x00'
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', list(range(4*8+1,5*8)), crc32(b'$rgb@HELLO'), crc32)
+>>> sum([1],[2])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: can only concatenate list (not "int") to list
+>>> sum([[1]],[[2]])
+[[2], 1]
+>>> sum([[1]],[2])
+[2, 1]
+>>> sum([[1], [2]])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: unsupported operand type(s) for +: 'int' and 'list'
+>>> help(sum)
+Help on built-in function sum in module builtins:
+
+sum(iterable, start=0, /)
+    Return the sum of a 'start' value (default: 0) plus an iterable of numbers
+
+    When the iterable is empty, return the start value.
+    This function is intended specifically for use with numeric values and may
+    reject non-numeric types.
+
+>>> import itertools
+>>> C = itertools.chain
+>>> def RN(*args):
+...   items = []
+...   for i in range(0, len(args), 2):
+...    items += list(range(args[i],args[i+1]))
+...   return items
+...
+>>> def Rn(*args):
+...   items = []
+...   for a,b in args:
+...     items += list(range(a,b))
+...   return items
+...
+>>> Rn(*[(a,a+7) for a in range(4*8,10*8)])
+[32, 33, 34, 35, 36, 37, 38, 33, 34, 35, 36, 37, 38, 39, 34, 35, 36, 37, 38, 39, 40, 35, 36, 37, 38, 39, 40, 41, 36, 37, 38, 39, 40, 41, 42, 37, 38, 39, 40, 41, 42, 43, 38, 39, 40, 41, 42, 43, 44, 39, 40, 41, 42, 43, 44, 45, 40, 41, 42, 43, 44, 45, 46, 41, 42, 43, 44, 45, 46, 47, 42, 43, 44, 45, 46, 47, 48, 43, 44, 45, 46, 47, 48, 49, 44, 45, 46, 47, 48, 49, 50, 45, 46, 47, 48, 49, 50, 51, 46, 47, 48, 49, 50, 51, 52, 47, 48, 49, 50, 51, 52, 53, 48, 49, 50, 51, 52, 53, 54, 49, 50, 51, 52, 53, 54, 55, 50, 51, 52, 53, 54, 55, 56, 51, 52, 53, 54, 55, 56, 57, 52, 53, 54, 55, 56, 57, 58, 53, 54, 55, 56, 57, 58, 59, 54, 55, 56, 57, 58, 59, 60, 55, 56, 57, 58, 59, 60, 61, 56, 57, 58, 59, 60, 61, 62, 57, 58, 59, 60, 61, 62, 63, 58, 59, 60, 61, 62, 63, 64, 59, 60, 61, 62, 63, 64, 65, 60, 61, 62, 63, 64, 65, 66, 61, 62, 63, 64, 65, 66, 67, 62, 63, 64, 65, 66, 67, 68, 63, 64, 65, 66, 67, 68, 69, 64, 65, 66, 67, 68, 69, 70, 65, 66, 67, 68, 69, 70, 71, 66, 67, 68, 69, 70, 71, 72, 67, 68, 69, 70, 71, 72, 73, 68, 69, 70, 71, 72, 73, 74, 69, 70, 71, 72, 73, 74, 75, 70, 71, 72, 73, 74, 75, 76, 71, 72, 73, 74, 75, 76, 77, 72, 73, 74, 75, 76, 77, 78, 73, 74, 75, 76, 77, 78, 79, 74, 75, 76, 77, 78, 79, 80, 75, 76, 77, 78, 79, 80, 81, 76, 77, 78, 79, 80, 81, 82, 77, 78, 79, 80, 81, 82, 83, 78, 79, 80, 81, 82, 83, 84, 79, 80, 81, 82, 83, 84, 85]
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', Rn(*[(a,a+7) for a in range(4*8,10*8)]), crc32(b'$rgb@HELLO'), crc32)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "%PYTHONPATH%\lib\site-packages\crcsolver\__init__.py", line 6, in solve
+    return main.solve(data, unknowns, desired, crc_func)
+  File "%PYTHONPATH%\lib\site-packages\crcsolver\main.py", line 23, in solve
+    emptied[position//8] &= ~bit
+IndexError: list index out of range
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', Rn(*[(a,a+7) for a in range(4*8,9*8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', Rn(*[(a+1,a+8) for a in range(4*8,9*8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xcdv\xe8\xb7\x00\x00'
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb\xea\x88\x96\xda\xc0\x80'
+>>> solve(b'$rgb\x80\x80\x80\x80\x80\x80', Rn(*[(a+0,a+7) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb4\xce\xa2\xd6\xc4\x00'
+>>> solve(b'$rgb\0\0\0\0\0\0', Rn(*[(a+0,a+7) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgb4\xce\xa2\xd6\xc4\x00'
+>>> solve(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'), crc32)
+b'$rgbOz\n\x01\x03\x00'
+>>> from crcsolver2.bitmatrix import BitMatrix
+>>>
+>>> from itertools import compress
+>>> from functools import reduce
+>>>
+>>> from .bitmatrix import BitMatrix
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named '__main__.bitmatrix'; '__main__' is not a package
+>>>
+>>> def bitstr(val, width):
+...     return bin(val)[2:].rjust(width, '0')
+...
+>>> def independent_subset(inputs):
+...     ''' given a list of integers, return a list of those that are linearly independent '''
+...
+>>>     width = max(x.bit_length() for x in inputs)
+  File "<stdin>", line 1
+    width = max(x.bit_length() for x in inputs)
+    ^
+IndentationError: unexpected indent
+>>>     basis = BitMatrix(0, width)
+  File "<stdin>", line 1
+    basis = BitMatrix(0, width)
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     result = []
+  File "<stdin>", line 1
+    result = []
+    ^
+IndentationError: unexpected indent
+>>>     for inp in inputs:
+  File "<stdin>", line 1
+    for inp in inputs:
+    ^
+IndentationError: unexpected indent
+>>>         ranka = basis.rank()
+  File "<stdin>", line 1
+    ranka = basis.rank()
+    ^
+IndentationError: unexpected indent
+>>>         basis.row_append(inp)
+  File "<stdin>", line 1
+    basis.row_append(inp)
+    ^
+IndentationError: unexpected indent
+>>>         basis = basis.row_echelon()
+  File "<stdin>", line 1
+    basis = basis.row_echelon()
+    ^
+IndentationError: unexpected indent
+>>>         rankb = basis.rank()
+  File "<stdin>", line 1
+    rankb = basis.rank()
+    ^
+IndentationError: unexpected indent
+>>>
+>>>         if rankb > ranka:
+  File "<stdin>", line 1
+    if rankb > ranka:
+    ^
+IndentationError: unexpected indent
+>>>             result.append(1)
+  File "<stdin>", line 1
+    result.append(1)
+    ^
+IndentationError: unexpected indent
+>>>         else:
+  File "<stdin>", line 1
+    else:
+    ^
+IndentationError: unexpected indent
+>>>             result.append(0)
+  File "<stdin>", line 1
+    result.append(0)
+    ^
+IndentationError: unexpected indent
+>>>             basis.row_pop()
+  File "<stdin>", line 1
+    basis.row_pop()
+    ^
+IndentationError: unexpected indent
+>>>
+>>>         # at most n independent vectors of width n
+...         if basis.nrows >= width:
+  File "<stdin>", line 2
+    if basis.nrows >= width:
+    ^
+IndentationError: unexpected indent
+>>>             result = result + [0]*(len(inputs)-len(result))
+  File "<stdin>", line 1
+    result = result + [0]*(len(inputs)-len(result))
+    ^
+IndentationError: unexpected indent
+>>>             break
+  File "<stdin>", line 1
+    break
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     return result
+  File "<stdin>", line 1
+    return result
+    ^
+IndentationError: unexpected indent
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max([x.bit_length() for x in inputs])
+...     if target.bit_length() > width:
+...         return []
+...
+>>>     selector = independent_subset(inputs)
+  File "<stdin>", line 1
+    selector = independent_subset(inputs)
+    ^
+IndentationError: unexpected indent
+>>>     chosen = list(compress(inputs, selector))
+  File "<stdin>", line 1
+    chosen = list(compress(inputs, selector))
+    ^
+IndentationError: unexpected indent
+>>>     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+  File "<stdin>", line 1
+    chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     record = BitMatrix(len(chosen), len(chosen))
+  File "<stdin>", line 1
+    record = BitMatrix(len(chosen), len(chosen))
+    ^
+IndentationError: unexpected indent
+>>>     record.set_identity(relaxed=True)
+  File "<stdin>", line 1
+    record.set_identity(relaxed=True)
+    ^
+IndentationError: unexpected indent
+>>>     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+  File "<stdin>", line 1
+    echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+  File "<stdin>", line 5
+    row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     rows_used_bitfield = 0
+  File "<stdin>", line 1
+    rows_used_bitfield = 0
+    ^
+IndentationError: unexpected indent
+>>>     for (row, mask) in enumerate(row2mask):
+  File "<stdin>", line 1
+    for (row, mask) in enumerate(row2mask):
+    ^
+IndentationError: unexpected indent
+>>>         if target & mask:
+  File "<stdin>", line 1
+    if target & mask:
+    ^
+IndentationError: unexpected indent
+>>>             rows_used_bitfield ^= record.rows[row]
+  File "<stdin>", line 1
+    rows_used_bitfield ^= record.rows[row]
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+  File "<stdin>", line 7
+    selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+    ^
+IndentationError: unexpected indent
+>>>     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+  File "<stdin>", line 1
+    if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+    ^
+IndentationError: unexpected indent
+>>>         return []
+  File "<stdin>", line 1
+    return []
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+  File "<stdin>", line 2
+    tmp = [0]*len(inputs)
+    ^
+IndentationError: unexpected indent
+>>>     for (i, s) in enumerate(selector):
+  File "<stdin>", line 1
+    for (i, s) in enumerate(selector):
+    ^
+IndentationError: unexpected indent
+>>>         if not s: continue
+  File "<stdin>", line 1
+    if not s: continue
+    ^
+IndentationError: unexpected indent
+>>>         tmp[chosen_idxs[i]] = 1
+  File "<stdin>", line 1
+    tmp[chosen_idxs[i]] = 1
+    ^
+IndentationError: unexpected indent
+>>>     selector = tmp
+  File "<stdin>", line 1
+    selector = tmp
+    ^
+IndentationError: unexpected indent
+>>>     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+  File "<stdin>", line 1
+    assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # done
+...     return selector
+  File "<stdin>", line 2
+    return selector
+    ^
+IndentationError: unexpected indent
+>>>
+>>>
+>>>
+>>> from zlib import crc32
+>>>
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...
+>>>     # calculate subsetxor target
+...     emptied = list(data)
+  File "<stdin>", line 2
+    emptied = list(data)
+    ^
+IndentationError: unexpected indent
+>>>     for position in unknowns:
+  File "<stdin>", line 1
+    for position in unknowns:
+    ^
+IndentationError: unexpected indent
+>>>         bit = 1<<(7-position%8)
+  File "<stdin>", line 1
+    bit = 1<<(7-position%8)
+    ^
+IndentationError: unexpected indent
+>>>         emptied[position//8] &= ~bit
+  File "<stdin>", line 1
+    emptied[position//8] &= ~bit
+    ^
+IndentationError: unexpected indent
+>>>     csum_emptied = crc32(bytes(emptied))
+  File "<stdin>", line 1
+    csum_emptied = crc32(bytes(emptied))
+    ^
+IndentationError: unexpected indent
+>>>     target = csum_emptied ^ desired
+  File "<stdin>", line 1
+    target = csum_emptied ^ desired
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # calculate subsetxor inputs
+...     inputs = []
+  File "<stdin>", line 2
+    inputs = []
+    ^
+IndentationError: unexpected indent
+>>>     for position in unknowns:
+  File "<stdin>", line 1
+    for position in unknowns:
+    ^
+IndentationError: unexpected indent
+>>>         bit = 1<<(7-position%8)
+  File "<stdin>", line 1
+    bit = 1<<(7-position%8)
+    ^
+IndentationError: unexpected indent
+>>>         # set bit
+...         zeroed[position//8] |= bit
+  File "<stdin>", line 2
+    zeroed[position//8] |= bit
+    ^
+IndentationError: unexpected indent
+>>>
+>>>         csum = crc32(bytes(zeroed))
+  File "<stdin>", line 1
+    csum = crc32(bytes(zeroed))
+    ^
+IndentationError: unexpected indent
+>>>         inputs.append(csum_nulls ^ csum)
+  File "<stdin>", line 1
+    inputs.append(csum_nulls ^ csum)
+    ^
+IndentationError: unexpected indent
+>>>
+>>>         # clear bit
+...         zeroed[position//8] ^= bit
+  File "<stdin>", line 2
+    zeroed[position//8] ^= bit
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # solve subsetxor
+...     selector = subsetxor_solve(inputs, target)
+  File "<stdin>", line 2
+    selector = subsetxor_solve(inputs, target)
+    ^
+IndentationError: unexpected indent
+>>>     if selector == []:
+  File "<stdin>", line 1
+    if selector == []:
+    ^
+IndentationError: unexpected indent
+>>>         return None
+  File "<stdin>", line 1
+    return None
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     # set the results on the data, return it
+...     result = emptied
+  File "<stdin>", line 2
+    result = emptied
+    ^
+IndentationError: unexpected indent
+>>>     for i in range(len(selector)):
+  File "<stdin>", line 1
+    for i in range(len(selector)):
+    ^
+IndentationError: unexpected indent
+>>>         if not selector[i]:
+  File "<stdin>", line 1
+    if not selector[i]:
+    ^
+IndentationError: unexpected indent
+>>>             continue
+  File "<stdin>", line 1
+    continue
+    ^
+IndentationError: unexpected indent
+>>>         position = unknowns[i]
+  File "<stdin>", line 1
+    position = unknowns[i]
+    ^
+IndentationError: unexpected indent
+>>>         bit = 1<<(7-position%8)
+  File "<stdin>", line 1
+    bit = 1<<(7-position%8)
+    ^
+IndentationError: unexpected indent
+>>>         result[position//8] |= bit
+  File "<stdin>", line 1
+    result[position//8] |= bit
+    ^
+IndentationError: unexpected indent
+>>>
+>>>     return bytes(result)
+  File "<stdin>", line 1
+    return bytes(result)
+    ^
+IndentationError: unexpected indent
+>>>
+>>>
+>>> from itertools import compress
+>>> from functools import reduce
+>>> from zlib import crc32
+>>>
+>>> from crcsolver.bitmatrix import BitMatrix
+>>>
+>>> # from .bitmatrix import BitMatrix
+...
+>>> def bitstr(val, width):
+...     return bin(val)[2:].rjust(width, '0')
+...
+>>> def independent_subset(inputs):
+...     ''' given a list of integers, return a list of those that are linearly independent '''
+...     #
+...     width = max(x.bit_length() for x in inputs)
+...     basis = BitMatrix(0, width)
+...     #
+...     result = []
+...     for inp in inputs:
+...         ranka = basis.rank()
+...         basis.row_append(inp)
+...         basis = basis.row_echelon()
+...         rankb = basis.rank()
+...         #
+...         if rankb > ranka:
+...             result.append(1)
+...         else:
+...             result.append(0)
+...             basis.row_pop()
+...         #
+...         # at most n independent vectors of width n
+...         if basis.nrows >= width:
+...             result = result + [0]*(len(inputs)-len(result))
+...             break
+...     #
+...     return result
+...
+>>> def subsetxor_solve(inputs, target):
+...     width = max([x.bit_length() for x in inputs])
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     chosen = list(compress(inputs, selector))
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>>
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>>
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+b'$rgbOz\n\x01\x03\x00'
+>>> ls=[]
+>>> ls.extend(range(10,32))
+>>> ls
+[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> #region ## HEX REPR INT ##
+... class hexint(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:x}'
+...
+>>> class hexint1(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:02x}'
+...
+>>> class hexint2(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:04x}'
+...
+>>> class hexint3(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:06x}'
+...
+>>> class hexint8(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:08x}'
+...
+>>> #endregion
+...
+>>> del hexint3
+>>> del hexint2
+>>> del hexint1
+>>> del hexint8
+>>> del hexint
+>>> #region ## HEX REPR INT ##
+... class hexint(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:x}'
+...
+>>> class hexint2(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:02x}'
+...
+>>> class hexint4(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:04x}'
+...
+>>> class hexint6(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:06x}'
+...
+>>> class hexint8(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:08x}'
+...
+>>> #endregion
+...
+>>>
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+b'$rgbOz\n\x01\x03\x00'
+>>> hexint8(crc32(b'$rgb@HELLO'))
+0xb5504da6
+>>> hexint8(crc32(b'$rgbOz\n\x01\x03\x00'))
+0xb5504da6
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(target))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+138320199
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> #region ## HEX REPR INT ##
+... class hexint(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:x}'
+...     def __str__(self)  -> str: return repr(self)
+...
+>>> class hexint2(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:02x}'
+...     def __str__(self)  -> str: return repr(self)
+...
+>>> class hexint4(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:04x}'
+...     def __str__(self)  -> str: return repr(self)
+...
+>>> class hexint6(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:06x}'
+...     def __str__(self)  -> str: return repr(self)
+...
+>>> class hexint8(int):
+...     def __new__(cls, *args, **kwargs): return super().__new__(cls, *args, **kwargs)
+...     def __repr__(self) -> str: return f'0x{self:08x}'
+...     def __str__(self)  -> str: return repr(self)
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0x083e9947
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def independent_subset(inputs):
+...     ''' given a list of integers, return a list of those that are linearly independent '''
+...     #
+...     width = max(x.bit_length() for x in inputs)
+...     basis = BitMatrix(0, width)
+...     #
+...     result = []
+...     for inp in inputs:
+...         ranka = basis.rank()
+...         basis.row_append(inp)
+...         basis = basis.row_echelon()
+...         rankb = basis.rank()
+...         #
+...         if rankb > ranka:
+...             result.append(1)
+...         else:
+...             result.append(0)
+...             basis.row_pop()
+...         #
+...         # at most n independent vectors of width n
+...         if basis.nrows >= width:
+...             result.extend([0]*(len(inputs)-len(result)))
+...             break
+...     #
+...     return result
+...
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print(chosen)
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[257428076, 128714038, 64357019, 3964895853, 2609988118, 1304994059, 3411858341, 1492342857, 3250663172, 1625331586, 812665793, 4118849216, 2059424608, 1029712304, 2601801789, 2687676222, 1343838111, 3316918511, 2405603159, 2852767883, 3099354981, 1889177024, 944588512, 472294256, 236147128, 118073564, 59036782, 29518391, 4034481925, 2508465314, 842424962, 421212481]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>> len('00000000000000000000000000000001')
+32
+>>> len([0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141])
+32
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     print(BitMatrix(len(chosen), width, chosen))
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+00001111010110000000101001101100
+00000111101011000000010100110110
+00000011110101100000001010011011
+11101100010100111000001001101101
+10011011100100010100001000010110
+01001101110010001010000100001011
+11001011010111001101001110100101
+01011000111100110101100001001001
+11000001110000010010111100000100
+01100000111000001001011110000010
+00110000011100000100101111000001
+11110101100000001010011011000000
+01111010110000000101001101100000
+00111101011000000010100110110000
+10011011000101000101100000111101
+10100000001100101010111100111110
+01010000000110010101011110011111
+11000101101101000010100011101111
+10001111011000101001011101010111
+10101010000010011100100010001011
+10111000101111000110011101100101
+01110000100110101000110111000000
+00111000010011010100011011100000
+00011100001001101010001101110000
+00001110000100110101000110111000
+00000111000010011010100011011100
+00000011100001001101010001101110
+00000001110000100110101000110111
+11110000011110010100111100000101
+10010101100001000010010010100010
+00110010001101100110001010000010
+00011001000110110011000101000001
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     print(BitMatrix(len(chosen), width, chosen))
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(record)
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+00001111010110000000101001101100
+00000111101011000000010100110110
+00000011110101100000001010011011
+11101100010100111000001001101101
+10011011100100010100001000010110
+01001101110010001010000100001011
+11001011010111001101001110100101
+01011000111100110101100001001001
+11000001110000010010111100000100
+01100000111000001001011110000010
+00110000011100000100101111000001
+11110101100000001010011011000000
+01111010110000000101001101100000
+00111101011000000010100110110000
+10011011000101000101100000111101
+10100000001100101010111100111110
+01010000000110010101011110011111
+11000101101101000010100011101111
+10001111011000101001011101010111
+10101010000010011100100010001011
+10111000101111000110011101100101
+01110000100110101000110111000000
+00111000010011010100011011100000
+00011100001001101010001101110000
+00001110000100110101000110111000
+00000111000010011010100011011100
+00000011100001001101010001101110
+00000001110000100110101000110111
+11110000011110010100111100000101
+10010101100001000010010010100010
+00110010001101100110001010000010
+00011001000110110011000101000001
+00110111010011000011110001001101
+00111100011100101100101001111110
+00010100000001101100011110011001
+00001110001100100111000010100111
+01001100001010110101100000101101
+01111111100110101100110110010010
+11111100110110110010100110100000
+01000101000010101111000010111111
+10010001110001100011001100100111
+01111101100010101100110000110001
+01010110000100101100000101010101
+10110001100100000100111001000111
+00000001010001110100011010100111
+00110101110010100111011011110001
+01001001010101011111100001011010
+10011001111001110000011010011000
+11001010110110010001110110010110
+01000110100010010100100111111000
+11100000010100101110101110010101
+11111000000011010101101011011101
+10100011101000110101001000110000
+10101001101000001000001000011110
+01100101100010001000011111000110
+11010010001101111100101110111001
+01111111100101111111011101001101
+00100011011110000100101110010001
+01010000101100011110011100010000
+11111001111100111011110100011011
+00010100001011100111100111000000
+01100110111100011000100011000110
+11000001001101100100110111000011
+10001110011001100001111101110110
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>> len([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0])
+42
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     print(BitMatrix(len(chosen), width, chosen))
+...     print()
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(record)
+...     print()
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+00001111010110000000101001101100
+00000111101011000000010100110110
+00000011110101100000001010011011
+11101100010100111000001001101101
+10011011100100010100001000010110
+01001101110010001010000100001011
+11001011010111001101001110100101
+01011000111100110101100001001001
+11000001110000010010111100000100
+01100000111000001001011110000010
+00110000011100000100101111000001
+11110101100000001010011011000000
+01111010110000000101001101100000
+00111101011000000010100110110000
+10011011000101000101100000111101
+10100000001100101010111100111110
+01010000000110010101011110011111
+11000101101101000010100011101111
+10001111011000101001011101010111
+10101010000010011100100010001011
+10111000101111000110011101100101
+01110000100110101000110111000000
+00111000010011010100011011100000
+00011100001001101010001101110000
+00001110000100110101000110111000
+00000111000010011010100011011100
+00000011100001001101010001101110
+00000001110000100110101000110111
+11110000011110010100111100000101
+10010101100001000010010010100010
+00110010001101100110001010000010
+00011001000110110011000101000001
+
+00110111010011000011110001001101
+00111100011100101100101001111110
+00010100000001101100011110011001
+00001110001100100111000010100111
+01001100001010110101100000101101
+01111111100110101100110110010010
+11111100110110110010100110100000
+01000101000010101111000010111111
+10010001110001100011001100100111
+01111101100010101100110000110001
+01010110000100101100000101010101
+10110001100100000100111001000111
+00000001010001110100011010100111
+00110101110010100111011011110001
+01001001010101011111100001011010
+10011001111001110000011010011000
+11001010110110010001110110010110
+01000110100010010100100111111000
+11100000010100101110101110010101
+11111000000011010101101011011101
+10100011101000110101001000110000
+10101001101000001000001000011110
+01100101100010001000011111000110
+11010010001101111100101110111001
+01111111100101111111011101001101
+00100011011110000100101110010001
+01010000101100011110011100010000
+11111001111100111011110100011011
+00010100001011100111100111000000
+01100110111100011000100011000110
+11000001001101100100110111000011
+10001110011001100001111101110110
+
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def independent_subset(inputs):
+...     ''' given a list of integers, return a list of those that are linearly independent '''
+...     #
+...     width = max(x.bit_length() for x in inputs)
+...     basis = BitMatrix(0, width)
+...     #
+...     result = []
+...     for inp in inputs:
+...         ranka = basis.rank()
+...         basis.row_append(inp)
+...         basis = basis.row_echelon()
+...         rankb = basis.rank()
+...         #
+...         if rankb > ranka:
+...             result.append(1)
+...         else:
+...             result.append(0)
+...             basis.row_pop()
+...         #
+...         # at most n independent vectors of width n
+...         # if basis.nrows >= width:
+...         #     result.extend([0]*(len(inputs)-len(result)))
+...         #     break
+...     #
+...     return result
+...
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     print(BitMatrix(len(chosen), width, chosen))
+...     print()
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(record)
+...     print()
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+00001111010110000000101001101100
+00000111101011000000010100110110
+00000011110101100000001010011011
+11101100010100111000001001101101
+10011011100100010100001000010110
+01001101110010001010000100001011
+11001011010111001101001110100101
+01011000111100110101100001001001
+11000001110000010010111100000100
+01100000111000001001011110000010
+00110000011100000100101111000001
+11110101100000001010011011000000
+01111010110000000101001101100000
+00111101011000000010100110110000
+10011011000101000101100000111101
+10100000001100101010111100111110
+01010000000110010101011110011111
+11000101101101000010100011101111
+10001111011000101001011101010111
+10101010000010011100100010001011
+10111000101111000110011101100101
+01110000100110101000110111000000
+00111000010011010100011011100000
+00011100001001101010001101110000
+00001110000100110101000110111000
+00000111000010011010100011011100
+00000011100001001101010001101110
+00000001110000100110101000110111
+11110000011110010100111100000101
+10010101100001000010010010100010
+00110010001101100110001010000010
+00011001000110110011000101000001
+
+00110111010011000011110001001101
+00111100011100101100101001111110
+00010100000001101100011110011001
+00001110001100100111000010100111
+01001100001010110101100000101101
+01111111100110101100110110010010
+11111100110110110010100110100000
+01000101000010101111000010111111
+10010001110001100011001100100111
+01111101100010101100110000110001
+01010110000100101100000101010101
+10110001100100000100111001000111
+00000001010001110100011010100111
+00110101110010100111011011110001
+01001001010101011111100001011010
+10011001111001110000011010011000
+11001010110110010001110110010110
+01000110100010010100100111111000
+11100000010100101110101110010101
+11111000000011010101101011011101
+10100011101000110101001000110000
+10101001101000001000001000011110
+01100101100010001000011111000110
+11010010001101111100101110111001
+01111111100101111111011101001101
+00100011011110000100101110010001
+01010000101100011110011100010000
+11111001111100111011110100011011
+00010100001011100111100111000000
+01100110111100011000100011000110
+11000001001101100100110111000011
+10001110011001100001111101110110
+
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     print(selector)
+...     chosen = list(compress(inputs, selector))
+...     print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     print(BitMatrix(len(chosen), width, chosen))
+...     print()
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     print(record)
+...     print()
+...     print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     print(hexint8(rows_used_bitfield))
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+0xbd6ed4e1 0x083e9947 0xb5504da6
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x4ac21251, 0xc8d98a08, 0x646cc504, 0x32366282, 0x191b3141, 0x76dc4190, 0x3b6e20c8, 0x1db71064, 0x0edb8832, 0x076dc419, 0xee0e612c, 0x77073096]
+[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+[0x0f580a6c, 0x07ac0536, 0x03d6029b, 0xec53826d, 0x9b914216, 0x4dc8a10b, 0xcb5cd3a5, 0x58f35849, 0xc1c12f04, 0x60e09782, 0x30704bc1, 0xf580a6c0, 0x7ac05360, 0x3d6029b0, 0x9b14583d, 0xa032af3e, 0x5019579f, 0xc5b428ef, 0x8f629757, 0xaa09c88b, 0xb8bc6765, 0x709a8dc0, 0x384d46e0, 0x1c26a370, 0x0e1351b8, 0x0709a8dc, 0x0384d46e, 0x01c26a37, 0xf0794f05, 0x958424a2, 0x32366282, 0x191b3141]
+00001111010110000000101001101100
+00000111101011000000010100110110
+00000011110101100000001010011011
+11101100010100111000001001101101
+10011011100100010100001000010110
+01001101110010001010000100001011
+11001011010111001101001110100101
+01011000111100110101100001001001
+11000001110000010010111100000100
+01100000111000001001011110000010
+00110000011100000100101111000001
+11110101100000001010011011000000
+01111010110000000101001101100000
+00111101011000000010100110110000
+10011011000101000101100000111101
+10100000001100101010111100111110
+01010000000110010101011110011111
+11000101101101000010100011101111
+10001111011000101001011101010111
+10101010000010011100100010001011
+10111000101111000110011101100101
+01110000100110101000110111000000
+00111000010011010100011011100000
+00011100001001101010001101110000
+00001110000100110101000110111000
+00000111000010011010100011011100
+00000011100001001101010001101110
+00000001110000100110101000110111
+11110000011110010100111100000101
+10010101100001000010010010100010
+00110010001101100110001010000010
+00011001000110110011000101000001
+
+00110111010011000011110001001101
+00111100011100101100101001111110
+00010100000001101100011110011001
+00001110001100100111000010100111
+01001100001010110101100000101101
+01111111100110101100110110010010
+11111100110110110010100110100000
+01000101000010101111000010111111
+10010001110001100011001100100111
+01111101100010101100110000110001
+01010110000100101100000101010101
+10110001100100000100111001000111
+00000001010001110100011010100111
+00110101110010100111011011110001
+01001001010101011111100001011010
+10011001111001110000011010011000
+11001010110110010001110110010110
+01000110100010010100100111111000
+11100000010100101110101110010101
+11111000000011010101101011011101
+10100011101000110101001000110000
+10101001101000001000001000011110
+01100101100010001000011111000110
+11010010001101111100101110111001
+01111111100101111111011101001101
+00100011011110000100101110010001
+01010000101100011110011100010000
+11111001111100111011110100011011
+00010100001011100111100111000000
+01100110111100011000100011000110
+11000001001101100100110111000011
+10001110011001100001111101110110
+
+10000000000000000000000000000000
+01000000000000000000000000000000
+00100000000000000000000000000000
+00010000000000000000000000000000
+00001000000000000000000000000000
+00000100000000000000000000000000
+00000010000000000000000000000000
+00000001000000000000000000000000
+00000000100000000000000000000000
+00000000010000000000000000000000
+00000000001000000000000000000000
+00000000000100000000000000000000
+00000000000010000000000000000000
+00000000000001000000000000000000
+00000000000000100000000000000000
+00000000000000010000000000000000
+00000000000000001000000000000000
+00000000000000000100000000000000
+00000000000000000010000000000000
+00000000000000000001000000000000
+00000000000000000000100000000000
+00000000000000000000010000000000
+00000000000000000000001000000000
+00000000000000000000000100000000
+00000000000000000000000010000000
+00000000000000000000000001000000
+00000000000000000000000000100000
+00000000000000000000000000010000
+00000000000000000000000000001000
+00000000000000000000000000000100
+00000000000000000000000000000010
+00000000000000000000000000000001
+[0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x08000000, 0x04000000, 0x02000000, 0x01000000, 0x00800000, 0x00400000, 0x00200000, 0x00100000, 0x00080000, 0x00040000, 0x00020000, 0x00010000, 0x00008000, 0x00004000, 0x00002000, 0x00001000, 0x00000800, 0x00000400, 0x00000200, 0x00000100, 0x00000080, 0x00000040, 0x00000020, 0x00000010, 0x00000008, 0x00000004, 0x00000002, 0x00000001]
+0x9fe85013
+b'$rgbOz\n\x01\x03\x00'
+>>>
+>>> ## standard CRC-32 (used by zlib) table calculation
+... def _calc_crc32(num:int) -> int:
+...     """_calc_crc32(num) -> CRC_TABLE[num]
+...     calculate the value of an entry in the CRC_TABLE, at CRC_TABLE[num]
+...     """
+...     POLY = 0xEDB88320  # reversed polynomial
+...     for _ in range(8):
+...         if num & 0x1: num = (num >> 1) ^ POLY
+...         else:         num >>= 1
+...     return num
+...
+>>> def _find_crc32(num:int) -> int:
+...     """_find_crc32(_calc_crc32(0xd7)) -> 0xd7
+...     finds the index of the most significant byte in the CRC_TABLE
+...     """
+...     for x in range(256):
+...         y = _calc_crc32(x)
+...         if (y >> 24) == num:
+...             return x
+...     raise Exception('not found')
+...
+>>> # CRC-32 TABLES for forward and inverse lookup
+... CRC_TABLE:list   = tuple(_calc_crc32(n) for n in range(256))
+>>> CRC_INDICES:list = tuple(_find_crc32(n) for n in range(256))  # indices for most-significant bytes in CRC_TABLE
+>>>
+>>> #endregion
+...
+>>> #region ## CRC-32 FUNCTIONS ##
+...
+>>> def crc32(data:bytes, init:int=0) -> int:
+...     if isinstance(data, str): data = data.encode('cp932')
+...     #include if: from zlib import crc32 as z_crc32 is uncommented
+...     #return z_crc32(data, init)
+...     crc = init ^ 0xffffffff  # init
+...     for o in data:
+...         crc = (crc >> 8) ^ CRC_TABLE[(crc ^ o) & 0xff]
+...     return crc ^ 0xffffffff  # xorout
+...
+>>> #include if: from zlib import crc32 as z_crc32 is uncommented
+... #assert(crc32(b'123456789') == z_crc32(b'123456789'))
+...
+>>> def inverse_crc32(accum:int, data:bytes=b'') -> int:
+...     """inverse_crc32(crc32(b'$rgb@HELLO'), b'@HELLO') -> crc32(b'$rgb')
+...     inverse crc32 operation, this can be used to find an original accumulator at (end-N) if N postfix bytes are known
+...
+...     another way to look at this function is naming it `backout_accum()`
+...     """
+...     if isinstance(data, str): data = data.encode('cp932')
+...     crc = accum ^ 0xffffffff  # xorout
+...     for o in reversed(data):
+...         x = CRC_INDICES[crc >> 24]
+...         y = CRC_TABLE[x]
+...         crc = (((crc ^ y) << 8) & 0xffffffff) | (o ^ x)
+...     return crc ^ 0xffffffff  # xorout or init??
+...
+>>> def backout_indices(accum:int, count:int) -> list:
+...     """backout_indices(crc32(b'$rgb'), 3) -> [0xd1, 0xd1, 0x3c]
+...     the returned indices are equal to (least-significant accumulator byte XOR the input byte) each iteration
+...     this accumulator is not equal to the one input in the arguments, but the one present at that iteration in the operation.
+...     """
+...     if not (1 <= count <= 4):
+...         raise Exception(f'argument count must be between 1 and 4, not {count}')
+...     # back out up to 4 indices:
+...     crc  = accum ^ 0xffffffff  # xorout
+...     indices = []
+...     for _ in range(count):
+...         x = CRC_INDICES[crc >> 24]
+...         y = CRC_TABLE[x]
+...         # every iteration we lose another least-significant byte of known data:
+...         #NOTE: (crc ^ y) WILL ALWAYS result in 00XXXXXX
+...         #  (this is a property of the CRC_INDICES lookup table)
+...         crc = ((crc ^ y) << 8) | x  # (((crc ^ y) << 8) & 0xffffffff) | x
+...         indices.insert(0, x)
+...
+...     return indices
+...
+>>> def backout_data(accum:int, orig_accum:int, count:int) -> bytes:
+...     """backout_data(crc32(b'$rgb'), crc32(b'$'), 3) -> b'rgb'
+...     back out `count` (up to 4) known bytes from the result of a crc32 operation
+...     """
+...     if not (1 <= count <= 4):
+...         raise Exception(f'argument count must be between 1 and 4, not {count}')
+...     # back out up to 4 indices:
+...     crc = accum ^ 0xffffffff  # xorout
+...     indices = []
+...     for _ in range(count):
+...         x = CRC_INDICES[crc >> 24]
+...         y = CRC_TABLE[x]
+...         # every iteration we lose another least-significant byte of known data:
+...         #NOTE: (crc ^ y) WILL ALWAYS result in 00XXXXXX
+...         #  (this is a property of the CRC_INDICES lookup table)
+...         crc = ((crc ^ y) << 8) | x  # (((crc ^ y) << 8) & 0xffffffff) | x
+...         indices.insert(0, x)
+...
+...     # forward crc for accum to get data from indices:
+...     crc = orig_accum ^ 0xffffffff  # xorout
+...     data = bytearray()
+...     for x in indices:
+...         data.append((crc ^ x) & 0xff)    # o == (crc ^ x) & 0xff
+...         crc = (crc >> 8) ^ CRC_TABLE[x]  # x == (crc ^ o) & 0xff
+...
+...     #assert((crc ^ 0xffffffff) == accum)  # xorout or init??
+...     crc ^= 0xffffffff  # xorout or init??
+...     if crc != accum:
+...         #NOTE: if count==4, then it's impossible for this Exception to raise, as there
+...         #       is ALWAYS a combination to turn one accum into another with 4 bytes,
+...         #       however with 3 or less bytes, it's impossible(?) to find a second collision(?) [TODO: confirm]
+...         raise ValueError(f'final accumulator 0x{accum:08x} does not match expected output accumulator 0x{crc:08x}')
+...
+...     return bytes(data)
+...
+>>> #endregion
+...
+>>>
+>>> def independent_subset(inputs):
+...     ''' given a list of integers, return a list of those that are linearly independent '''
+...     #
+...     width = max(x.bit_length() for x in inputs)
+...     basis = BitMatrix(0, width)
+...     #
+...     result = []
+...     for inp in inputs:
+...         ranka = basis.rank()
+...         basis.row_append(inp)
+...         basis = basis.row_echelon()
+...         rankb = basis.rank()
+...         #
+...         if rankb > ranka:
+...             result.append(1)
+...         else:
+...             result.append(0)
+...             basis.row_pop()
+...         #
+...         # at most n independent vectors of width n
+...         if basis.nrows >= width:
+...             result.extend([0]*(len(inputs)-len(result)))
+...             break
+...     #
+...     return result
+...
+>>> def subsetxor_solve(inputs, target):
+...     width = max(x.bit_length() for x in inputs)
+...     if target.bit_length() > width:
+...         return []
+...     #
+...     selector = independent_subset(inputs)
+...     # print(selector)
+...     chosen = list(compress(inputs, selector))
+...     # print([hexint8(c) for c in chosen])
+...     chosen_idxs = [x for x in range(len(selector)) if selector[x]]
+...     #
+...     record = BitMatrix(len(chosen), len(chosen))
+...     record.set_identity(relaxed=True)
+...     echelon = BitMatrix(len(chosen), width, chosen).row_echelon(record)
+...     # print(BitMatrix(len(chosen), width, chosen))
+...     # print()
+...     # print(record)
+...     # print()
+...     # print(echelon)
+...     #
+...     # row2mask, eg:
+...     # [0]: 0x8000 "use row 0 to toggle bit 15"
+...     # [1]: 0x4000 "use row 1 to toggle bit 14"
+...     # [2]: 0x0010 "use row 2 to toggle bit 4"
+...     row2mask = [1<<(echelon.rows[x].bit_length()-1) for x in range(echelon.rank())]
+...     # print([hexint8(r) for r in row2mask])
+...     #
+...     rows_used_bitfield = 0
+...     for (row, mask) in enumerate(row2mask):
+...         if target & mask:
+...             rows_used_bitfield ^= record.rows[row]
+...     # print(hexint8(rows_used_bitfield))
+...     #
+...     # selector, eg:
+...     # [0,1,0,1]
+...     #  | | | +- chosen[3] used
+...     #  | | +--- chosen[2] NOT used
+...     #  | +----- chosen[1] used
+...     #  +------- chosen[0] NOT used
+...     selector = [int(x) for x in bitstr(rows_used_bitfield, record.nrows)]
+...     if target != reduce(lambda a,b:a^b, compress(chosen, selector), 0):
+...         return []
+...     #
+...     # convert selector over chosen to selector over original inputs
+...     tmp = [0]*len(inputs)
+...     for (i, s) in enumerate(selector):
+...         if not s: continue
+...         tmp[chosen_idxs[i]] = 1
+...     selector = tmp
+...     assert target == reduce(lambda a,b:a^b, compress(inputs, selector), 0)
+...     #
+...     # done
+...     return selector
+...
+>>> def solve2(data, unknowns, desired):
+...     zeroed = [0]*len(data)
+...     csum_nulls = crc32(bytes(zeroed))
+...     #
+...     # calculate subsetxor target
+...     emptied = list(data)
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         emptied[position//8] &= ~bit
+...     csum_emptied = crc32(bytes(emptied))
+...     target = csum_emptied ^ desired
+...     # print(hexint8(csum_emptied), hexint8(target), hexint8(desired))
+...     #
+...     # calculate subsetxor inputs
+...     inputs = []
+...     for position in unknowns:
+...         bit = 1<<(7-position%8)
+...         # set bit
+...         zeroed[position//8] |= bit
+...         #
+...         csum = crc32(bytes(zeroed))
+...         inputs.append(csum_nulls ^ csum)
+...         #
+...         # clear bit
+...         zeroed[position//8] ^= bit
+...     #
+...     # solve subsetxor
+...     # print([hexint8(x) for x in inputs])
+...     selector = subsetxor_solve(inputs, target)
+...     if selector == []:
+...         return None
+...     #
+...     # set the results on the data, return it
+...     result = emptied
+...     for i in range(len(selector)):
+...         if not selector[i]:
+...             continue
+...         position = unknowns[i]
+...         bit = 1<<(7-position%8)
+...         result[position//8] |= bit
+...     #
+...     return bytes(result)
+...
+>>> def Rn(*args):
+...     items = []
+...     for a,b in args:
+...         items.extend(range(a,b))
+...     return items
+...
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+b'$rgbOz\n\x01\x03\x00'
+>>> M=0xffffffff
+>>> from strings import ascii_lowercase, ascii_uppercase, digits
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'strings'
+>>> from string import ascii_lowercase, ascii_uppercase, digits
+>>> CHRS=''.join([ascii_lowercase, ascii_uppercase, digits])
+>>> M=0xffffffff
+>>> for c in CHRS:
+...   M &= ord(c)
+...
+>>> print(bin(M))
+0b0
+>>> M=0xffffffff
+>>> for c in ''.join([ascii_lowercase, ascii_uppercase, digits]):
+...   M &= ord(c)
+...
+>>> for c in ''.join([ascii_lowercase, ascii_uppercase, digits]): M &= ord(c)
+...
+>>> M=0xff
+>>> for c in ''.join([ascii_lowercase, ascii_uppercase, digits]): M &= ord(c)
+...
+>>>   M &= ord(c)
+  File "<stdin>", line 1
+    M &= ord(c)
+    ^
+IndentationError: unexpected indent
+>>> M=0xff
+>>> for c in ''.join([ascii_lowercase]): M &= ord(c)
+...
+>>> M
+96
+>>> bin(M)
+'0b1100000'
+>>> M2=0
+>>> for c in ''.join([ascii_lowercase]): M2 |= ord(c)
+...
+>>> bin(M2^0xffffffff^M)
+'0b11111111111111111111111111100000'
+>>> bin(M2^0xff^M)
+'0b11100000'
+>>> bin(M2^0xff)
+'0b10000000'
+>>> hex(M)
+'0x60'
+>>> M=0xff
+>>> for c in ''.join([ascii_uppercase]): M &= ord(c)
+...
+>>> hex(M)
+'0x40'
+>>> solve2(b'$rgb\0\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(4*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+b'$rgbOz\n\x01\x03\x00'
+>>> solve2(b'$rgb@\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(5*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+b'$rgb@i\x1b\\%\x03'
+>>> solve2(b'$rgb@\x40\x40\x40\x40\x40', Rn(*[(a+2,a+8) for a in range(5*8,10*8,8)]), crc32(b'$rgb@HELLO'))#, crc32)
+b'$rgb@HELLO'
+>>> solve2(b'$rgb@\x40\x40\x40\x40\x40\x40', Rn(*[(a+2,a+8) for a in range(5*8,11*8,8)]), crc32(b'$rgb@HELLOL'))#, crc32)
+b'$rgb@W{y_t@'
+>>> backout_indices(0x00d696cc, 4)
+[24, 107, 48, 217]
+>>> CRC_INDICES[0]
+0
+>>> CRC_TABLE[0]
+0
+>>> CRC_INDICES[0xff]
+217
+>>> backout_indices(0xff75cd29, 4)
+[1, 116, 27, 0]
+>>> backout_indices(0xff7c52e6, 4)
+[255, 13, 23, 0]
+>>> hexint8(crc32(b'$sound_stop'))
+0x4d6b49e7
+>>> hexint8(crc32(b'$sound_stop@'))
+0x9afdb28f
+>>> hexint8(crc32(b'$sound_stop@#'))
+0x0df8fdfc
+>>> hexint8(crc32(b'$sound_stop@__SYSCALL__'))
+0xee5ca2f2
+>>> hexint8(crc32(b'$sound_stop@__CALL__'))
+0xb118cc30
+>>> hexint8(crc32(b'$sound_stop@__SYS__'))
+0x9f97296f
+>>> hexint8(crc32(b'$sound_stop@__SYSTEM__'))
+0x6026591b
+>>> hexint8(crc32(b'$sound_stop@SYSTEM'))
+0x38dcd828
+>>> hexint8(crc32(b'$sound_stop@__SYSTEM'))
+0xbb852c7a
+>>> hexint8(crc32(b'$sound_stop@__SYS'))
+0xaa91e508
+>>> hexint8(crc32(b'$sound_stop@__SYS__@'))
+0x794c45fd
+>>> hexint8(crc32(b'$sound_stop@@'))
+0xd943cd1e
+>>> hexint8(crc32(b'\x00sound_stop@'))
+0x81ca5208
+>>> hexint8(crc32(b'\x01sound_stop@'))
+0x1a6f1e67
+>>> hexint8(crc32(b'\x02sound_stop@'))
+0x6df1cc97
+>>> solve2(b'\0\0\0\0', Rn(*[(a+1,a+8) for a in range(0*8,4*8,8)]), 0x959b0a16)
+>>> solve2(b'\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(0*8,5*8,8)]), 0x959b0a16)
+b'\x19XI\x19c'
+>>> solve2(b'\0\0\0\0\0', Rn(*[(a+1,a+8) for a in range(0*8,5*8,8)]), 0x109ca5db)
+b'KtUz#'
+>>> hex(0x10000000//8)
+'0x2000000'
+>>> 0x10000000//8
+33554432
+>>> 0x10000000//8 / 1024
+32768.0
+>>> 0x10000000//8 / 1024 / 1024
+32.0
+>>> from zlib import adler32
+>>> hexint8(adler32(b'atoi'))
+0x042b01ae
+>>> hexint8(adler32(b'$atoi'))
+0x04e001d2
+>>> hexint8(adler32(b'$atoi@'))
+0x06f20212
+>>> hexint8(adler32(b'atoi@'))
+0x061901ee
+>>> hexint8(adler32(b'atoi@SYSTEM'))
+0x187b03d3
+>>> hexint8(adler32(b'$atoi@SYSTEM'))
+0x1a2c03f7
+>>> hexint8(adler32(b'$atoi@__SYS__'))
+0x1f5c048d
+>>> hexint2(ord('F')^ord('c'))
+0x25
+>>> hexint2(ord('R')^ord('o'))
+0x3d
+>>> hexint2(ord('d')^ord('s'))
+0x17
+>>> hexint2(ord('d')-ord('s'))
+0x-f
+>>> hexint2(ord('F')-ord('c'))
+0x-1d
+>>> hexint2(ord('R')-ord('o'))
+0x-1d
+>>> hexint2(ord('x')-ord('a'))
+0x17
+>>> hexint2(ord('J')-ord('t'))
+0x-2a
+>>> hexint2(ord('T')^ord('a'))
+0x35
+>>> hexint2(ord('T')-ord('a'))
+0x-d
+>>> hexint2(ord('u')-ord('b'))
+0x13
+>>> hexint2(ord('T')-ord('$'))
+0x30
+>>> hexint2(ord('u')-ord('a'))
+0x14
+>>> hexint2(ord('t')-ord('b'))
+0x12
+>>> hexint2(ord('t')-ord('s'))
+0x01
+>>> hexint2(ord('k')-ord('@'))
+0x2b
+>>> hexint2(ord('T')^ord('$'))
+0x70
+>>> hexint2(ord('u')^ord('a'))
+0x14
+>>> hexint2(ord('t')^ord('b'))
+0x16
+>>> hexint2(ord('t')^ord('s'))
+0x07
+>>> hexint2(ord('t')+ord('s'))
+0xe7
+>>> hexint2(ord('`')+ord('%'))
+0x85
+>>> hexint2(ord('`')-ord('%'))
+0x3b
+>>> hexint2(ord('`')^ord('%'))
+0x45
+>>> hexint8(CRC_TABLE[1])
+0x77073096
+>>> backout_indices(0x4694366a)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: backout_indices() missing 1 required positional argument: 'count'
+>>> backout_indices(0x4694366a,4)
+[196, 5, 138, 118]
+>>> backout_indices(0x46b18379,4)
+[101, 110, 56, 118]
+>>> backout_indices(0x959b0a16,4)
+[234, 151, 99, 17]
+>>> hexint8(adler32(b'$rgb')^crc32(b'$rgb'))
+0xd37ba73f
+>>> hexint8(adler32(b'$rgb')-crc32(b'$rgb'))
+0x-cd47a4ff
+>>> hexint8(-adler32(b'$rgb')+crc32(b'$rgb'))
+0xcd47a4ff
+>>> hexint8(adler32(b'$rgb@')^crc32(b'$rgb@'))
+0x5b60827e
+>>> hexint8(adler32(b'rgb')^crc32(b'rgb'))
+0x23bd9904
+>>> hexint8(adler32(b'rgb@')^crc32(b'rgb@'))
+0x88f82367
+>>> bin(7)
+'0b111'
+>>> bin(9)
+'0b1001'
+>>> bin(0xb)
+'0b1011'
+>>> bin(0x5)
+'0b101'
+>>> bin(0xe)
+'0b1110'
+>>> hexint8(crc32(b'rgb@'))
+0x8cfd221b
+>>> hexint8(crc32(b'$rgb@'))
+0x5fda83de
+>>> hexint8(crc32(b'$rgb'))
+0xd061a65f
+>>> hexint8(crc32(b'$rgb',len(4)))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: object of type 'int' has no len()
+>>> hexint8(crc32(b'$rgb',4))
+0x5f033108
+>>> hexint8(crc32(b'$rgb',5))
+0xe7bf566d
+>>> hexint8(crc32(b'$rgb@',5))
+0x973a0cae
+>>> hexint8(crc32(b'$rgb@',4))
+0xaa5a251e
+>>> hexint8(crc32(b'rgb@',4))
+0x039fb54c
+>>> hexint8(crc32(b'rgb@',3))
+0x9e488df5
+>>> hexint8(crc32(b'rgb',3))
+0x23722661
+>>> hexint8(crc32(b'rgb',4))
+0x263d30e4
+>>> hexint8(crc32(b'rgb',~4))
+0x-268316f7
+>>> hexint8(crc32(b'rgb',4))
+0x263d30e4
+>>> bin(0xb)
+'0b1011'
+>>> bin(0x4)
+'0b100'
+>>> hexint8(crc32(b'$sprite_len_x'))
+0xaefb8184
+>>> hexint8(crc32(b'$sprite_len_y'))
+0xd9fcb112
+>>> hexint8(crc32(b'$sprite_len_y')^crc32(b'$sprite_len_x'))
+0x77073096
+>>> hexint8(crc32(b'sprite_len_y')^crc32(b'sprite_len_x'))
+0x77073096
+>>> hexint8(crc32(b'sprite_len_y_')^crc32(b'sprite_len_x_'))
+0x191b3141
+>>> hexint8(crc32(b'$sprite_len_y_')^crc32(b'$sprite_len_x_'))
+0x191b3141
+>>> CRC_INDICES[0x77]
+1
+>>> hexint8(0x63f660a2 ^ 0xfef981d4)
+0x9d0fe176
+>>> hexint8(CRC_INDICES[0x77])
+0x00000001
+>>> hexint8(CRC_TABLE[CRC_INDICES[0x77]])
+0x77073096
+>>> hexint8(CRC_TABLE[CRC_INDICES[0x9d]])
+0x9dd277af
+>>> hexint8(CRC_INDICES[0x9d])
+0x00000085
+>>> hexint8(crc32(b'$sprite_len_y_@')^crc32(b'$sprite_len_x_@'))
+0x01c26a37
+>>> hexint8(crc32(b'$sprite_len__y@')^crc32(b'$sprite_len__x@'))
+0x191b3141
+>>> hexint8(crc32(b'rand'))
+0x18c6f574
+>>> hexint8(crc32(b'rand%'))
+0xce76481a
+>>> hexint8(crc32(b'rand%')^crc32(b'rand'))
+0xd6b0bd6e
+>>> hexint8(crc32(b'$rand%')^crc32(b'$rand'))
+0xee4a0d35
+>>> hexint8(crc32(b'$rand%'))
+0x25ab5984
+>>> hexint8(crc32(b'$rand'))
+0xcbe154b1
+>>> hexint8(crc32(b'rand%'))
+0xce76481a
+>>> hexint8(crc32(b'rand'))
+0x18c6f574
+>>> hexint8(crc32(b'$rand%@')^crc32(b'$rand@'))
+0x565d8e2e
+>>> hexint8(crc32(b'$rand@'))
+0x1873cc53
+>>> hexint8(crc32(b'$rand%@'))
+0x4e2e427d
+>>> hexint8(crc32(b'$sprite_len__y@')^crc32(b'$sprite_len__x@'))
+0x191b3141
+>>> hexint8(crc32(b'$$sprite_len__y@')^crc32(b'$$sprite_len__x@'))
+0x191b3141
+>>> hexint8(crc32(b'$$sprite_len__y__@')^crc32(b'$$sprite_len__x__@'))
+0xb8bc6765
+>>> hexint8(crc32(b'$sprite_len__y__@')^crc32(b'$sprite_len__x__@'))
+0xb8bc6765
+>>> hexint8(crc32(b'$sprite_len__y___@')^crc32(b'$sprite_len__x___@'))
+0x3d6029b0
+>>> hexint8(crc32(b'$$sprite_len__y___@')^crc32(b'$$sprite_len__x___@'))
+0x3d6029b0
+>>> hexint8(crc32(b'___@')^crc32(b'___@'))
+0x00000000
+>>> hexint8(crc32(b'__@')^crc32(b'__@'))
+0x00000000
+>>> hexint8(crc32(b'____@')^crc32(b'____@'))
+0x00000000
+>>> hexint8(crc32(b'y____@')^crc32(b'x____@'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'y___@')^crc32(b'x___@'))
+0x3d6029b0
+>>> hexint8(crc32(b'y__@')^crc32(b'x__@'))
+0xb8bc6765
+>>> hexint8(crc32(b'_y__@')^crc32(b'_x__@'))
+0xb8bc6765
+>>> hexint8(crc32(b'_y_@')^crc32(b'_x_@'))
+0x01c26a37
+>>> hexint8(crc32(b'y_@')^crc32(b'x_@'))
+0x01c26a37
+>>> RGB=0x924ee3eb
+>>> ABS=0x959b0a16
+>>> hexint8(ABS^RGB)
+0x07d5e9fd
+>>> backout_indices(RGB,4)
+[114, 152, 84, 21]
+>>> backout_indices(ABS,4)
+[234, 151, 99, 17]
+>>> backout_indices(0x01020509,4)
+[78, 162, 121, 152]
+>>> backout_indices(0x01070308,4)
+[68, 231, 190, 152]
+>>> hex(ord('r')^ord('a'))
+'0x13'
+>>> hex(114^234)
+'0x98'
+>>> hex(152^151)
+'0xf'
+>>> hex(84^99)
+'0x37'
+>>> hexint8(crc32(b'crc32'))
+0xafabd35e
+>>> hexint8(crc32(b'$crc32'))
+0x4476c2c0
+>>> hexint8(crc32(b'$crc32@'))
+0x3ffe1a6f
+>>> hexint8(crc32(b'crc32@'))
+0x28a2793d
+>>> hexint8(crc32(b'crc32@$'))
+0xb641e534
+>>> hexint8(crc32(b'crc32@1$'))
+0xf8b65818
+>>> hexint8(crc32(b'$crc32@1$'))
+0xa4804070
+>>> hexint8(crc32(b'$crc32@$'))
+0x3333898f
+>>> hexint8(crc32(b'$crc32@$1'))
+0xfee8428f
+>>> hexint8(0xed84e320^0x884949e0)
+0x65cdaac0
+>>> hexint8(0xed84e320^0x708b0256)
+0x9d0fe176
+>>> hexint8(0xed84e320^0x884949e0^0x708b0256)
+0x1546a896
+>>> hexint8(0x884949e0^0x708b0256)
+0xf8c24bb6
+>>> hexint8(crc32(b'page_len_y')^crc32(b'page_len_x'))
+0x77073096
+>>> hexint8(crc32(b'pic_len_y')^crc32(b'pic_len_x'))
+0x77073096
+>>> hexint8(crc32(b'pic_len_y@@@@@')^crc32(b'pic_len_x@@@@@'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'page_len_y@@@@@')^crc32(b'page_len_x@@@@@'))
+0xcb5cd3a5
+>>> hexint8(0x539b07bc^0xce94e6ca)
+0x9d0fe176
+>>> hexint8(0xf8fd08f6^0x65f2e980)
+0x9d0fe176
+>>> [(0xf8fd08f6, b
+... '
+  File "<stdin>", line 2
+    '
+    ^
+SyntaxError: EOL while scanning string literal
+>>> [(0xf8fd08f6, b'page_len_x'),
+...  (0x65f2e980, b'page_len_y'),
+...
+... ]
+[(4177332470, b'page_len_x'), (1710418304, b'page_len_y')]
+>>> [(0xf8fd08f6, b'page_len_x'),
+...  (0x65f2e980, b'page_len_y')]
+[(4177332470, b'page_len_x'), (1710418304, b'page_len_y')]
+>>> A = [(0xf8fd08f6, b'page_len_x'),
+...      (0x65f2e980, b'page_len_y')]
+>>> B = [(0x539b07bc, b'pic_len_x'),
+...      (0xce94e6ca, b'pic_len_y')]
+>>> hexint8(crc32(A[0][0]) ^ crc32(A[1][0]))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "<stdin>", line 6, in crc32
+TypeError: 'int' object is not iterable
+>>> hexint8(crc32(A[0][1]) ^ crc32(A[1][1]))
+0x77073096
+>>> hexint8(crc32(B[0][1]) ^ crc32(B[1][1]))
+0x77073096
+>>> hexint8(A[0][0] ^ A[1][0]))
+  File "<stdin>", line 1
+    hexint8(A[0][0] ^ A[1][0]))
+                              ^
+SyntaxError: invalid syntax
+>>> hexint8(A[0][0] ^ A[1][0])
+0x9d0fe176
+>>> hexint8(A[0][0] ^ B[1][0])
+0x3669ee3c
+>>> hexint8(B[0][0] ^ B[1][0])
+0x9d0fe176
+>>> A = [(0xf8fd08f6, b'page_len_x'),
+...      (0x65f2e980, b'page_len_y')]
+>>> B = [(0x539b07bc, b'pic_len_x'),
+...      (0xce94e6ca, b'pic_len_y')]
+>>> hexint8(crc32(A[0][1]) ^ crc32(A[1][1]))
+0x77073096
+>>> hexint8(crc32(B[0][1]) ^ crc32(B[1][1]))
+0x77073096
+>>> hexint8(A[0][0] ^ A[1][0])
+0x9d0fe176
+>>> hexint8(B[0][0] ^ B[1][0])
+0x9d0fe176
+>>> (hexint8(crc32(b"x")), hexint8(crc32(b"y")))
+(0x8cdc1683, 0xfbdb2615)
+>>> hexint8(hexint8(crc32(b"x")) ^ hexint8(crc32(b"y")))
+0x77073096
+>>> help(backout_data)
+Help on function backout_data in module __main__:
+
+backout_data(accum:int, orig_accum:int, count:int) -> bytes
+    backout_data(crc32(b'$rgb'), crc32(b'$'), 3) -> b'rgb'
+    back out `count` (up to 4) known bytes from the result of a crc32 operation
+
+>>> backout_data(0x9d0fe176, 0x77073096, 4)
+b'5Q\x1c\xf5'
+>>> backout_data(0x9d0fe176^0xffffffff, 0x77073096^0xffffffff, 4)
+b'\xa8[\xc5\x98'
+>>> hexint8(crc32(A[0][1]) ^ hexint8(crc32(B[0][1])
+... )
+... )
+0x3e2b887a
+>>> hexint8(crc32(A[0][1]) ^ crc32(B[0][1]))
+0x3e2b887a
+>>> hexint8(A[0][0] ^ B[0][0])
+0xab660f4a
+>>> hexint8(A[1][0] ^ B[1][0])
+0xab660f4a
+>>> hexint8(crc32(A[1][1]) ^ crc32(B[1][1]))
+0x3e2b887a
+>>> (0xf8fd08f6 ^ 0x65f2e980) == (0x539b07bc ^ 0xce94e6ca)
+True
+>>> hexint8(hexint8(crc32(b"x@DATA")) ^ hexint8(crc32(b"y@DATA")))
+0xcb5cd3a5
+>>> hexint8(hexint8(crc32(b"x")) ^ hexint8(crc32(b"y")))
+0x77073096
+>>> hexint8(crc32(b'page_len_y@DATA')^crc32(b'page_len_x@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'pic_len_y@DATA')^crc32(b'pic_len_x@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'pic_len_y@DATA')^crc32(b'page_len_y@DATA'))
+0xee52d4c6
+>>> hexint8(crc32(b'pic_len_x@DATA')^crc32(b'page_len_x@DATA'))
+0xee52d4c6
+>>> hexint8(crc32(b'@DATA')
+... hexint8(crc32(b'@DATA'))
+  File "<stdin>", line 2
+    hexint8(crc32(b'@DATA'))
+          ^
+SyntaxError: invalid syntax
+>>> hexint8(crc32(b'@DATA'))
+0x24f36e9f
+>>> hexint8(crc32(b'x@DATA') ^ crc32(b'y@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'_x@DATA') ^ crc32(b'_y@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'_x@DATA') ^ crc32(b'x@DATA'))
+0xf933e783
+>>> hexint8(crc32(b'_y@DATA') ^ crc32(b'y@DATA'))
+0xf933e783
+>>> hexint8(CRC_INDICES[0xf9^0xff])
+0x00000045
+>>> hexint8(CRC_INDICES[0xee^0xff])
+0x000000db
+>>> ord(0x45)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: ord() expected string of length 1, but int found
+>>> chr(0x45)
+'E'
+>>> hexint8(CRC_INDICES[0xcb^0xff])
+0x00000069
+>>> chr(0x69)
+'i'
+>>> hexint8(CRC_INDICES[0xcb^0xff])
+0x00000069
+>>> >>> hexint8(crc32(b'pic_len_y@DATA')^crc32(b'page_len_y@DATA'))
+  File "<stdin>", line 1
+    >>> hexint8(crc32(b'pic_len_y@DATA')^crc32(b'page_len_y@DATA'))
+     ^
+SyntaxError: invalid syntax
+>>> hexint8(crc32(b'pic_len_y@DATA')^crc32(b'page_len_y@DATA'))
+0xee52d4c6
+>>> hexint8(crc32(b'pic')^crc32(b'page'))
+0xdf3ee76e
+>>> hexint8(crc32(b'pic_len_y')^crc32(b'page_len_y'))
+0x3e2b887a
+>>> hexint8(crc32(b'page_len_x')^crc32(b'page_len_y'))
+0x77073096
+>>> hexint8(crc32(b'page_len_x@DATA')^crc32(b'page_len_y@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'pic_len_x@DATA')^crc32(b'pic_len_y@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'x@DATA')^crc32(b'y@DATA'))
+0xcb5cd3a5
+>>> (0xf8fd08f6 ^ 0x65f2e980) == (0x539b07bc ^ 0xce94e6ca)
+True
+>>> hexint8(0xf8fd08f6 ^ 0x65f2e980), hexint8(0x539b07bc ^ 0xce94e6ca)
+(0x9d0fe176, 0x9d0fe176)
+>>> hexint8(crc32(b'\0@DATA')^crc32(b'y@DATA'))
+0x2c2d5c09
+>>> chr(CRC_INDICES[0x2c^0xff])
+'g'
+>>> chr(CRC_INDICES[0x2c])
+'¾'
+>>> chr(CRC_INDICES[0x9d])
+'\x85'
+>>> chr(CRC_INDICES[0x9d^0xff])
+'\\'
+>>> hexint8(crc32(b'xQAN@@')^crc32(b'yQAN@@'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'x@DATO')^crc32(b'y@DATO'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'x@DATA')^crc32(b'y@DATA'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'x@DAT')^crc32(b'y@DAT'))
+0x3d6029b0
+>>> hexint8(crc32(b'x__')^crc32(b'y__'))
+0x01c26a37
+>>> hexint8(crc32(b'x_____')^crc32(b'y_____'))
+0xcb5cd3a5
+>>> hexint8(crc32(b'x______')^crc32(b'y______'))
+0xa6770bb4
+>>> hexint8(crc32(b'x_______')^crc32(b'y_______'))
+0xccaa009e
+>>> hexint8(crc32(b'x________')^crc32(b'y________'))
+0x177b1443
+>>> hexint8(crc32(b'x_________')^crc32(b'y_________'))
+0xefc26b3e
+>>> hexint8(crc32(b'x__________')^crc32(b'y__________'))
+0xc18edfc0
+>>> hexint8(crc32(b'x___________')^crc32(b'y___________'))
+0x9ba54c6f
+>>> hexint8(crc32(b'x____________')^crc32(b'y____________'))
+0xdd96d985
+>>> hexint8(crc32(b'x_____________')^crc32(b'y_____________'))
+0x9d0fe176
+>>> len('_____________')
+13
+>>> len('Majiro')
+6
+>>> len('MajiroObj.v100')
+14
+>>> len('MajiroObj.v10')
+13
+>>> len('MajiroObj.v1')
+12
+>>> len('MajiroObj.V1')
+12
+>>> len('MajiroObjV1')
+11
+>>> len('__SYS__')
+7
+>>> len('__SYS__Majiro')
+13
+>>> len('MajiroCompile')
+13
+>>> hexint8(crc32(b'pic_len_xMajiroCompile'))
+0x55e0465f
+>>> hexint8(crc32(b'__SYS__Funct'))
+0x71e1a1e3
+>>> len(b'__SYS__Funct')
+12
+>>> len(b'__SYS__Built')
+12
+>>> len(b'MAJIRO_BUILD')
+12
+>>> hexint8(crc32(b'abs@MAJIROMIIYNX'))
+0x35549d64
+>>> hexint8(crc32(b'$abs@MAJIROMIIYNX'))
+0x4dab32b9
+>>> hexint8(crc32(b'$abs@MAJIRO_INTER'))
+0x959b0a16
+>>> hexint8(crc32(b'$crc32@MAJIRO_INTER'))
+0xc58a1bbf
+>>> hexint8(crc32(b'$crc@MAJIRO_INTER'))
+0x30eb8c56
+>>> hexint8(crc32(b'$crc_32@MAJIRO_INTER'))
+0x444cbb80
+>>> hexint8(crc32(b'$crchash@MAJIRO_INTER'))
+0x05965ee2
+>>> ord('_')
+95
+>>> ord('f')
+102
+>>>

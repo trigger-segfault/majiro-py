@@ -17,6 +17,7 @@
 
     /* Editor defaults */
     "editor.wordWrap": "on",
+    "editor.copyWithSyntaxHighlighting": false,
 
     ////////////////////////////////////////////////////////
     // PROGRAMMING FILE TYPES

@@ -5,7 +5,7 @@ Work-in-progress python library and tools created to aid in reversing the Majiro
 **Python Package Name:** `mjotool`<br>
 **VSCode Extension Name:** `vscode-majiro`
 
-**Warning:** The default branch is named `unstable` for a reason. This library *will* probably go through countless changes, refactors, and rewrites. Most of it, refactoring to catch up to the source C# project **mjotool** is based off of.
+**Warning:** This library *will* probably go through countless changes, refactors, and rewrites. Most of it, refactoring to catch up to the source C# project **mjotool** is based off of.
 
 
 This library/tool is heavily tied to *and based on* [AtomCrafty/MajiroTools](https://github.com/AtomCrafty/MajiroTools), and additionally the repo's [Wiki knowledge base](https://github.com/AtomCrafty/MajiroTools/wiki).
@@ -26,4 +26,8 @@ This library/tool is heavily tied to *and based on* [AtomCrafty/MajiroTools](htt
 
 ## External links
 
-* [trigger-segfault/unhash_name](https://github.com/trigger-segfault/unhash_name) - tool designed for recovering hashed variable and function names.
+* [AtomCrafty/MajiroTools](https://github.com/AtomCrafty/MajiroTools) - C# tools for the MjIL specification, and home of the wiki.
+* [trigger-segfault/unhash_name](https://github.com/trigger-segfault/unhash_name) - tool for recovering hashed variable and function names.
+* [trigger-segfault/vscode_find_colors](https://github.com/trigger-segfault/vscode_find_colors) - tool for syntax highlighter design.
+* [morkt/GARbro](https://github.com/morkt/GARbro) - tool for browsing and extracting archives: `.arc`, and images: `.rc8`, `.rct`.
+* [Inori/FuckGalEngine/Majiro](https://github.com/Inori/FuckGalEngine/tree/master/Majiro) - various existing tools for Majiro, many of which contained valuable information on opcodes.

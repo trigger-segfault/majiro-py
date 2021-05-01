@@ -202,6 +202,52 @@ def check_hashdiffs(value1A:IntBytes, value2A:IntBytes, value1B:IntBytes, value2
     """
     return (to_hash32(value1A) ^ to_hash32(value2A)) == (to_hash32(value1B) ^ to_hash32(value2B))
 
+def backout_indices(init:IntBytes, count:int) -> list:
+    """backout_indices(hash32(b'$rgb'), 3) -> [0xd1, 0xd1, 0x3c]
+
+    the returned indices are equal to (least-significant accumulator byte XOR the input byte) each iteration.
+    this accumulator is not equal to the one input in the arguments, but the one present at that iteration in the operation.
+    """
+    if not (1 <= count <= 4):
+        raise ValueError(f'argument count must be between 1 and 4, not {count}')
+    # back out up to 4 indices:
+    crc  = to_hash32(init) ^ 0xffffffff  # xorout
+    indices = []
+    for _ in range(count):
+        idx = CRC32_INDEX[crc >> 24]
+        # every iteration we lose another least-significant byte of known data:
+        #NOTE: (crc ^ y) MUST ALWAYS result in 00XXXXXX
+        #  (this is a property of the CRC32_INDEX lookup table)
+        #  (the mask is kept for documentation, and in case of any unexpected behavior)
+        crc = (((crc ^ CRC32_TABLE[idx]) & 0x00ffffff) << 8) | idx
+        indices.insert(0, idx)
+    
+    return indices
+
+def backout_data(init:IntBytes, orig_init:IntBytes, count:int) -> bytes:
+    """backout_data(hash32(b'$rgb'), hash32(b'$'), 3) -> b'rgb'
+
+    back out count (1 to 4) known bytes from the result of a CRC-32 operation.
+    """
+    # back out up to 4 indices:
+    indices:list = backout_indices(init, count)
+    
+    # forward crc for init to get data from indices:
+    crc = to_hash32(orig_init) ^ 0xffffffff  # xorout
+    data = bytearray()
+    for idx in indices:
+        data.append((crc ^ idx) & 0xff)       # chr == (crc ^ idx) & 0xff
+        crc = (crc >> idx) ^ CRC32_TABLE[idx] # idx == (crc ^ chr) & 0xff
+
+    crc ^= 0xffffffff  # xorout or init??
+    if crc != to_hash32(init):
+        #NOTE: if count==4, then it's impossible for this Exception to raise, as there
+        #       is ALWAYS a combination to turn one init into another with 4 bytes,
+        #       however with 3 or less bytes, it's impossible(?) to find a second collision(?)
+        #       [TODO: confirm]
+        raise Exception(f'final accumulator 0x{to_hash32(init):08x} does not match expected output accumulator 0x{crc:08x}')
+    
+    return bytes(data)
 
 #endregion
 

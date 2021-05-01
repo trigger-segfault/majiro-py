@@ -1,0 +1,161 @@
+Microsoft Windows [Version 10.0.19042.928]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\%REPOPATH%\majiro-py>cd src
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --help
+usage: wordsmash.py [-h] [-u] [-U] [-l] [-L] [-c] [-C] [-s] [-S] [-M MINLEN]
+                    [-m MAXLEN] [-g GROUPS [GROUPS ...]]
+                    [-w WORDS [WORDS ...]] [-p PREFIXES [PREFIXES ...]]
+                    [-P POSTFIXES [POSTFIXES ...]] [-t TARGET] [--preview]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u, --upper
+  -U, --no-upper
+  -l, --lower
+  -L, --no-lower
+  -c, --capital
+  -C, --no-capital
+  -s, --underscore
+  -S, --no-underscore
+  -M MINLEN, --min MINLEN
+  -m MAXLEN, --max MAXLEN
+  -g GROUPS [GROUPS ...], --group GROUPS [GROUPS ...]
+  -w WORDS [WORDS ...], --words WORDS [WORDS ...]
+  -p PREFIXES [PREFIXES ...], --prefixes PREFIXES [PREFIXES ...]
+  -P POSTFIXES [POSTFIXES ...], --postfixes POSTFIXES [POSTFIXES ...]
+  -t TARGET, --target TARGET
+  --preview
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py -m 3
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 215, in <module>
+    exit(main())
+  File "wordsmash.py", line 207, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 150, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py -m 3
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 215, in <module>
+    exit(main())
+  File "wordsmash.py", line 207, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 150, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py -m 3 --preview
+ PREFIXES: , %, _, %%
+
+POSTFIXES: , %, $, #, %#, $#, ?, *, &, !, ~, ^
+
+   GROUPS: , @, @-, @@, @MAJIRO_INTER, @INTER, @MAJIRO, @GLOBAL, @VM_INTER, @VM, @GLOBAL_INTER, @SYSTEM
+
+    WORDS: __SYS_, __sys_, __SYS__, __sys__, _SYS_, _sys_, _SYS__, _sys__, SYS_, sys_, SYS__, sys__, SYS, sys, Switch, switch, Switch_, switch_, S, s, S_, s_, Branch, branch, Branch_, branch_, Case, case, Case_, case_, C, c, C_, c_, Jump, jump, Jump_, jump_, Jmp, jmp, Jmp_, jmp_, Statement, statement, Statement_, statement_, State, state, State_, state_, Mode, mode, Mode_, mode_, Param, param, Param_, param_, Value, value, Value_, value_, Val, val, Val_, val_, Operand, operand, Operand_, operand_, Op, op, Op_, op_, Temp, temp, Temp_, temp_, Tmp, tmp, Tmp_, tmp_, Variable, variable, Variable_, variable_, Var, var, Var_, var_, Va, va, Va_, va_, V, v, V_, v_, Arg, arg, Arg_, arg_, Store, store, Store_, store_, Sel, sel, Sel_, sel_, Reg, reg, Reg_, reg_, R, r, R_, r_, Access, access, Access_, access_, Local, local, Local_, local_, Loc, loc, Loc_, loc_, Thread, thread, Thread_, thread_, Input, input, Input_, input_, In, in, In_, in_, Quick, quick, Quick_, quick_, Pointer, pointer, Pointer_, pointer_, Ptr, ptr, Ptr_, ptr_, Pt, pt, Pt_, pt_, System, system, System_, system_, Internal, internal, Internal_, internal_, Inter, inter, Inter_, inter_
+Word Depth: 3
+11f91fd3        %Op_internalCase~@MAJIRO_INTER
+Word Depth: 4
+11f91fd3        syspointerbranch_s*@
+11f91fd3        Branchreg_op_system^
+11f91fd3        case_variable_State_jmp_@@
+11f91fd3        c_Case_Value_State_!@
+11f91fd3        JumprmodePt@GLOBAL
+11f91fd3        Jump_Op_Valuevariable&@VM
+11f91fd3        jmp_Store___sys__s_%@VM_INTER
+11f91fd3        Parampt___sys__C$#@INTER
+11f91fd3        paramInput_system_Local@MAJIRO_INTER
+11f91fd3        param_valueInterC%#@VM_INTER
+11f91fd3        Operand_invalv_^@VM
+11f91fd3        opCase_Arg_V$@VM
+11f91fd3        TempStoresyssys__^@INTER
+11f91fd3        variable_Value_Caseop^@VM_INTER
+11f91fd3        varvar_Casev_$#
+11f91fd3        Argquick_argsys~@VM_INTER
+11f91fd3        access_Branch_in_value@GLOBAL
+11f91fd3        LocalSYSinput_r_@MAJIRO_INTER
+11f91fd3        Threadoperandinput_reg_%#@MAJIRO
+11f91fd3        systemStateSYS__Switch_^@SYSTEM
+11f91fd3        intersel_store_jump*@SYSTEM
+11f91fd3        inter_Svar_R$@SYSTEM
+11f91fd3        %__sys__val_VaC_@@
+11f91fd3        %switch_Valparamvalue_#@@
+11f91fd3        %branchOperand_quick_r?@MAJIRO_INTER
+11f91fd3        %CaccessTempC#@-
+11f91fd3        %Jumpregstatement_local_#
+11f91fd3        %Statementlocal_Branch_quick_~@GLOBAL
+11f91fd3        %StateJmp_branchstore_^@GLOBAL
+11f91fd3        %Mode_S_tempThread?@-
+11f91fd3        %Valueinput_var_val$#@@
+11f91fd3        %Value_quick_LocalVariable_~@-
+11f91fd3        %TempValue_sys_Switch_*@GLOBAL_INTER
+11f91fd3        %TempValue_sys_Switch_*@GLOBAL_INTER
+11f91fd3        %variable_switch_Loc_Temp@INTER
+11f91fd3        %arg_Variable_threadvalue_?@VM_INTER
+11f91fd3        %Store_locmode_v^@INTER
+11f91fd3        %Seljmp_locreg_&@MAJIRO_INTER
+11f91fd3        %R_SelLocalStore_!@VM_INTER
+11f91fd3        %loc_InterQuick_pointer_*@VM_INTER
+11f91fd3        %Threadop_Intersys__^@VM_INTER
+11f91fd3        %inputstateLoc_variable@@
+11f91fd3        %pointerpointerStatementVal%@SYSTEM
+11f91fd3        %internal_jump_System_Local%#@VM_INTER
+11f91fd3        _Switchlocal_QuickInter_?@MAJIRO
+11f91fd3        _switchparamvar_ptr*@MAJIRO_INTER
+11f91fd3        _sOperand_Quick_Quick^@GLOBAL
+11f91fd3        _branch_AccessParamVal_@-
+11f91fd3        _statementcase_InternalAccess?@-
+11f91fd3        _statementVar_stmp_&@VM
+Traceback (most recent call last):
+  File "wordsmash.py", line 215, in <module>
+
+  File "wordsmash.py", line 207, in main
+    print('\nPOSTFIXES:', ', '.join(f'{S.DIM}{F.CYAN}{s!s}{S.RESET_ALL}' for s in iter_to_str(PO)))
+  File "wordsmash.py", line 150, in do_wordmash
+    #     # if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>unhash 0xc46925cf "$force" "@MAJIRO_INTER" 10 0 "a-z_"
+charset = "abcdefghijklmnopqrstuvwxyz_"
+accum = 0xc46925cf, init = 0x7cb592b6, target = 0x190a649f
+depth = 0
+depth = 1
+depth = 2
+depth = 3
+depth = 4
+depth = 5
+depth = 6
+depth = 7
+"$forcessdxpac@MAJIRO_INTER"
+depth = 8
+"$forceyrsrqqea@MAJIRO_INTER"
+"$forcejoqkasja@MAJIRO_INTER"
+"$forcezurziq_a@MAJIRO_INTER"
+"$forcekhkchpob@MAJIRO_INTER"
+"$forcewgxfojyb@MAJIRO_INTER"
+"$forcerwcqpwdc@MAJIRO_INTER"
+"$forcenxptwmrc@MAJIRO_INTER"
+"$forcebdvxvctc@MAJIRO_INTER"
+"$forcekdwedqad@MAJIRO_INTER"
+"$forceif_szved@MAJIRO_INTER"
+"$forcedvfysixd@MAJIRO_INTER"
+"$forceprroccpf@MAJIRO_INTER"
+"$forceosvzroyf@MAJIRO_INTER"
+"$forced_ncng_f@MAJIRO_INTER"
+"$forcejcmmmrdg@MAJIRO_INTER"
+"$forcezpxdkftg@MAJIRO_INTER"
+"$forcejppotbfh@MAJIRO_INTER"
+"$forceuqtzenoh@MAJIRO_INTER"
+"$forcezcefrvvh@MAJIRO_INTER"
+"$forcepaomzsri@MAJIRO_INTER"
+"$forcerhbuefhj@MAJIRO_INTER"
+^C
+C:\%REPOPATH%\majiro-py\src>

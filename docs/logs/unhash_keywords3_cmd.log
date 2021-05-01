@@ -1,0 +1,1081 @@
+Microsoft Windows [Version 10.0.19042.928]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\%REPOPATH%\majiro-py>cd src
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --help
+usage: wordsmash.py [-h] [-u] [-U] [-l] [-L] [-c] [-C] [-s] [-S] [-m MINLEN]
+                    [-M MAXLEN] [-g GROUPS [GROUPS ...]]
+                    [-w WORDS [WORDS ...]] [-p PREFIXES [PREFIXES ...]]
+                    [-P POSTFIXES [POSTFIXES ...]] [-t TARGET] [--preview]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u, --upper
+  -U, --no-upper
+  -l, --lower
+  -L, --no-lower
+  -c, --capital
+  -C, --no-capital
+  -s, --underscore
+  -S, --no-underscore
+  -m MINLEN, --min MINLEN
+  -M MAXLEN, --max MAXLEN
+  -g GROUPS [GROUPS ...], --group GROUPS [GROUPS ...]
+  -w WORDS [WORDS ...], --words WORDS [WORDS ...]
+  -p PREFIXES [PREFIXES ...], --prefixes PREFIXES [PREFIXES ...]
+  -P POSTFIXES [POSTFIXES ...], --postfixes POSTFIXES [POSTFIXES ...]
+  -t TARGET, --target TARGET
+  --preview
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview \
+usage: wordsmash.py [-h] [-u] [-U] [-l] [-L] [-c] [-C] [-s] [-S] [-m MINLEN]
+                    [-M MAXLEN] [-g GROUPS [GROUPS ...]]
+                    [-w WORDS [WORDS ...]] [-p PREFIXES [PREFIXES ...]]
+                    [-P POSTFIXES [POSTFIXES ...]] [-t TARGET] [--preview]
+wordsmash.py: error: unrecognized arguments: \
+
+C:\%REPOPATH%\majiro-py\src>-p "$" -P "" "%" "$" "#" "%#" "%$" \
+'-p' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>\
+'\' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>-w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" \
+'-w' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>\
+'\' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>-g "@MAJIRO_INTER" \
+'-g' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview /
+usage: wordsmash.py [-h] [-u] [-U] [-l] [-L] [-c] [-C] [-s] [-S] [-m MINLEN]
+                    [-M MAXLEN] [-g GROUPS [GROUPS ...]]
+                    [-w WORDS [WORDS ...]] [-p PREFIXES [PREFIXES ...]]
+                    [-P POSTFIXES [POSTFIXES ...]] [-t TARGET] [--preview]
+wordsmash.py: error: unrecognized arguments: /
+
+C:\%REPOPATH%\majiro-py\src>-p "$" -P "" "%" "$" "#" "%#" "%$" /
+'-p' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>-w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" /
+'-w' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>-g "@MAJIRO_INTER" /
+'-g' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview   ^
+More? -p "$" -P "" "%" "$" "#" "%#" "%$"   ^
+More? ^
+ PREFIXES: $
+
+POSTFIXES: , %, $, #, %#, %$, ^
+
+   GROUPS: , @, @-, @@, @MAJIRO_INTER, @INTER, @MAJIRO, @GLOBAL, @VM_INTER, @VM, @GLOBAL_INTER, @SYSTEM
+
+    WORDS: __SYS_, __sys_, __SYS__, __sys__, _SYS_, _sys_, _SYS__, _sys__, SYS_, sys_, SYS__, sys__, SYS, sys, Switch, switch, Switch_, switch_, S, s, S_, s_, Branch, branch, Branch_, branch_, Case, case, Case_, case_, C, c, C_, c_, Jump, jump, Jump_, jump_, Jmp, jmp, Jmp_, jmp_, Statement, statement, Statement_, statement_, State, state, State_, state_, Mode, mode, Mode_, mode_, Params, params, Params_, params_, Param, param, Param_, param_, Value, value, Value_, value_, Val, val, Val_, val_, Operand, operand, Operand_, operand_, Op, op, Op_, op_, Temp, temp, Temp_, temp_, Tmp, tmp, Tmp_, tmp_, Variable, variable, Variable_, variable_, Var, var, Var_, var_, Va, va, Va_, va_, V, v, V_, v_, Arg, arg, Arg_, arg_, Store, store, Store_, store_, Sel, sel, Sel_, sel_, Reg, reg, Reg_, reg_, R, r, R_, r_, Access, access, Access_, access_, Local, local, Local_, local_, Loc, loc, Loc_, loc_, Thread, thread, Thread_, thread_, Input, input, Input_, input_, In, in, In_, in_, Quick, quick, Quick_, quick_, Pointer, pointer, Pointer_, pointer_, Ptr, ptr, Ptr_, ptr_, Pt, pt, Pt_, pt_, System, system, System_, system_, Internal, internal, Internal_, internal_, Inter, inter, Inter_, inter_, Number, number, Number_, number_, Num, num, Num_, num_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 216, in <module>
+    exit(main())
+  File "wordsmash.py", line 208, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>-w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? ^
+'-w' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\%REPOPATH%\majiro-py\src>-g "@MAJIRO_INTER"   ^
+More?
+More?
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview   ^
+More? -p "$" -P "" "%" "$" "#" "%#" "%$"   ^
+More? -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? -g "@MAJIRO_INTER"   ^
+More? -t 0x3513ee87
+usage: wordsmash.py [-h] [-u] [-U] [-l] [-L] [-c] [-C] [-s] [-S] [-m MINLEN]
+                    [-M MAXLEN] [-g GROUPS [GROUPS ...]]
+                    [-w WORDS [WORDS ...]] [-p PREFIXES [PREFIXES ...]]
+                    [-P POSTFIXES [POSTFIXES ...]] [-t TARGET] [--preview]
+wordsmash.py: error: argument -t/--target: invalid int value: '0x3513ee87'
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview   ^
+More? -p "$" -P "" "%" "$" "#" "%#" "%$"   ^
+More? -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? -g "@MAJIRO_INTER"   ^
+More? -t 0x3513ee87
+ PREFIXES: $
+
+POSTFIXES: , %, $, #, %#, %$
+
+   GROUPS: @@MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCS  ^
+More? -p "$is_" "$get_"   ^
+More? -P "anti"   ^
+More? -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? -g "MAJIRO_INTER"   ^
+More? -t 0x3513ee87
+ PREFIXES: $is_, $get_
+
+POSTFIXES: anti
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, is, get, set, grp, page, pic, sprite, movie, music, sound, voice, make, save, area, invalidate, fast, mouse, fuchidori, histbuff, load, console, fontout, thread, event, timer, time, wait, reset, screen, exit, exec, call, str, dim, web, write, reg, open, file, dialog, client, change, debugout, pos, cur, setup, x, y, key, l, tl, define, system, sys, release, create, copy, volume, vol, 1, 2, 3, 4, font, sel, select, end, begin, hook, sub, read, flg, pause, play, stop, fade, out, in, width, height, enable, disable, cursor, all, force, line, raw, variable, var, log, no, yes, rand, random, string, front, buffer, wallpaper, unwait, auto, moji, speed, spd, mode, color, alfa, zero, male, female, gender, free, next, wipe, prev, fn, stat, with, exist, rgb, rgba, menu, bold, shadow, talk, quick, failsafe, down, pop, push, replace, resume, loop, ret, last, buf, pan, clip, move, animate, abs, low, high, priority, rotate, modify, at, ch, config, continue, panning, default, point, data, anti, zoom, draw, re
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -luCS  ^
+More? -p "$is_" "$get_"   ^
+More? -P "anti"   ^
+More? -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? -g "MAJIRO_INTER"   ^
+More? -t 0x3513ee87
+ PREFIXES: $is_, $get_
+
+POSTFIXES: anti
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, DO, is, IS, get, GET, set, SET, grp, GRP, page, PAGE, pic, PIC, sprite, SPRITE, movie, MOVIE, music, MUSIC, sound, SOUND, voice, VOICE, make, MAKE, save, SAVE, area, AREA, invalidate, INVALIDATE, fast, FAST, mouse, MOUSE, fuchidori, FUCHIDORI, histbuff, HISTBUFF, load, LOAD, console, CONSOLE, fontout, FONTOUT, thread, THREAD, event, EVENT, timer, TIMER, time, TIME, wait, WAIT, reset, RESET, screen, SCREEN, exit, EXIT, exec, EXEC, call, CALL, str, STR, dim, DIM,
+ web, WEB, write, WRITE, reg, REG, open, OPEN, file, FILE, dialog, DIALOG, client, CLIENT, change, CHANGE, debugout, DEBUGOUT, pos, POS, cur, CUR, setup, SETUP, x, X, y, Y, key, KEY, l, L, tl, TL, define, DEFINE, system, SYSTEM, sys, SYS, release, RELEASE, create, CREATE, copy, COPY, volume, VOLUME, vol, VOL, 1, 2, 3, 4, font, FONT, sel, SEL, select, SELECT,
+ end, END, begin, BEGIN, hook, HOOK, sub, SUB, read, READ, flg, FLG, pause, PAUSE, play, PLAY, stop, STOP, fade, FADE, out, OUT, in, IN, width, WIDTH, height, HEIGHT, enable, ENABLE, disable, DISABLE, cursor, CURSOR, all, ALL, force, FORCE, line, LINE, raw, RAW, variable, VARIABLE, var, VAR, log, LOG, no, NO, yes, YES, rand, RAND, random, RANDOM, string, STRING, front, FRONT, buffer, BUFFER, wallpaper, WALLPAPER, unwait, UNWAIT, auto, AUTO, moji, MOJI, speed, SPEED, spd, SPD, mode, MODE, color, COLOR, alfa, ALFA, zero, ZERO, male, MALE, female, FEMALE, gender, GENDER, free, FREE, next, NEXT, wipe, WIPE, prev, PREV, fn, FN, stat, STAT, with, WITH, exist, EXIST, rgb, RGB, rgba, RGBA, menu, MENU, bold, BOLD, shadow, SHADOW, talk, TALK, quick, QUICK, failsafe, FAILSAFE, down, DOWN, pop, POP, push, PUSH, replace, REPLACE, resume, RESUME, loop, LOOP, ret, RET, last, LAST, buf, BUF, pan, PAN, clip, CLIP, move, MOVE, animate, ANIMATE, abs, ABS, low, LOW, high, HIGH, priority, PRIORITY, rotate, ROTATE, modify, MODIFY, at, AT, ch, CH, config, CONFIG, continue, CONTINUE, panning, PANNING, default, DEFAULT, point, POINT, data, DATA, anti, ANTI, zoom, ZOOM, draw, DRAW, re, RE
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  ^
+More? -p "$is_" "$get_"   ^
+More? -P "anti"   ^
+More? -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   ^
+More? -g "MAJIRO_INTER"   ^
+More? -t 0x3513ee87
+ PREFIXES: $is_, $get_
+
+POSTFIXES: anti
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+3513ee87        $is_font_setup_anti@MAJIRO_INTER
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$is_" "$get_"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -P "bold" -t 0xf4f00701
+ PREFIXES: $is_, $get_
+
+POSTFIXES: bold
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_,
+ config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+f4f00701        $is_font_setup_bold@MAJIRO_INTER
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$is_" "$get_"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -P "shadow" -t 0x735c88f1
+ PREFIXES: $is_, $get_
+
+POSTFIXES: shadow
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+735c88f1        $is_font_setup_shadow@MAJIRO_INTER
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$is_" "$get_"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -P "fuchidori" -t 0x22c23fa2
+ PREFIXES: $is_, $get_
+
+POSTFIXES: fuchidori
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+22c23fa2        $is_font_setup_fuchidori@MAJIRO_INTER
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$is_" "$get_"   -P ""   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -t 0x1f9f3d5a
+ PREFIXES: $is_, $get_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+1f9f3d5a        $get_voice_setup@MAJIRO_INTER
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$is_" "$get_"   -P ""   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -t 0x0dc634c4
+ PREFIXES: $is_, $get_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$"   -P ""   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -t 0x0dc634c4
+ PREFIXES: $
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_,
+ config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$"   -P "music"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re"   -g "MAJIRO_INTER"   ^
+More? -t 0x0dc634c4
+ PREFIXES: $
+
+POSTFIXES: music
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$"   -P "music"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "make" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing"  -g "MAJIRO_INTER"   ^
+More? -t 0x0dc634c4
+ PREFIXES: $
+
+POSTFIXES: music
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$"   -P "height"  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start"  ^
+More? -t 0x2bd1709d
+ PREFIXES: $
+
+POSTFIXES: height
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home,
+ home_, replay, replay_, start, start_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+2bd1709d        $voice_ret_client_systemheight@MAJIRO_INTER
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$set_"   -P "force"  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start" "con" "window" "wnd" "win" "inner" "bounds" "len" "ex" "text" "buff" "history" "clear" "swap" "box" "button" "click" "rclick" "mclick" "lclick" "ar"  ^
+More? -t 0x7547c477
+ PREFIXES: $set_
+
+POSTFIXES: force
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_,
+ call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home, home_, replay, replay_, start, start_, con, con_, window, window_, wnd, wnd_, win, win_, inner, inner_, bounds, bounds_, len, len_, ex, ex_, text, text_, buff, buff_, history, history_, clear, clear_, swap, swap_, box, box_, button, button_, click, click_, rclick, rclick_, mclick, mclick_, lclick, lclick_, ar, ar_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$set_"   -P ""  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start" "con" "window" "wnd" "win" "inner" "bounds" "len" "ex" "text" "buff" "history" "clear" "swap" "box" "button" "click" "rclick" "mclick" "lclick" "ar" "visible" "hidden"  ^
+More? -t 0x7547c477
+ PREFIXES: $set_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home, home_, replay, replay_, start, start_, con, con_, window, window_, wnd, wnd_, win, win_, inner, inner_, bounds, bounds_, len, len_, ex, ex_, text, text_, buff, buff_, history, history_, clear, clear_, swap, swap_, box, box_, button,
+ button_, click, click_, rclick, rclick_, mclick, mclick_, lclick, lclick_, ar, ar_, visible, visible_, hidden, hidden_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$"   -P ""  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "client" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start" "con" "window" "wnd" "win" "inner" "bounds" "len" "ex" "text" "buff" "history" "clear" "swap" "box" "button" "click" "rclick" "mclick" "lclick" "ar" "visible" "hidden" "skip" "frame" "fps"  ^
+More? -t 0x7d8b2c41
+ PREFIXES: $
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home, home_, replay, replay_, start, start_, con, con_, window, window_, wnd, wnd_, win, win_, inner, inner_, bounds, bounds_, len, len_, ex, ex_, text, text_, buff, buff_, history, history_, clear, clear_, swap, swap_, box, box_, button, button_, click, click_, rclick, rclick_, mclick, mclick_, lclick, lclick_, ar, ar_, visible, visible_, hidden, hidden_,
+ skip, skip_, frame, frame_, fps, fps_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$console_"   -P ""  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start" "con" "window" "wnd" "win" "inner" "bounds" "len" "ex" "text" "buff" "history" "clear" "swap" "box" "button" "click" "rclick" "mclick" "lclick" "ar" "visible" "hidden" "skip" "frame" "fps"  ^
+More? -t 0x2cb1bc41
+ PREFIXES: $console_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_,
+ animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home, home_, replay, replay_, start, start_, con, con_, window, window_, wnd, wnd_, win, win_, inner, inner_, bounds, bounds_, len, len_, ex, ex_, text, text_, buff, buff_, history, history_, clear, clear_, swap, swap_, box, box_, button,
+ button_, click, click_, rclick, rclick_, mclick, mclick_, lclick, lclick_, ar, ar_, visible, visible_, hidden, hidden_,
+ skip, skip_, frame, frame_, fps, fps_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$set_font"   -P ""  -g "MAJIRO_INTER"   -w "is" "set" "grp" "page" "pic" "sprite" "make" "save" "fast" "fuchidori" "load" "console" "thread" "event" "timer" "time" "wait" "reset" "str" "dim" "reg" "open" "file" "dialog" "change" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "2" "font" "sel" "select" "end" "begin"  "flg" "fade" "out" "in"  "width" "height" "enable" "disable" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "string" "front" "buffer" "speed" "spd" "mode" "color" "alfa" "zero" "next" "prev" "fn" "stat" "with" "bold" "shadow" "fuchidori" "talk" "pop" "push" "modify" "at" "config" "default" "point" "data" "anti" "zoom" "draw"  "smooth" "rect" "show" "hide" "effect" "to" "table" "sync" "after"  "con" "len" "ex" "text" "clear" "swap" "ar" "super" "sample" "alias" "scale" "scaling" "msg" "message" "buf" "buffer"   ^
+More? -t 0x2cb1bc41
+ PREFIXES: $set_font
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: is, is_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, make, make_, save, save_, fast, fast_, fuchidori, fuchidori_, load, load_, console, console_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, str, str_, dim, dim_, reg, reg_, open, open_, file, file_, dialog, dialog_, change, change_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, 2, 2_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, flg, flg_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, string, string_, front, front_, buffer, buffer_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, next, next_, prev, prev_, fn, fn_, stat, stat_, with, with_, bold, bold_, shadow, shadow_, talk, talk_, pop, pop_, push, push_, modify, modify_, at, at_, config, config_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, to, to_, table, table_, sync, sync_, after, after_, con, con_, len, len_, ex, ex_, text, text_, clear, clear_, swap, swap_, ar, ar_, super, super_, sample, sample_, alias, alias_, scale, scale_, scaling, scaling_, msg, msg_, message, message_, buf, buf_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+    exit(main())
+  File "wordsmash.py", line 210, in main
+    do_wordmash(n, W, PR, PO, T)
+  File "wordsmash.py", line 151, in do_wordmash
+    if crc32(b''.join(B)) in T:
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$console_"   -P ""  -g "MAJIRO_INTER"   -w "is" "set" "grp" "page" "pic" "sprite" "make" "save" "fast" "fuchidori" "load" "console" "thread" "event" "timer" "time" "wait" "reset" "str" "dim" "reg" "open" "file" "dialog" "change" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "2" "font" "sel" "select" "end" "begin"  "flg" "fade" "out" "in"  "width" "height" "enable" "disable" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "string" "front" "buffer" "speed" "spd" "mode" "color" "alfa" "zero" "next" "prev" "fn" "stat" "with" "bold" "shadow" "fuchidori" "talk" "pop" "push" "modify" "at" "config" "default" "point" "data" "anti" "zoom" "draw"  "smooth" "rect" "show" "hide" "effect" "to" "table" "sync" "after"  "con" "len" "ex" "text" "clear" "swap" "ar" "super" "sample" "alias" "scale" "scaling" "msg" "message" "buf" "buffer"   ^
+More? -t 0x2cb1bc41
+ PREFIXES: $console_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: is, is_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, make, make_, save, save_, fast, fast_, fuchidori, fuchidori_, load, load_, console, console_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, str, str_, dim, dim_, reg, reg_, open, open_, file, file_, dialog, dialog_, change, change_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, 2, 2_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, flg, flg_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, string, string_, front, front_, buffer, buffer_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, next, next_, prev, prev_, fn, fn_, stat, stat_, with, with_, bold, bold_, shadow, shadow_, talk, talk_, pop, pop_, push, push_, modify, modify_, at, at_, config, config_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, to, to_, table, table_, sync, sync_, after, after_, con, con_, len, len_, ex, ex_, text, text_, clear, clear_, swap, swap_, ar, ar_, super, super_, sample, sample_, alias, alias_, scale, scale_, scaling, scaling_, msg, msg_, message, message_, buf, buf_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Word Depth: 5
+Traceback (most recent call last):
+  File "wordsmash.py", line 218, in <module>
+
+  File "wordsmash.py", line 210, in main
+    for n in range(config.minlen, config.maxlen+1):
+  File "wordsmash.py", line 151, in do_wordmash
+    #     #     print(f"{crc32(b''.join(B)):08x}\t{b''.join(B).decode('cp932')}{T[crc32(b''.join(B))].decode('cp932')}")
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>python wordsmash.py --preview -lUCs  -p "$console_"   -P ""  -g "MAJIRO_INTER"   -w "do" "is" "get" "set" "grp" "page" "pic" "sprite" "movie" "music" "sound" "voice" "make" "save" "area" "invalidate" "fast" "mouse" "fuchidori" "histbuff" "load" "console" "fontout" "thread" "event" "timer" "time" "wait" "reset" "screen" "exit" "exec" "call" "str" "dim" "web" "write" "reg" "open" "file" "dialog" "client" "change" "debugout" "pos" "cur" "setup" "x" "y" "key" "sprite" "l" "s" "tl" "define" "system" "sys" "release" "create" "copy" "volume" "vol" "1" "2" "3" "4" "font" "sel" "select" "end" "begin" "hook" "sub" "read" "flg" "pause" "play" "stop" "fade" "out" "in" "width" "height" "enable" "disable" "cursor" "all" "force" "line" "raw" "variable" "var" "pic" "log" "no" "yes" "rand" "random" "string" "front" "buffer" "wallpaper" "unwait" "auto" "moji" "speed" "spd" "mode" "color" "alfa" "zero" "male" "female" "gender" "free" "next" "wipe" "prev" "fn" "stat" "with" "exist" "rgb" "rgba" "menu" "bold" "shadow" "fuchidori" "talk" "quick" "failsafe" "down" "pop" "push" "replace" "resume" "loop" "ret" "last" "buf" "pan" "invalidate" "clip" "move" "animate" "abs" "low" "high" "priority" "rotate" "modify" "at" "ch" "config" "continue" "panning" "default" "point" "data" "anti" "zoom" "draw" "re" "intro" "put" "ed" "ing" "mod" "paste" "smooth" "rect" "show" "hide" "effect" "bgm" "region" "check" "offset" "offs" "off" "on" "repeat" "to" "table" "sync" "after" "audio" "home" "replay" "start" "con" "window" "wnd" "win" "inner" "bounds" "len" "ex" "text" "buff" "history" "clear" "swap" "box" "button" "click" "rclick" "mclick" "lclick" "ar" "visible" "hidden" "skip" "frame" "fps" "face" "family" "no" "isproportional" "proportional" "ext"  ^
+More? -t dca7da63 a90f0e05 42d7c922 87a631a6 c46925cf c47dbe4b c32e286f f66cd6ea 00d696cc b7e3e81c 4fac462c f4bb403d bc6402c9 c1d2b85a 269bda78 42f6fddf f3d276f1 7547c477 c102bcc3 5131e234 cc3e0342 82fd765b 2cb1bc41 88b4b26c 3f401bbd 8cfc4573 7d8b2c41 0542e1b7 25d92502 bbf35806 b0ce081a 507f22c6 29098ec0 09c43040 2159ebe0 f63ed9ae 929a367d f9d94e91 d34e9b28 f65aa4c0 d5999d46 05b1a6e8 125cfbdb ca30043a 9143dc9e 78a6a112 168efcb7 c438ba98 4c99b0ea 8cd709f9 65075141 99a5de25 3378635d 9af10167 2075c300 ad0f8767 af6571ab a909a32a 163c0878 d08a57f8 d215e29a aefc64da fb7fb744 ca5c98f2 0d36e2a7 5c9761c5 b758ac4e 2c18d5a9 45e32ea6 e316a8f2 bb9d7a7f 6ddeb30e 1f5a14d4 ebb5886c f0fd9886 2e99e98c d583668c 1cd5bca8 62442ec6 faf17b1c da60f137 f430015b 321717d1 cd111b0e eeaa9104 2bd1709d 7e0b8320 38721a26 45acd4a7 50846ad3 6e7f7fb7 8fe5d6e7 b84c9953 efd59130 f6416e87 20caeb0e 2cd009af
+ PREFIXES: $console_
+
+POSTFIXES:
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: do, do_, is, is_, get, get_, set, set_, grp, grp_, page, page_, pic, pic_, sprite, sprite_, movie, movie_, music, music_, sound, sound_, voice, voice_, make, make_, save, save_, area, area_, invalidate, invalidate_, fast, fast_, mouse, mouse_, fuchidori, fuchidori_, histbuff, histbuff_, load, load_, console, console_, fontout, fontout_, thread, thread_, event, event_, timer, timer_, time, time_, wait, wait_, reset, reset_, screen, screen_, exit, exit_, exec, exec_, call, call_, str, str_, dim, dim_, web, web_, write, write_, reg, reg_, open, open_, file, file_, dialog, dialog_, client, client_, change, change_, debugout, debugout_, pos, pos_, cur, cur_, setup, setup_, x, x_, y, y_, key, key_, l, l_, s, s_, tl, tl_, define, define_, system, system_, sys, sys_, release, release_, create, create_, copy, copy_, volume, volume_, vol, vol_, 1, 1_, 2, 2_, 3, 3_, 4, 4_, font, font_, sel, sel_, select, select_, end, end_, begin, begin_, hook, hook_, sub, sub_, read, read_, flg, flg_, pause, pause_, play, play_, stop, stop_, fade, fade_, out, out_, in, in_, width, width_, height, height_, enable, enable_, disable, disable_, cursor, cursor_, all, all_, force, force_, line, line_, raw, raw_, variable, variable_, var, var_, log, log_, no, no_, yes, yes_, rand, rand_, random, random_, string, string_, front, front_, buffer, buffer_, wallpaper, wallpaper_, unwait, unwait_, auto, auto_, moji, moji_, speed, speed_, spd, spd_, mode, mode_, color, color_, alfa, alfa_, zero, zero_, male, male_, female, female_, gender, gender_, free, free_, next, next_, wipe, wipe_, prev, prev_, fn, fn_, stat, stat_, with, with_, exist, exist_, rgb, rgb_, rgba, rgba_, menu, menu_, bold, bold_, shadow, shadow_, talk, talk_, quick, quick_, failsafe, failsafe_, down, down_, pop, pop_, push, push_, replace, replace_, resume, resume_, loop, loop_, ret, ret_, last, last_, buf, buf_, pan, pan_, clip, clip_, move, move_, animate, animate_, abs, abs_, low, low_, high, high_, priority, priority_, rotate, rotate_, modify, modify_, at, at_, ch, ch_, config, config_, continue, continue_, panning, panning_, default, default_, point, point_, data, data_, anti, anti_, zoom, zoom_, draw, draw_, re, re_, intro, intro_, put, put_, ed, ed_, ing, ing_, mod, mod_, paste, paste_, smooth, smooth_, rect, rect_, show, show_, hide, hide_, effect, effect_, bgm, bgm_, region, region_, check, check_, offset, offset_, offs, offs_, off, off_, on, on_, repeat, repeat_, to, to_, table, table_, sync, sync_, after, after_, audio, audio_, home, home_, replay, replay_, start, start_, con, con_, window, window_, wnd, wnd_, win, win_, inner, inner_, bounds, bounds_, len, len_, ex, ex_, text, text_, buff, buff_, history, history_, clear, clear_, swap, swap_, box, box_, button, button_, click, click_, rclick, rclick_, mclick, mclick_, lclick, lclick_, ar, ar_, visible, visible_, hidden, hidden_, skip, skip_, frame, frame_, fps, fps_, face, face_, family, family_, isproportional, isproportional_, proportional, proportional_, ext, ext_
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+82fd765b        $console_font_height_get@MAJIRO_INTER
+2075c300        $console_loopfile_quick_@MAJIRO_INTER
+Word Depth: 4
+bc6402c9        $console_dopos_history_4_@MAJIRO_INTER
+38721a26        $console_dosyncgrpface_@MAJIRO_INTER
+99a5de25        $console_doproportionaldata_priority@MAJIRO_INTER
+eeaa9104        $console_isdialog_vol_volume_@MAJIRO_INTER
+6e7f7fb7        $console_iscursor_len_down@MAJIRO_INTER
+45acd4a7        $console_isrand_spd_font_@MAJIRO_INTER
+168efcb7        $console_ismode_downfemale@MAJIRO_INTER
+c1d2b85a        $console_is_dohistbuffgrp@MAJIRO_INTER
+0542e1b7        $console_is_smoothwinraw@MAJIRO_INTER
+6e7f7fb7        $console_getexec_talkevent@MAJIRO_INTER
+8fe5d6e7        $console_getstop_paste_client@MAJIRO_INTER
+2cb1bc41        $console_get_exit_copy_variable@MAJIRO_INTER
+ad0f8767        $console_setinvalidate_speedbuff@MAJIRO_INTER
+9143dc9e        $console_grpofflogwait_@MAJIRO_INTER
+da60f137        $console_picunwait_quickbuffer@MAJIRO_INTER
+da60f137        $console_pic_shadowhigh_fps_@MAJIRO_INTER
+4fac462c        $console_sprite_loadbgmstop@MAJIRO_INTER
+0542e1b7        $console_sprite_regauto_select@MAJIRO_INTER
+fb7fb744        $console_sprite_selpause_bold_@MAJIRO_INTER
+ad0f8767        $console_sprite_pop_time_anti@MAJIRO_INTER
+2cd009af        $console_moviexmojiin@MAJIRO_INTER
+b0ce081a        $console_movieunwaitforce_down_@MAJIRO_INTER
+aefc64da        $console_movie_log_down_animate@MAJIRO_INTER
+45acd4a7        $console_musicread_faderegion_@MAJIRO_INTER
+b84c9953        $console_musicchexitpan@MAJIRO_INTER
+d5999d46        $console_musicwndstart_start_@MAJIRO_INTER
+f4bb403d        $console_music_rotate_rotatetimer_@MAJIRO_INTER
+a909a32a        $console_soundsystem_effect_music_@MAJIRO_INTER
+e316a8f2        $console_soundresume_wait_voice_@MAJIRO_INTER
+4fac462c        $console_soundre_subhook_@MAJIRO_INTER
+29098ec0        $console_sound_2client_con_@MAJIRO_INTER
+c1d2b85a        $console_sound_read_malemodify@MAJIRO_INTER
+d5999d46        $console_voicereleasereg_click_@MAJIRO_INTER
+5c9761c5        $console_voice_slclickrotate@MAJIRO_INTER
+3378635d        $console_make1_fnaudio_@MAJIRO_INTER
+2bd1709d        $console_makeclick_freeeffect_@MAJIRO_INTER
+42d7c922        $console_make_4_antidefault_@MAJIRO_INTER
+d08a57f8        $console_make_after_dorelease@MAJIRO_INTER
+6e7f7fb7        $console_savecontinue_exit_box@MAJIRO_INTER
+b84c9953        $console_areakeyfontpos_@MAJIRO_INTER
+f9d94e91        $console_area_poplow_time@MAJIRO_INTER
+0542e1b7        $console_area_rclick_poslclick@MAJIRO_INTER
+7e0b8320        $console_invalidate_fontvoiceall@MAJIRO_INTER
+bc6402c9        $console_fastmenu_client_mclick_@MAJIRO_INTER
+7e0b8320        $console_fast_mouse_syspic_@MAJIRO_INTER
+ebb5886c        $console_fast_vol_loadmod_@MAJIRO_INTER
+efd59130        $console_fast_beginchange_with@MAJIRO_INTER
+20caeb0e        $console_fast_pointno_l_@MAJIRO_INTER
+bc6402c9        $console_fast_offswndext@MAJIRO_INTER
+a909a32a        $console_mouseheight_picafter@MAJIRO_INTER
+b0ce081a        $console_mousespd_mode_failsafe_@MAJIRO_INTER
+8fe5d6e7        $console_mouseingclip_low_@MAJIRO_INTER
+efd59130        $console_mouse_next_selectcontinue@MAJIRO_INTER
+faf17b1c        $console_fuchidorifastshadow_enable@MAJIRO_INTER
+3378635d        $console_fuchidori_fuchidori_proportionalyes_@MAJIRO_INTER
+c47dbe4b        $console_fuchidori_stop_read_to_@MAJIRO_INTER
+5c9761c5        $console_fuchidori_rgbaoffhistbuff_@MAJIRO_INTER
+82fd765b        $console_fuchidori_prioritybox_next_@MAJIRO_INTER
+f6416e87        $console_histbuffbold_ch_with@MAJIRO_INTER
+d5999d46        $console_histbuff_load_createexec_@MAJIRO_INTER
+88b4b26c        $console_histbuff_wipech_fn_@MAJIRO_INTER
+d583668c        $console_histbuff_afteroutbold@MAJIRO_INTER
+20caeb0e        $console_histbuff_hidden_offhome_@MAJIRO_INTER
+bbf35806        $console_load4read_line@MAJIRO_INTER
+78a6a112        $console_load_open_zero_in@MAJIRO_INTER
+f3d276f1        $console_load_check_clearmouse_@MAJIRO_INTER
+f3d276f1        $console_consolefuchidorifront_continue_@MAJIRO_INTER
+6e7f7fb7        $console_console_fadelowput@MAJIRO_INTER
+5131e234        $console_console_height_exec_family_@MAJIRO_INTER
+c1d2b85a        $console_console_cursor_modifydefault_@MAJIRO_INTER
+87a631a6        $console_fontoutstat_rgbcheck_@MAJIRO_INTER
+45e32ea6        $console_fontout_sound_pausevolume_@MAJIRO_INTER
+4fac462c        $console_fontout_ing_define_resume_@MAJIRO_INTER
+78a6a112        $console_fontout_ext_cursor_buffer@MAJIRO_INTER
+f4bb403d        $console_threadsound_thread_win@MAJIRO_INTER
+fb7fb744        $console_threadwrite_boundshistory@MAJIRO_INTER
+0542e1b7        $console_threadregtlno_@MAJIRO_INTER
+2cb1bc41        $console_thread_frame_swappanning_@MAJIRO_INTER
+d34e9b28        $console_eventmenu_hidden_play@MAJIRO_INTER
+50846ad3        $console_event_debugoutdo_reg@MAJIRO_INTER
+f66cd6ea        $console_event_rotate_opensub_@MAJIRO_INTER
+c47dbe4b        $console_timervolsetdata_@MAJIRO_INTER
+0542e1b7        $console_timerautoloopreplace@MAJIRO_INTER
+af6571ab        $console_timerpaneventreg_@MAJIRO_INTER
+a909a32a        $console_timerprioritymale_window_@MAJIRO_INTER
+7547c477        $console_timeratquickabs_@MAJIRO_INTER
+ebb5886c        $console_timerclick_3_begin@MAJIRO_INTER
+c1d2b85a        $console_timer_end_quick_data_@MAJIRO_INTER
+25d92502        $console_timer_end_continuestat@MAJIRO_INTER
+f9d94e91        $console_timer_shadow_default_low_@MAJIRO_INTER
+8fe5d6e7        $console_timer_click_defaultclick_@MAJIRO_INTER
+ebb5886c        $console_timerclick_3_begin@MAJIRO_INTER
+d08a57f8        $console_timearunwait_tl_@MAJIRO_INTER
+2cd009af        $console_time_fastoffs_histbuff_@MAJIRO_INTER
+f9d94e91        $console_time_default_issys_@MAJIRO_INTER
+7d8b2c41        $console_wait_dimlen_fn@MAJIRO_INTER
+d08a57f8        $console_wait_autoputheight@MAJIRO_INTER
+c1d2b85a        $console_wait_text_syncwidth@MAJIRO_INTER
+9143dc9e        $console_resetreto_paste@MAJIRO_INTER
+507f22c6        $console_resetshowthreadwidth_@MAJIRO_INTER
+163c0878        $console_reset_fasteffect_color_@MAJIRO_INTER
+bc6402c9        $console_reset_str_offsettext_@MAJIRO_INTER
+168efcb7        $console_reset_create1_hook@MAJIRO_INTER
+ebb5886c        $console_reset_var_x_unwait@MAJIRO_INTER
+aefc64da        $console_reset_pushconsole_random@MAJIRO_INTER
+2159ebe0        $console_screenzero_replace_at_@MAJIRO_INTER
+45e32ea6        $console_screen_yes_repeat_height@MAJIRO_INTER
+2159ebe0        $console_exitrect_continuequick_@MAJIRO_INTER
+321717d1        $console_exit_timerset_dim_@MAJIRO_INTER
+da60f137        $console_execweb_x_setup_@MAJIRO_INTER
+929a367d        $console_execsystem_downframe@MAJIRO_INTER
+2e99e98c        $console_execfacepan4_@MAJIRO_INTER
+af6571ab        $console_callexitvar_make@MAJIRO_INTER
+29098ec0        $console_callread_playframe_@MAJIRO_INTER
+f6416e87        $console_call_posfade_prev@MAJIRO_INTER
+fb7fb744        $console_call_panning_width_volume@MAJIRO_INTER
+88b4b26c        $console_call_audiorectwrite_@MAJIRO_INTER
+65075141        $console_call_boxshow_window_@MAJIRO_INTER
+5131e234        $console_strfemale1bgm@MAJIRO_INTER
+da60f137        $console_strshow_end_volume@MAJIRO_INTER
+2075c300        $console_str_fastmakechange_@MAJIRO_INTER
+8cfc4573        $console_webar_ingmale@MAJIRO_INTER
+8cfc4573        $console_writehomefadeheight_@MAJIRO_INTER
+b84c9953        $console_write_resetmovie_copy_@MAJIRO_INTER
+99a5de25        $console_regdebugout_defaultcreate_@MAJIRO_INTER
+b7e3e81c        $console_regspeed_screen_quick@MAJIRO_INTER
+e316a8f2        $console_regspdshow_enable@MAJIRO_INTER
+c1d2b85a        $console_regalfawithdisable_@MAJIRO_INTER
+50846ad3        $console_reg_voiceinbuffer@MAJIRO_INTER
+42d7c922        $console_openmod_priority_disable@MAJIRO_INTER
+5c9761c5        $console_openbgmmusicload_@MAJIRO_INTER
+b758ac4e        $console_open_bold_shadow_define_@MAJIRO_INTER
+9143dc9e        $console_open_point_move_sound_@MAJIRO_INTER
+f4bb403d        $console_open_familymakel@MAJIRO_INTER
+3f401bbd        $console_filemousein_intro_@MAJIRO_INTER
+3f401bbd        $console_file_begintalk_sound@MAJIRO_INTER
+b7e3e81c        $console_file_replay_resumerandom_@MAJIRO_INTER
+bb9d7a7f        $console_dialograw_begin_male@MAJIRO_INTER
+125cfbdb        $console_dialogsync_s_save_@MAJIRO_INTER
+0d36e2a7        $console_dialogboundsgender_mod@MAJIRO_INTER
+f63ed9ae        $console_dialog_reg_rgbexit_@MAJIRO_INTER
+0542e1b7        $console_dialog_fadelogbuff@MAJIRO_INTER
+9143dc9e        $console_clientdialog_fontouttime@MAJIRO_INTER
+9af10167        $console_clientanimateboxfade@MAJIRO_INTER
+4c99b0ea        $console_clientch_ext_next@MAJIRO_INTER
+bbf35806        $console_client_createafter_get_@MAJIRO_INTER
+65075141        $console_client_1_offswallpaper_@MAJIRO_INTER
+b0ce081a        $console_client_end_rclickrand@MAJIRO_INTER
+3378635d        $console_changemovieedcontinue_@MAJIRO_INTER
+4c99b0ea        $console_changefpsbutton_auto_@MAJIRO_INTER
+bb9d7a7f        $console_change_retskipexec_@MAJIRO_INTER
+50846ad3        $console_debugoutwidthabsmenu@MAJIRO_INTER
+3f401bbd        $console_debugoutclickmale_voice_@MAJIRO_INTER
+4fac462c        $console_debugout_debugout_autostat_@MAJIRO_INTER
+38721a26        $console_debugout_down_loadframe@MAJIRO_INTER
+a90f0e05        $console_posmenu_threadeffect_@MAJIRO_INTER
+cc3e0342        $console_pos_voice_reset_sound@MAJIRO_INTER
+3378635d        $console_pos_autowidthexit_@MAJIRO_INTER
+4c99b0ea        $console_pos_offs_clienttalk_@MAJIRO_INTER
+d5999d46        $console_curreplaceload_ex_@MAJIRO_INTER
+ebb5886c        $console_cur_rand_lclick_ed_@MAJIRO_INTER
+f3d276f1        $console_cur_proportional_proportional_click@MAJIRO_INTER
+faf17b1c        $console_setupconfig_rawget@MAJIRO_INTER
+d5999d46        $console_setupdrawloop_draw@MAJIRO_INTER
+1f5a14d4        $console_setup_threadfailsafeinvalidate@MAJIRO_INTER
+7e0b8320        $console_setup_systemgetreplace_@MAJIRO_INTER
+b758ac4e        $console_xmode_regsys@MAJIRO_INTER
+88b4b26c        $console_x_tl_rgb_box_@MAJIRO_INTER
+5131e234        $console_yopenswapcheck_@MAJIRO_INTER
+2cb1bc41        $console_y_music_musiccreate@MAJIRO_INTER
+5131e234        $console_y_cursor_show_frame@MAJIRO_INTER
+05b1a6e8        $console_y_isproportionalspeedin_@MAJIRO_INTER
+2075c300        $console_keyopen_client_to@MAJIRO_INTER
+87a631a6        $console_keyyes_ingopen_@MAJIRO_INTER
+25d92502        $console_key_webtime_proportional_@MAJIRO_INTER
+ebb5886c        $console_key_4wnd_ret@MAJIRO_INTER
+bb9d7a7f        $console_key_pausedialogloop@MAJIRO_INTER
+f63ed9ae        $console_key_cursor_panning_area@MAJIRO_INTER
+20caeb0e        $console_key_buffer_yesyes@MAJIRO_INTER
+168efcb7        $console_key_pointsmooth_abs@MAJIRO_INTER
+0542e1b7        $console_key_putfaderect@MAJIRO_INTER
+2075c300        $console_l_to_all_swap_@MAJIRO_INTER
+29098ec0        $console_sext_dimwait_@MAJIRO_INTER
+8fe5d6e7        $console_s_reset_exec_family@MAJIRO_INTER
+929a367d        $console_s_l_autoyes_@MAJIRO_INTER
+da60f137        $console_s_unwaiteffectrepeat_@MAJIRO_INTER
+3378635d        $console_s_panningdisable_system_@MAJIRO_INTER
+8cd709f9        $console_tlxtalkfn@MAJIRO_INTER
+a90f0e05        $console_tlbuffer_event_priority_@MAJIRO_INTER
+25d92502        $console_tl_define3_show_@MAJIRO_INTER
+9af10167        $console_tl_modbuffcheck_@MAJIRO_INTER
+dca7da63        $console_tl_tolclick_family_@MAJIRO_INTER
+1f5a14d4        $console_definelowchange_anti_@MAJIRO_INTER
+0542e1b7        $console_define_pagevariable_x@MAJIRO_INTER
+125cfbdb        $console_define_webmclickenable@MAJIRO_INTER
+b7e3e81c        $console_define_rotatemod_var@MAJIRO_INTER
+cd111b0e        $console_system_debugout_loopdraw@MAJIRO_INTER
+5c9761c5        $console_system_zoomdisablefont@MAJIRO_INTER
+2cd009af        $console_syssprite_console_exit@MAJIRO_INTER
+62442ec6        $console_sysdefinedefaultopen_@MAJIRO_INTER
+0d36e2a7        $console_sysstop_var_face@MAJIRO_INTER
+f63ed9ae        $console_sys_free_client_next_@MAJIRO_INTER
+f3d276f1        $console_sys_pastebounds_exec_@MAJIRO_INTER
+88b4b26c        $console_release_make_stopmodify@MAJIRO_INTER
+1cd5bca8        $console_release_wallpaper_hookexec_@MAJIRO_INTER
+65075141        $console_release_mojiwaitin@MAJIRO_INTER
+99a5de25        $console_release_quick_replayend_@MAJIRO_INTER
+3378635d        $console_release_expointmode@MAJIRO_INTER
+d583668c        $console_create_exitfailsafesprite_@MAJIRO_INTER
+05b1a6e8        $console_copypictable_line_@MAJIRO_INTER
+ca5c98f2        $console_copyintroinnerstring@MAJIRO_INTER
+163c0878        $console_copysyncstathigh@MAJIRO_INTER
+dca7da63        $console_copy_force_logselect_@MAJIRO_INTER
+05b1a6e8        $console_copy_autoarea_y_@MAJIRO_INTER
+cc3e0342        $console_copy_lclick_clearcreate_@MAJIRO_INTER
+ca5c98f2        $console_volumeconsoletalkclip@MAJIRO_INTER
+7d8b2c41        $console_volumeregmousefast@MAJIRO_INTER
+f65aa4c0        $console_volumehookkeypush@MAJIRO_INTER
+62442ec6        $console_volumeyesdisablelog_@MAJIRO_INTER
+8fe5d6e7        $console_volumeclip_regx@MAJIRO_INTER
+c102bcc3        $console_volume_1_rgba_low_@MAJIRO_INTER
+88b4b26c        $console_volexecface_male@MAJIRO_INTER
+fb7fb744        $console_volwin_curat@MAJIRO_INTER
+f9d94e91        $console_volisproportionalfontout_1@MAJIRO_INTER
+09c43040        $console_vol_zoom_zero_pic_@MAJIRO_INTER
+50846ad3        $console_1_fronthistbuff_point@MAJIRO_INTER
+d215e29a        $console_1_proportional_genderhook_@MAJIRO_INTER
+aefc64da        $console_2_open_start_select_@MAJIRO_INTER
+2bd1709d        $console_2_tl_create_swap_@MAJIRO_INTER
+29098ec0        $console_2_lineflg_stat_@MAJIRO_INTER
+f430015b        $console_3_loadsystem_buffer@MAJIRO_INTER
+2e99e98c        $console_3_stathigh_clear@MAJIRO_INTER
+25d92502        $console_3_con_vol_s@MAJIRO_INTER
+cd111b0e        $console_4loadspritelclick@MAJIRO_INTER
+8cfc4573        $console_4clip_x_change@MAJIRO_INTER
+5131e234        $console_4homeallbuf_@MAJIRO_INTER
+2e99e98c        $console_4_reg_shadowar_@MAJIRO_INTER
+f430015b        $console_4_setup_replacereplay@MAJIRO_INTER
+82fd765b        $console_font_time_all_force_@MAJIRO_INTER
+7547c477        $console_font_click_extclient_@MAJIRO_INTER
+c47dbe4b        $console_selectheightmoji_disable_@MAJIRO_INTER
+8cfc4573        $console_selectspeed_replayregion_@MAJIRO_INTER
+20caeb0e        $console_select_load_save_2_@MAJIRO_INTER
+1cd5bca8        $console_select_screenvolume_client@MAJIRO_INTER
+f0fd9886        $console_select_with_dialog_set_@MAJIRO_INTER
+20caeb0e        $console_endload_ch_page_@MAJIRO_INTER
+3f401bbd        $console_endclient_ar_fast_@MAJIRO_INTER
+f3d276f1        $console_endspeedendy@MAJIRO_INTER
+9af10167        $console_endquickvariablecon@MAJIRO_INTER
+42f6fddf        $console_endhide_auto_histbuff@MAJIRO_INTER
+321717d1        $console_endwin_moji_isproportional@MAJIRO_INTER
+42f6fddf        $console_endvisible_repeatvisible@MAJIRO_INTER
+507f22c6        $console_beginfnspddo_@MAJIRO_INTER
+d5999d46        $console_beginpoppaste_save@MAJIRO_INTER
+bb9d7a7f        $console_begin_fastclip_do@MAJIRO_INTER
+29098ec0        $console_hookbufrgb_anti_@MAJIRO_INTER
+6e7f7fb7        $console_hookdraw_dim_disable@MAJIRO_INTER
+ca5c98f2        $console_hook_lowlclick_exec_@MAJIRO_INTER
+3378635d        $console_hook_configwaitbuff_@MAJIRO_INTER
+321717d1        $console_subthreadclearon@MAJIRO_INTER
+99a5de25        $console_subdefine2_y_@MAJIRO_INTER
+2075c300        $console_sublastyes_save@MAJIRO_INTER
+163c0878        $console_sub_inexit_rgba_@MAJIRO_INTER
+f6416e87        $console_sub_log_ed_wait@MAJIRO_INTER
+da60f137        $console_sub_after_openframe@MAJIRO_INTER
+f430015b        $console_readinvalidateframevol@MAJIRO_INTER
+00d696cc        $console_read_mousemodifycursor_@MAJIRO_INTER
+2cd009af        $console_flg_len_offset_1@MAJIRO_INTER
+f65aa4c0        $console_pauseexecfade_male_@MAJIRO_INTER
+7547c477        $console_pausepause_keywrite@MAJIRO_INTER
+6ddeb30e        $console_pausestopfailsafedebugout_@MAJIRO_INTER
+82fd765b        $console_pausemodarprev_@MAJIRO_INTER
+2cd009af        $console_pause_music_consave@MAJIRO_INTER
+bb9d7a7f        $console_pause_alfa_introframe@MAJIRO_INTER
+1f5a14d4        $console_pause_on_box_sub@MAJIRO_INTER
+8cd709f9        $console_playvar_event_ext_@MAJIRO_INTER
+ad0f8767        $console_play_spritemoji_volume@MAJIRO_INTER
+b84c9953        $console_play_ymake_hook_@MAJIRO_INTER
+d34e9b28        $console_stopexecthreadfuchidori_@MAJIRO_INTER
+faf17b1c        $console_stopfadeclickrepeat_@MAJIRO_INTER
+dca7da63        $console_stoppoint_involume@MAJIRO_INTER
+b0ce081a        $console_stopedhome_event@MAJIRO_INTER
+82fd765b        $console_stopbuffgender_rgb@MAJIRO_INTER
+65075141        $console_stop_copy_atreplace_@MAJIRO_INTER
+b7e3e81c        $console_stop_priority_clipinner_@MAJIRO_INTER
+929a367d        $console_fadesubread_check@MAJIRO_INTER
+2075c300        $console_fade_ret_rawdata_@MAJIRO_INTER
+269bda78        $console_fade_buffquick_1_@MAJIRO_INTER
+5131e234        $console_outfilemclickdim_@MAJIRO_INTER
+d34e9b28        $console_out_thread_begin_height@MAJIRO_INTER
+2075c300        $console_out_random_callcreate_@MAJIRO_INTER
+1cd5bca8        $console_inlastanti_push@MAJIRO_INTER
+d215e29a        $console_in_heighttext_zoom@MAJIRO_INTER
+0d36e2a7        $console_in_buttonweb_mclick@MAJIRO_INTER
+a90f0e05        $console_widthweb_makefamily@MAJIRO_INTER
+f4bb403d        $console_widthfemale_anti_abs@MAJIRO_INTER
+99a5de25        $console_widthboldchdraw_@MAJIRO_INTER
+62442ec6        $console_widthdefault_gender_ar@MAJIRO_INTER
+6ddeb30e        $console_width_modlastcolor@MAJIRO_INTER
+8cd709f9        $console_heightcuratarea@MAJIRO_INTER
+d08a57f8        $console_heightselect_pop_rgb@MAJIRO_INTER
+cc3e0342        $console_heightshadow_releaseread@MAJIRO_INTER
+7e0b8320        $console_height_ret_resetend@MAJIRO_INTER
+82fd765b        $console_height_len_music_variable@MAJIRO_INTER
+c32e286f        $console_enablefast_sync_quick_@MAJIRO_INTER
+0542e1b7        $console_enabledefineregion_area_@MAJIRO_INTER
+1f5a14d4        $console_enableoffset_rgb_anti_@MAJIRO_INTER
+da60f137        $console_enableafter_on_cursor@MAJIRO_INTER
+ebb5886c        $console_enable_write_offeffect@MAJIRO_INTER
+2075c300        $console_enable_l_buttonbuff@MAJIRO_INTER
+7d8b2c41        $console_enable_rgbatableheight_@MAJIRO_INTER
+bb9d7a7f        $console_disableget_endprev_@MAJIRO_INTER
+2c18d5a9        $console_disablekeytlabs_@MAJIRO_INTER
+8fe5d6e7        $console_disableheight_popcur@MAJIRO_INTER
+bb9d7a7f        $console_disableclearmclicklast@MAJIRO_INTER
+2cd009af        $console_disable_ret_wait_invalidate@MAJIRO_INTER
+d08a57f8        $console_disable_lclick3_debugout_@MAJIRO_INTER
+29098ec0        $console_cursorselvariable_check_@MAJIRO_INTER
+6e7f7fb7        $console_cursor_load_x_frame_@MAJIRO_INTER
+168efcb7        $console_cursor_lensprite_free@MAJIRO_INTER
+b84c9953        $console_allflg_exec_bgm@MAJIRO_INTER
+c32e286f        $console_allframenorepeat_@MAJIRO_INTER
+f9d94e91        $console_all_table_bgm_zoom@MAJIRO_INTER
+d215e29a        $console_forcelowing_bounds@MAJIRO_INTER
+20caeb0e        $console_lineconsolequickpan_@MAJIRO_INTER
+a90f0e05        $console_linepushcur_wipe@MAJIRO_INTER
+8cfc4573        $console_line_write_startreset_@MAJIRO_INTER
+3f401bbd        $console_line_withvolvolume_@MAJIRO_INTER
+c32e286f        $console_line_window_freeconfig@MAJIRO_INTER
+ca30043a        $console_line_swap_replaybegin_@MAJIRO_INTER
+45e32ea6        $console_raw2_dimfuchidori@MAJIRO_INTER
+3378635d        $console_rawnoalfafamily@MAJIRO_INTER
+efd59130        $console_raw_histbuff_exit_bgm_@MAJIRO_INTER
+2cb1bc41        $console_raw_hookin_sub@MAJIRO_INTER
+a909a32a        $console_variablerclick_smooth_open_@MAJIRO_INTER
+3378635d        $console_variable_doloopmod_@MAJIRO_INTER
+d5999d46        $console_variable_area_draw_buffer_@MAJIRO_INTER
+929a367d        $console_variable_extmodbuffer_@MAJIRO_INTER
+7e0b8320        $console_varisproportional_is_con@MAJIRO_INTER
+8cd709f9        $console_var_yfadeput@MAJIRO_INTER
+bb9d7a7f        $console_var_swapdrawbuffer@MAJIRO_INTER
+42f6fddf        $console_log_mouse_dataoffset_@MAJIRO_INTER
+4c99b0ea        $console_log_openzoom_select_@MAJIRO_INTER
+42d7c922        $console_log_xbutton_draw@MAJIRO_INTER
+c47dbe4b        $console_log_playfadelow_@MAJIRO_INTER
+a90f0e05        $console_log_disable_clickmclick@MAJIRO_INTER
+d34e9b28        $console_log_menu_talkrand_@MAJIRO_INTER
+45acd4a7        $console_log_at_pushall_@MAJIRO_INTER
+b758ac4e        $console_log_frame_check_replay@MAJIRO_INTER
+1cd5bca8        $console_nofront_dialog_1_@MAJIRO_INTER
+6e7f7fb7        $console_no_threadposnext@MAJIRO_INTER
+c47dbe4b        $console_yesrect_replayframe_@MAJIRO_INTER
+f0fd9886        $console_yesfamilyproportionalzero_@MAJIRO_INTER
+b84c9953        $console_yes_set_checktime@MAJIRO_INTER
+20caeb0e        $console_yes_buttontalkend@MAJIRO_INTER
+3f401bbd        $console_randwipe_animate_resume_@MAJIRO_INTER
+6ddeb30e        $console_randoffsexrgb@MAJIRO_INTER
+f65aa4c0        $console_randskip_mouse_start_@MAJIRO_INTER
+faf17b1c        $console_randomfile_female_y@MAJIRO_INTER
+2cd009af        $console_random_wait_stopfont_@MAJIRO_INTER
+c46925cf        $console_string_exist_exit_vol@MAJIRO_INTER
+9143dc9e        $console_string_continue_show_flg@MAJIRO_INTER
+2cd009af        $console_frontstartextmake@MAJIRO_INTER
+e316a8f2        $console_front_shadow_abs_push@MAJIRO_INTER
+125cfbdb        $console_front_lowprevintro_@MAJIRO_INTER
+f3d276f1        $console_bufferloadskiplen_@MAJIRO_INTER
+163c0878        $console_bufferfile_fadepage_@MAJIRO_INTER
+dca7da63        $console_bufferputvol_talk@MAJIRO_INTER
+1f5a14d4        $console_buffer_poscopy_color@MAJIRO_INTER
+7547c477        $console_buffer_no_region_bgm@MAJIRO_INTER
+25d92502        $console_buffer_rectbuttonsprite@MAJIRO_INTER
+7547c477        $console_wallpaperexec_randomraw@MAJIRO_INTER
+ca30043a        $console_wallpaperstrregcall_@MAJIRO_INTER
+9af10167        $console_wallpaperspeedexitalfa_@MAJIRO_INTER
+87a631a6        $console_wallpaperchecksystem_console@MAJIRO_INTER
+87a631a6        $console_unwaitchangezoom_rand_@MAJIRO_INTER
+c47dbe4b        $console_unwaitcursor_raw_all@MAJIRO_INTER
+bb9d7a7f        $console_unwaitfn_volsync@MAJIRO_INTER
+d215e29a        $console_unwaitdowninvalidate_click@MAJIRO_INTER
+cd111b0e        $console_unwait_createout_mouse_@MAJIRO_INTER
+cd111b0e        $console_unwait_smooth_stopbgm_@MAJIRO_INTER
+2159ebe0        $console_unwait_on_anti_to@MAJIRO_INTER
+d34e9b28        $console_autovoicexanti@MAJIRO_INTER
+c1d2b85a        $console_autovariableinvalidate_family@MAJIRO_INTER
+20caeb0e        $console_autonoarea_sprite@MAJIRO_INTER
+d215e29a        $console_autobold_histbufftext_@MAJIRO_INTER
+29098ec0        $console_auto_replacelenvoice@MAJIRO_INTER
+c438ba98        $console_mojiwebmclicksys_@MAJIRO_INTER
+4fac462c        $console_mojilenprevs_@MAJIRO_INTER
+4fac462c        $console_speedmovieex_mod_@MAJIRO_INTER
+4c99b0ea        $console_speedchange_abssound_@MAJIRO_INTER
+f6416e87        $console_speedrectintrore_@MAJIRO_INTER
+6e7f7fb7        $console_spd_histbuffselect_begin_@MAJIRO_INTER
+d5999d46        $console_spd_systemstrevent@MAJIRO_INTER
+a90f0e05        $console_spd_modify3exist@MAJIRO_INTER
+7547c477        $console_spd_datashow_win_@MAJIRO_INTER
+ca5c98f2        $console_modewritebuf_pop_@MAJIRO_INTER
+8cd709f9        $console_modebuffer_raw2_@MAJIRO_INTER
+7d8b2c41        $console_modespdcreatevolume_@MAJIRO_INTER
+c46925cf        $console_modespd_fileheight_@MAJIRO_INTER
+2c18d5a9        $console_modenext_subpan@MAJIRO_INTER
+45acd4a7        $console_mode_draw_forceplay_@MAJIRO_INTER
+05b1a6e8        $console_colorsys_23@MAJIRO_INTER
+45acd4a7        $console_colormodshowtalk_@MAJIRO_INTER
+d08a57f8        $console_alfa_grp_release_area_@MAJIRO_INTER
+ca5c98f2        $console_alfa_speedsetuppaste_@MAJIRO_INTER
+62442ec6        $console_zerosyncfaceext_@MAJIRO_INTER
+f9d94e91        $console_zero_play3prev_@MAJIRO_INTER
+fb7fb744        $console_zero_repeat_fontouthigh_@MAJIRO_INTER
+0542e1b7        $console_maledebugout_re_bgm@MAJIRO_INTER
+2c18d5a9        $console_maletableedoffs@MAJIRO_INTER
+09c43040        $console_femaleymalefile_@MAJIRO_INTER
+1f5a14d4        $console_femaleaudio_define_table@MAJIRO_INTER
+c1d2b85a        $console_femaleisproportional_genderauto@MAJIRO_INTER
+1cd5bca8        $console_female_clip_enablesmooth_@MAJIRO_INTER
+2159ebe0        $console_female_panningdobegin_@MAJIRO_INTER
+c102bcc3        $console_gendersystemrgb_random_@MAJIRO_INTER
+9143dc9e        $console_freehook_table_ex_@MAJIRO_INTER
+ca5c98f2        $console_freelastselectin@MAJIRO_INTER
+62442ec6        $console_freeoff_web_1_@MAJIRO_INTER
+ebb5886c        $console_free_fn_thread_str_@MAJIRO_INTER
+b7e3e81c        $console_free_push_yes_area@MAJIRO_INTER
+f430015b        $console_nextfront_click_rgba@MAJIRO_INTER
+2e99e98c        $console_nextlow_zoom_to_@MAJIRO_INTER
+168efcb7        $console_next_is_thread_thread@MAJIRO_INTER
+7547c477        $console_wipesetuprelease_panning@MAJIRO_INTER
+d5999d46        $console_wipestopoffset_con@MAJIRO_INTER
+929a367d        $console_wipeforce_animate_client_@MAJIRO_INTER
+45e32ea6        $console_wipe_modify_effect_alfa@MAJIRO_INTER
+bc6402c9        $console_prevdosaveset@MAJIRO_INTER
+faf17b1c        $console_prevtlboundsdown_@MAJIRO_INTER
+2cb1bc41        $console_prevabs_makerandom_@MAJIRO_INTER
+f6416e87        $console_prev_quickmoji_replay@MAJIRO_INTER
+45e32ea6        $console_prev_continuewipe_auto_@MAJIRO_INTER
+78a6a112        $console_prev_rclickwrite_pic_@MAJIRO_INTER
+6e7f7fb7        $console_fn_lclick_regeffect@MAJIRO_INTER
+1cd5bca8        $console_statmoviestop_var_@MAJIRO_INTER
+88b4b26c        $console_stathistbuff_call_cur_@MAJIRO_INTER
+dca7da63        $console_statreplaceshowzero@MAJIRO_INTER
+d08a57f8        $console_stat_prevexitselect@MAJIRO_INTER
+c1d2b85a        $console_stat_wnd_after_do@MAJIRO_INTER
+af6571ab        $console_withpos_animatedraw_@MAJIRO_INTER
+45e32ea6        $console_existforce_loop_offs@MAJIRO_INTER
+bb9d7a7f        $console_existput_sys_next@MAJIRO_INTER
+e316a8f2        $console_existcon_1default@MAJIRO_INTER
+aefc64da        $console_existext_defaultfade@MAJIRO_INTER
+62442ec6        $console_exist_mojimodify_sub@MAJIRO_INTER
+38721a26        $console_exist_ch_replay_rect@MAJIRO_INTER
+8cfc4573        $console_rgbdefinezero_face@MAJIRO_INTER
+bb9d7a7f        $console_rgbfemale_swapwait@MAJIRO_INTER
+f66cd6ea        $console_rgb_resume_systemclear_@MAJIRO_INTER
+c47dbe4b        $console_rgb_panningrgb4_@MAJIRO_INTER
+cc3e0342        $console_rgba_reset_pointbuffer_@MAJIRO_INTER
+fb7fb744        $console_rgba_female_read_get@MAJIRO_INTER
+2c18d5a9        $console_menufont_event_modify@MAJIRO_INTER
+125cfbdb        $console_menuallboldfamily_@MAJIRO_INTER
+168efcb7        $console_menu_variable_noto@MAJIRO_INTER
+fb7fb744        $console_shadowexistisproportional_sync@MAJIRO_INTER
+168efcb7        $console_shadow_timer3_4@MAJIRO_INTER
+ebb5886c        $console_shadow_fn_set_screen@MAJIRO_INTER
+c47dbe4b        $console_shadow_clip_replay_low@MAJIRO_INTER
+2075c300        $console_shadow_clearhome_y@MAJIRO_INTER
+78a6a112        $console_talkresetmale_line@MAJIRO_INTER
+87a631a6        $console_talkcolor_define_change_@MAJIRO_INTER
+da60f137        $console_talkpop_off_bounds@MAJIRO_INTER
+bbf35806        $console_talk_windowdefaultexec@MAJIRO_INTER
+163c0878        $console_quicknext_picpos_@MAJIRO_INTER
+d5999d46        $console_quickwin_enable_gender_@MAJIRO_INTER
+d5999d46        $console_quick_ex_cleararea@MAJIRO_INTER
+bc6402c9        $console_failsafewindowclear_y@MAJIRO_INTER
+Traceback (most recent call last):
+  File "wordsmash.py", line 220, in <module>
+  File "wordsmash.py", line 212, in main
+  File "wordsmash.py", line 153, in do_wordmash
+KeyboardInterrupt
+
+C:\%REPOPATH%\majiro-py\src>

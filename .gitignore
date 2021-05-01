@@ -17,8 +17,15 @@ _backup/
 *.dll
 
 # Cached Google Sheet files from syscalls_reader.py
-*_cached.csv
+*_cached.*
 src/*.csv
+
+
+
+# Django stuff: (moved above log include)
+*.log
+# Allow doc logs
+!docs/logs/*.log
 
 
 # C extensions
@@ -74,7 +81,7 @@ coverage.xml
 *.pot
 
 # Django stuff:
-*.log
+# *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal

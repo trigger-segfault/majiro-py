@@ -13,6 +13,7 @@ __all__ = ['StructIO', 'Colors', 'DummyColors', 'hd_span', 'print_hexdump']
 
 import io, re, struct
 from collections import namedtuple
+from struct import calcsize, pack, unpack
 from types import SimpleNamespace
 from typing import Any, List, Match, NoReturn, Union
 
@@ -34,11 +35,11 @@ class StructIO:
         self._stream.seek(position, 0)
         return length
     def unpack(self, fmt:str) -> tuple:
-        return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))
+        return unpack(fmt, self._stream.read(calcsize(fmt)))
     def unpackone(self, fmt:str) -> Any:
-        return struct.unpack(fmt, self._stream.read(struct.calcsize(fmt)))[0]
+        return unpack(fmt, self._stream.read(calcsize(fmt)))[0]
     def pack(self, fmt:str, *v) -> NoReturn:
-        return self._stream.write(struct.pack(fmt, *v))
+        return self._stream.write(pack(fmt, *v))
 
 #endregion
 
@@ -49,72 +50,72 @@ def signed_b(num:int) -> int:
     also performs bounds checking
     """
     if num > 0x7f: # greater than SCHAR_MAX
-        return struct.unpack('<b', struct.pack('<B', num))[0]
+        return unpack('=b', pack('=B', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<b', struct.pack('<b', num))[0]
+        return unpack('=b', pack('=b', num))[0]
 
 def unsigned_B(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 8-bit integer (struct fmt 'B')
     also performs bounds checking
     """
     if num < 0: # signed
-        return struct.unpack('<B', struct.pack('<b', num))[0]
+        return unpack('=B', pack('=b', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<B', struct.pack('<B', num))[0]
+        return unpack('=B', pack('=B', num))[0]
 
 def signed_h(num:int) -> int:
     """Return signed value of unsigned (or signed) 16-bit integer (struct fmt 'h')
     also performs bounds checking
     """
     if num > 0x7fff: # greater than SHRT_MAX
-        return struct.unpack('<h', struct.pack('<H', num))[0]
+        return unpack('=h', pack('=H', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<h', struct.pack('<h', num))[0]
+        return unpack('=h', pack('=h', num))[0]
 
 def unsigned_H(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 16-bit integer (struct fmt 'H')
     also performs bounds checking
     """
     if num < 0: # signed
-        return struct.unpack('<H', struct.pack('<h', num))[0]
+        return unpack('=H', pack('=h', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<H', struct.pack('<H', num))[0]
+        return unpack('=H', pack('=H', num))[0]
 
 def signed_i(num:int) -> int:
     """Return signed value of unsigned (or signed) 32-bit integer (struct fmt 'i')
     also performs bounds checking
     """
     if num > 0x7fffffff: # greater than INT_MAX
-        return struct.unpack('<i', struct.pack('<I', num))[0]
+        return unpack('=i', pack('=I', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<i', struct.pack('<i', num))[0]
+        return unpack('=i', pack('=i', num))[0]
 
 def unsigned_I(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 32-bit integer (struct fmt 'I')
     also performs bounds checking
     """
     if num < 0: # signed
-        return struct.unpack('<I', struct.pack('<i', num))[0]
+        return unpack('=I', pack('=i', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<I', struct.pack('<I', num))[0]
+        return unpack('=I', pack('=I', num))[0]
 
 def signed_q(num:int) -> int:
     """Return signed value of unsigned (or signed) 64-bit integer (struct fmt 'q')
     also performs bounds checking
     """
     if num > 0x7fffffffffffffff: # greater than LLONG_MAX
-        return struct.unpack('<q', struct.pack('<Q', num))[0]
+        return unpack('=q', pack('=Q', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<q', struct.pack('<q', num))[0]
+        return unpack('=q', pack('=q', num))[0]
 
 def unsigned_Q(num:int) -> int:
     """Return unsigned value of signed (or unsigned) 64-bit integer (struct fmt 'Q')
     also performs bounds checking
     """
     if num < 0: # signed
-        return struct.unpack('<Q', struct.pack('<q', num))[0]
+        return unpack('=Q', pack('=q', num))[0]
     else: # lazy limits bounds checking
-        return struct.unpack('<Q', struct.pack('<Q', num))[0]
+        return unpack('=Q', pack('=Q', num))[0]
 
 #endregion
 

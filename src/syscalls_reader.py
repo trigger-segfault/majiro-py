@@ -110,8 +110,19 @@ GROUP_DEFAULT:str = 'GLOBAL'
 GROUP_LOCAL:str   = ''
 
 MajiroData:GoogleSheet = GoogleSheet(r"1p03_q6VTfYQEjlDhpypgoPdLQREhXwXz2ObTUkz5dlY")
+## Hash|Address|Return|Name|Arguments|Status|Notes
 MajiroData_Syscalls:GoogleSheet = MajiroData.with_gid(0)
+## Hash|Source|Name|Status|Notes
 MajiroData_Groups:GoogleSheet = MajiroData.with_gid(1562764366)
+## Hash|Source|Return|Name|Group|Arguments|Status|Notes
+MajiroData_Functions:GoogleSheet = MajiroData.with_gid(72122782)
+## Hash|Source|Scope|Type|Name|Group|Status|Notes
+MajiroData_Variables:GoogleSheet = MajiroData.with_gid(380736744)
+## Hash|Type|Name|Status|Notes
+MajiroData_Locals:GoogleSheet = MajiroData.with_gid(1596196937)
+## Release|Developer|Name|Engine Build Date|Notes
+MajiroData_Games:GoogleSheet = MajiroData.with_gid(2017266804)
+
 
 ## MAIN FUNCTION ##
 
@@ -142,6 +153,10 @@ def main(argv:list=None) -> int:
         help='show letter statistics (sort by: lowercase, uppercase, digits)')
     parser.add_argument('-L', '--letters-sort', dest='letter_sort', action='store_true', required=False,
         help='show letter statistics (sort by number of appearances)')
+    parser.add_argument('-w', '--write-unknown', dest='write_unknown', default=False, action='store_true', required=False,
+        help='output unknown hashes to file "syscalls_unknown.txt"')
+    parser.add_argument('-W', '--write-collisions', dest='write_collisions', default=False, action='store_true', required=False,
+        help='output collisions hashes to file "syscalls_collisions.txt"')
 
     args = parser.parse_args(argv)
 
@@ -207,6 +222,10 @@ def main(argv:list=None) -> int:
 
     # read a csv syscalls file using the known field column names (see Field enum)
     def read_file(reader:csv.DictReader):
+        if args.write_unknown:
+            unkwriter = open('syscalls_unknown_cached.txt', 'wt+', encoding='utf-8')
+        if args.write_collisions:
+            clnwriter = open('syscalls_collisions_cached.txt', 'wt+', encoding='utf-8')
         status_counts = OrderedDict() #[(c,0) for c in Status.__members__.values()])
         return_counts = OrderedDict()
         keyword_counts = OrderedDict()
@@ -217,7 +236,7 @@ def main(argv:list=None) -> int:
             address:str   = row[Field.ADDRESS.value]
             retvalue:str  = row[Field.RETURN.value]
             name:str      = row[Field.NAME.value]
-            args:str      = row[Field.ARGUMENTS.value]
+            arguments:str = row[Field.ARGUMENTS.value]
             status:Status = Status(row[Field.STATUS.value])
             notes:str     = row[Field.NOTES.value]
 
@@ -231,6 +250,12 @@ def main(argv:list=None) -> int:
 
             # name lookups:
             rettype = TYPEDEF_LOOKUP[retvalue]
+
+            # if status not in (Status.UNHASHED, Status.CONFIRMED):
+            if args.write_unknown and status not in (Status.UNHASHED, Status.CONFIRMED, Status.COLLISION):
+                unkwriter.write(f'{hashvalue:08x} ')
+            if args.write_collisions and status is Status.COLLISION:
+                clnwriter.write(f'{hashvalue:08x} ')
 
             # validation/errors/warnings:
             if name and status in (Status.UNHASHED, Status.COLLISION, Status.LIKELY, Status.CONFIRMED):
@@ -271,7 +296,14 @@ def main(argv:list=None) -> int:
                             letter_counts[c][2] += 1
                         else:
                             letter_counts[c][3] += 1
-        
+        if args.write_unknown:
+            unkwriter.flush()
+            unkwriter.close()
+            del unkwriter
+        if args.write_collisions:
+            clnwriter.flush()
+            clnwriter.close()
+            del clnwriter
         # print statistics:
         max_len = max([len(k.value) for k in status_counts.keys()] + [len(k) for k in return_counts.keys()])
 

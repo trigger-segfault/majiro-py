@@ -26,6 +26,7 @@ This library/tool is heavily tied to *and based on* [AtomCrafty/MajiroTools](htt
 
 ## External links
 
+* [Google Sheets/Majiro Data](https://docs.google.com/spreadsheets/d/1p03_q6VTfYQEjlDhpypgoPdLQREhXwXz2ObTUkz5dlY) - collection of unhashed names and other research data.
 * [AtomCrafty/MajiroTools](https://github.com/AtomCrafty/MajiroTools) - C# tools for the MjIL specification, and home of the wiki.
 * [trigger-segfault/unhash_name](https://github.com/trigger-segfault/unhash_name) - tool for recovering hashed variable and function names.
 * [trigger-segfault/vscode_find_colors](https://github.com/trigger-segfault/vscode_find_colors) - tool for syntax highlighter design.

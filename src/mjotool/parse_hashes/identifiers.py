@@ -291,7 +291,7 @@ class FunctionSig(Identifier):
     @property
     def args_repr(self) -> str:
         if self._arguments is None:
-            return str(None)
+            return None
         elif isinstance(self._arguments, str):
             return self._arguments
         else:

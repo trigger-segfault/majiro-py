@@ -76,10 +76,13 @@
       "*.mjs.old": "javascript",
       "*.mjs.old2": "javascript",
       "*.mjh.bak": "javascript",
+      "*.txt.t": "javascript",
+      // custom formats
       "*.mjil": "majiro-mjil",
       "*.mjres": "csv"
     },
 
+    // Excel Viewer extension
     "csv-preview.formatValues": "never",
 
     // VSIcons extension

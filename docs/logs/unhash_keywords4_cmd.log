@@ -1,0 +1,136 @@
+C:\%REPOPATH%\majiro-py\src>python try_keywords.py -NlCUsR -g "MAJIRO_INTER" -p "$" -P "_disable" -t 45acd4a7 --preview -w ^
+More? next nxt previous prev prv current cur new last message msg selecter selection select sel ^
+More? return ret rtrn continue cont skip jump jmp ^
+More? mode option opt config conf setup ^
+More? adv novel quick point history hist ^
+More? default def rdef ^
+More? system sys ^
+More? ext ex all recover nextsel prevsel goto into selsel fix ^
+More? with after from fromto to go do set fast reset time no inter _
+   COUNTS: 1 prefixes, 1 postfixes, 1 groups, 128 words, 1 targets
+
+ PREFIXES: $
+
+POSTFIXES: _disable
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: next, next_, nxt, nxt_, previous, previous_, prev, prev_, prv, prv_, current, current_, cur, cur_, new, new_, last, last_, message, message_, msg, msg_, selecter, selecter_, selection, selection_, select, select_, sel, sel_, return, return_, ret, ret_, rtrn, rtrn_, continue, continue_, cont, cont_, skip, skip_, jump, jump_, jmp, jmp_, mode, mode_, option, option_, opt, opt_, config, config_, conf, conf_, setup, setup_, adv, adv_, novel, novel_, quick, quick_, point, point_, history, history_, hist, hist_, default, default_, def, def_, rdef, rdef_, system, system_, sys, sys_, ext, ext_, ex, ex_, all, all_, recover, recover_, nextsel, nextsel_, prevsel, prevsel_, goto, goto_, into, into_, selsel, selsel_, fix, fix_, with, with_, after, after_, from, from_, fromto, fromto_, to, to_, go, go_, do, do_, set, set_, fast, fast_, reset, reset_, time, time_, no, no_, inter, inter_, _, __
+
+  EXPECTS: fc053fc6
+[Doing Opti]
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+Word Depth: 5
+45acd4a7        $next_msgreturnskip_set_disable@MAJIRO_INTER
+45acd4a7        $prvmodeselecternovelprev_disable@MAJIRO_INTER
+45acd4a7        $selectionpreviousprvret_rtrn_disable@MAJIRO_INTER
+45acd4a7        $all_systemreset_setrtrn_disable@MAJIRO_INTER
+45acd4a7        $nextselprevious_continue_sys_ext_disable@MAJIRO_INTER
+Word Depth: 6
+45acd4a7        $nextselprevious_continue_sys_ext_disable@MAJIRO_INTER
+45acd4a7        $nextoption_config_adv_with_set_disable@MAJIRO_INTER
+45acd4a7        $nextrdefsetsystem_afterprevious_disable@MAJIRO_INTER
+45acd4a7        $next_msgreturnskip_set_disable@MAJIRO_INTER
+45acd4a7        $next_message_jmprecoverto_opt_disable@MAJIRO_INTER
+45acd4a7        $next_msgreturnskip_set_disable@MAJIRO_INTER
+45acd4a7        $next_skipreset_selectcur_def_disable@MAJIRO_INTER
+45acd4a7        $next_gotofromret_advcur_disable@MAJIRO_INTER
+45acd4a7        $next_setconfigreturn_curgoto_disable@MAJIRO_INTER
+45acd4a7        $nxtpoint_point__def_system_disable@MAJIRO_INTER
+45acd4a7        $nxtpoint_point__def_system_disable@MAJIRO_INTER
+45acd4a7        $nxtsystemprevselprv_return_rtrn_disable@MAJIRO_INTER
+45acd4a7        $nxt_nextsetupexselection_conf_disable@MAJIRO_INTER
+45acd4a7        $nxt_system_selsel_selectiongotonextsel_disable@MAJIRO_INTER
+45acd4a7        $previousdefaultprevsel___rdefselection_disable@MAJIRO_INTER
+45acd4a7        $previousselsellast_skip_previous_point_disable@MAJIRO_INTER
+45acd4a7        $previouswithpointinter_nextsel_cont_disable@MAJIRO_INTER
+45acd4a7        $previousresetjump_fromto_pointcur_disable@MAJIRO_INTER
+45acd4a7        $previous_all_histsys_jump_time_disable@MAJIRO_INTER
+45acd4a7        $prevselecter_pointset_returnmessage_disable@MAJIRO_INTER
+45acd4a7        $prevjump___set_currentext_disable@MAJIRO_INTER
+45acd4a7        $prevconfselectionexprevselpoint_disable@MAJIRO_INTER
+45acd4a7        $prevreset_last_fromselect_point_disable@MAJIRO_INTER
+45acd4a7        $previnternew_jmp_history_with_disable@MAJIRO_INTER
+45acd4a7        $prev_return_rtrn_adv_fromto_point_disable@MAJIRO_INTER
+45acd4a7        $prev_doselection_skipselecter_novel_disable@MAJIRO_INTER
+45acd4a7        $prvnxt_msgcontinuemodereturn_disable@MAJIRO_INTER
+45acd4a7        $prvprv_noprevsel_fix_novel_disable@MAJIRO_INTER
+45acd4a7        $prvmsg_timepointselcur_disable@MAJIRO_INTER
+45acd4a7        $prvselection_selecterreset_next_from_disable@MAJIRO_INTER
+45acd4a7        $prvskipnxt_go_optionfast_disable@MAJIRO_INTER
+45acd4a7        $prvskip_selafterset_adv_disable@MAJIRO_INTER
+45acd4a7        $prvdo_opt_newhistory_do_disable@MAJIRO_INTER
+45acd4a7        $prvfastintotimealldo_disable@MAJIRO_INTER
+45acd4a7        $prv_selection_recover_into_fixreset_disable@MAJIRO_INTER
+45acd4a7        $prv_jumpreturnadv_default_sys_disable@MAJIRO_INTER
+45acd4a7        $prv_mode_option_selsel_select_select_disable@MAJIRO_INTER
+
+
+C:\%REPOPATH%\majiro-py\src>python try_keywords.py -NlcUsR -g "MAJIRO_INTER" -p "$" -P "_disable" -t 45acd4a7 --preview -w ^
+More? next nxt previous prev prv current cur new last message msg selecter selection select sel ^
+More? return ret rtrn continue cont skip jump jmp ^
+More? mode option opt config conf setup ^
+More? adv novel quick point history hist ^
+More? default def rdef ^
+More? system sys trans transit top back ^
+More? ext ex all recover nextsel prevsel stop goto into selsel fix ^
+More? with after from fromto at to go do is set fast reset time no inter enable disable back ar flg choice kaisou ahead koma
+   COUNTS: 1 prefixes, 1 postfixes, 1 groups, 312 words, 1 targets
+
+ PREFIXES: $
+
+POSTFIXES: _disable
+
+   GROUPS: @MAJIRO_INTER
+
+    WORDS: Next, next, Next_, next_, Nxt, nxt, Nxt_, nxt_, Previous, previous, Previous_, previous_, Prev, prev, Prev_, prev_, Prv, prv, Prv_, prv_, Current, current, Current_, current_, Cur, cur, Cur_, cur_, New, new, New_, new_, Last, last, Last_, last_, Message, message, Message_, message_, Msg, msg, Msg_, msg_, Selecter, selecter, Selecter_, selecter_, Selection, selection, Selection_, selection_, Select, select, Select_, select_, Sel, sel, Sel_, sel_, Return, return, Return_, return_, Ret, ret, Ret_, ret_, Rtrn, rtrn, Rtrn_, rtrn_, Continue, continue, Continue_, continue_, Cont, cont, Cont_, cont_, Skip, skip, Skip_, skip_, Jump, jump, Jump_, jump_, Jmp, jmp, Jmp_, jmp_, Mode, mode, Mode_, mode_, Option, option, Option_, option_, Opt, opt, Opt_, opt_, Config, config, Config_, config_, Conf, conf, Conf_, conf_, Setup, setup,
+ Setup_, setup_, Adv, adv, Adv_, adv_, Novel, novel, Novel_, novel_, Quick, quick, Quick_, quick_, Point, point, Point_, point_, History, history, History_, history_, Hist, hist, Hist_, hist_, Default, default, Default_, default_, Def, def, Def_, def_, Rdef, rdef, Rdef_, rdef_, System, system, System_, system_, Sys, sys, Sys_, sys_, Trans, trans, Trans_, trans_, Transit, transit, Transit_, transit_, Top, top, Top_, top_, Back, back, Back_, back_, Ext, ext, Ext_, ext_, Ex, ex,
+ Ex_, ex_, All, all, All_, all_, Recover, recover, Recover_, recover_, Nextsel, nextsel, Nextsel_, nextsel_, Prevsel, prevsel, Prevsel_, prevsel_, Stop, stop, Stop_, stop_, Goto, goto, Goto_, goto_, Into, into, Into_, into_, Selsel, selsel, Selsel_, selsel_, Fix, fix, Fix_, fix_, With, with, With_, with_, After, after, After_, after_, From, from, From_, from_, Fromto, fromto, Fromto_, fromto_, At, at, At_, at_, To, to, To_, to_, Go, go, Go_, go_, Do, do, Do_, do_, Is, is, Is_, is_, Set, set, Set_, set_, Fast, fast, Fast_, fast_, Reset, reset, Reset_, reset_, Time, time, Time_, time_, No, no, No_, no_, Inter, inter, Inter_, inter_, Enable, enable, Enable_, enable_, Disable, disable, Disable_, disable_, Ar, ar, Ar_, ar_, Flg, flg, Flg_, flg_, Choice, choice, Choice_, choice_, Kaisou, kaisou, Kaisou_, kaisou_, Ahead, ahead, Ahead_,
+ ahead_, Koma, koma, Koma_, koma_
+
+  EXPECTS: fc053fc6
+[Doing Opti]
+Word Depth: 0
+Word Depth: 1
+Word Depth: 2
+Word Depth: 3
+Word Depth: 4
+45acd4a7        $nextsel_ConfigwithTrans_disable@MAJIRO_INTER
+Word Depth: 5
+45acd4a7        $NextSelection_NextPrv_Adv_disable@MAJIRO_INTER
+45acd4a7        $NextkomaPointrdef_Quick_disable@MAJIRO_INTER
+45acd4a7        $nextprvRetdo_transit_disable@MAJIRO_INTER
+45acd4a7        $nextsel_ConfigwithTrans_disable@MAJIRO_INTER
+45acd4a7        $nextSkip_SelJmpconfig_disable@MAJIRO_INTER
+45acd4a7        $Next_do_Fast_IntoKaisou_disable@MAJIRO_INTER
+45acd4a7        $next_Prev_Recoverext_point_disable@MAJIRO_INTER
+45acd4a7        $next_msgreturnskip_set_disable@MAJIRO_INTER
+45acd4a7        $next_ConfigGo_Selselsetup_disable@MAJIRO_INTER
+45acd4a7        $previousselectionRet_prev_ar_disable@MAJIRO_INTER
+45acd4a7        $previousKoma_with_do_With_disable@MAJIRO_INTER
+45acd4a7        $previous_rdefjmpfrom_New_disable@MAJIRO_INTER
+45acd4a7        $PrevquickRdefmodeOpt_disable@MAJIRO_INTER
+45acd4a7        $Prevar_nextcurrent_at_disable@MAJIRO_INTER
+45acd4a7        $prev_mode_Ret_stopDo_disable@MAJIRO_INTER
+45acd4a7        $Prvcursystemintocontinue_disable@MAJIRO_INTER
+45acd4a7        $prvmodeselecternovelprev_disable@MAJIRO_INTER
+45acd4a7        $Prv_Inter_selectSelecterreturn_disable@MAJIRO_INTER
+45acd4a7        $prv_setBack_Default_novel_disable@MAJIRO_INTER
+45acd4a7        $currentselecterret_stop_disable_disable@MAJIRO_INTER
+45acd4a7        $Current_system_fixrdefsystem_disable@MAJIRO_INTER
+45acd4a7        $current_currdef_Rtrn_Fromto_disable@MAJIRO_INTER
+45acd4a7        $current_ConfTopMsg_Koma_disable@MAJIRO_INTER
+45acd4a7        $current_Goto_Resetafter_hist_disable@MAJIRO_INTER
+45acd4a7        $curGotodisable_Goadv_disable@MAJIRO_INTER
+45acd4a7        $cur_go_jmp_System_ex_disable@MAJIRO_INTER
+45acd4a7        $Newprev_PointAftermessage_disable@MAJIRO_INTER
+45acd4a7        $NewTrans_Selsel_Selskip_disable@MAJIRO_INTER
+45acd4a7        $New_Contret_recoverWith_disable@MAJIRO_INTER
+45acd4a7        $New_Ex_IntoNew_Kaisou_disable@MAJIRO_INTER
+45acd4a7        $new_message_disable_aheadno_disable@MAJIRO_INTER
+45acd4a7        $new_select_time_Setup_stop_disable@MAJIRO_INTER
+45acd4a7        $new_point_arTransprevious_disable@MAJIRO_INTER

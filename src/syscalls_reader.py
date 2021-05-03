@@ -120,6 +120,8 @@ MajiroData_Functions:GoogleSheet = MajiroData.with_gid(72122782)
 MajiroData_Variables:GoogleSheet = MajiroData.with_gid(380736744)
 ## Hash|Type|Name|Status|Notes
 MajiroData_Locals:GoogleSheet = MajiroData.with_gid(1596196937)
+## Hash|Invoked by|Name|Status|Notes
+MajiroData_Callbacks:GoogleSheet = MajiroData.with_gid(750354284)
 ## Release|Developer|Name|Engine Build Date|Notes
 MajiroData_Games:GoogleSheet = MajiroData.with_gid(2017266804)
 
@@ -263,7 +265,8 @@ def main(argv:list=None) -> int:
                 if fullhash != hashvalue:
                     print(f'{S.BRIGHT}{F.RED}ERROR:{S.RESET_ALL} hashvalue mismatch! {hashvalue:08x} vs {fullhash:08x} : {name}')
             if name and (True or status in (Status.UNHASHED, Status.COLLISION, Status.LIKELY, Status.CONFIRMED)):
-                postfix = MjoType.frompostfix_name(name, allowunk=True)
+                # postfix_str = MjoType.getpostfix_fromname(name)
+                postfix = MjoType.frompostfix_name(name, allow_unk=True, allow_alt=True)  # allow '!' (for $rand!) and '~' (%Op_internalCase~)
                 if rettype not in (Ellipsis, MjoType.UNKNOWN) and rettype != postfix:
                     print(f'{S.BRIGHT}{F.RED}ERROR:{S.RESET_ALL} return/postfix mismatch! {hashvalue:08x} : {name}')
             

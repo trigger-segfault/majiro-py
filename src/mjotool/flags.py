@@ -29,14 +29,18 @@ from typing import Dict, Optional, Union
 class MjoType(enum.IntEnum):
     """Type (variable) flags for ld*, ldelem*, st*, and stelem* opcodes (same as internal IDs)
     """
-    UNKNOWN      = -1
+    UNKNOWN      = -1 # ('?' postfix used internally to specify the name is unknown)
     #
     INT          = 0  #   '' postfix (int,         [i])  (also used for handles/function pointers)
-    FLOAT        = 1  #  '%' postfix (float,       [r])
+    FLOAT        = 1  #  '%' postfix (float,       [r])  (observed as '!' for syscall: $46b18379 "$rand!@MAJIRO_INTER")
     STRING       = 2  #  '$' postfix (string,      [s])
     INT_ARRAY    = 3  #  '#' postfix (intarray,    [iarr])
     FLOAT_ARRAY  = 4  # '%#' postfix (floatarray,  [rarr])
     STRING_ARRAY = 5  # '$#' postfix (stringarray, [sarr])
+    #
+    #NOTE: WHAT THE HELL!??  (also possibly "any")
+    INTERNAL     = 8  #  '~' postfix (observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision)
+    #                 #              (it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe)
     #
     def __bool__(self) -> bool: return self is not MjoType.UNKNOWN
     #
@@ -51,18 +55,30 @@ class MjoType(enum.IntEnum):
     def fromname(cls, name:str, default=...) -> 'MjoType': return _fromflagname(cls, name, default)
     #
     @property
-    def postfix(self) -> str: return self._POSTFIXES[self]
+    def postfix(self) -> str:
+        if self is MjoType.INTERNAL:
+            return self._POSTFIXES_ALT[self]  # INTERNAL only has an alt type since we still don't really understand it
+        return self._POSTFIXES[self]
     @classmethod
-    def frompostfix(cls, postfix:str, default=..., *, allowunk:bool=False) -> 'MjoType':
-        if not allowunk and postfix == MjoType.UNKNOWN.postfix:
+    def frompostfix(cls, postfix:str, default=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
+        if not allow_unk and postfix == MjoType.UNKNOWN.postfix:
             if default is not Ellipsis:
                 return default
             raise KeyError(postfix)
+        name = None
+        if allow_alt:
+            name = cls._POSTFIX_ALT_LOOKUP.get(postfix)
+        # do name checks here to "cleanly" handle default values
         if default is not Ellipsis:
-            return cls._POSTFIX_LOOKUP.get(postfix, default)
-        return cls._POSTFIX_LOOKUP[postfix]
+            return name if name is not None else cls._POSTFIX_LOOKUP.get(postfix, default)
+        else:
+            return name if name is not None else cls._POSTFIX_LOOKUP[postfix]
     @classmethod
-    def frompostfix_name(cls, name:str, default=..., *, allowunk:bool=False) -> 'MjoType':
+    def frompostfix_name(cls, name:str, default=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
+        postfix = cls.getpostfix_fromname(name)
+        return cls.frompostfix(postfix, default, allow_unk=allow_unk, allow_alt=allow_alt)
+    @classmethod
+    def getpostfix_fromname(cls, name:str) -> str:
         # from name lookup behavior has to be hardcoded :(
         # trim group name, if included
         #NOTE: realistically identifiers should have at least two chars before group
@@ -72,10 +88,11 @@ class MjoType(enum.IntEnum):
         postfix = '' if len(name) > 0 else None
         for i in range(len(name) - 1, -1, -1): # (i=len(name)-1; i >= 0; i--)
             # consume as many postfix characters as possible to check invalid character usage
-            if i == 0 or name[i] not in cls._POSTFIX_LOOKUP: #('%','$','#')
+            #                            normal        doc   MAJIRO_INTER
+            if i == 0 or name[i] not in ('%','$','#',  '?',  '!','~'): #cls._POSTFIX_LOOKUP:
                 postfix = name[i+1:]
                 break
-        return cls.frompostfix(postfix, default, allowunk=allowunk)
+        return postfix
     #
     @property
     def python_type(self) -> type: return self._PYTHON_TYPES[self]
@@ -142,8 +159,8 @@ class MjoScope(enum.IntEnum):
     @property
     def prefix(self) -> str: return self._PREFIXES[self]
     @classmethod
-    def fromprefix(cls, prefix:str, default=..., allowunk:bool=False) -> 'MjoScope':
-        if not allowunk and prefix == MjoScope.UNKNOWN.prefix:
+    def fromprefix(cls, prefix:str, default=..., allow_unk:bool=False) -> 'MjoScope':
+        if not allow_unk and prefix == MjoScope.UNKNOWN.prefix:
             if default is not Ellipsis:
                 return default
             raise KeyError(prefix)
@@ -151,10 +168,10 @@ class MjoScope(enum.IntEnum):
             return cls._PREFIX_LOOKUP.get(prefix, default)
         return cls._PREFIX_LOOKUP[prefix]
     @classmethod
-    def fromprefix_name(cls, name:str, default=..., allowunk:bool=False) -> 'MjoScope':
-        if allowunk and name[:1] not in cls._PREFIX_LOOKUP:
+    def fromprefix_name(cls, name:str, default=..., allow_unk:bool=False) -> 'MjoScope':
+        if allow_unk and name[:1] not in cls._PREFIX_LOOKUP:
             name = ''
-        return cls.fromprefix(name[:1], default, allowunk=allowunk)
+        return cls.fromprefix(name[:1], default, allow_unk=allow_unk)
     #
     @property
     def is_var(self) -> bool: return (MjoScope.PERSISTENT <= self <= MjoScope.LOCAL)
@@ -334,7 +351,19 @@ MjoType._POSTFIXES:Dict[MjoType,str] = OrderedDict({
     MjoType.FLOAT_ARRAY:  '%#',
     MjoType.STRING_ARRAY: '$#',
 })
+MjoType._POSTFIXES_ALT:Dict[MjoType,str] = OrderedDict({
+    #NOTE: WHAT THE HELL!??
+    #      observed for syscall: $46b18379 "$rand!@MAJIRO_INTER", which returns a float between 0 and 1 (DOUBLE??)
+    MjoType.FLOAT:        '!',
+    #MjoType.FLOAT_ARRAY:  '!#',
+    #
+    #NOTE: WHAT THE HELL!??
+    #      observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision.
+    #      it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe.
+    MjoType.INTERNAL:     '~',
+})
 MjoType._POSTFIX_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES.items())
+MjoType._POSTFIX_ALT_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES_ALT.items())
 
 MjoType._PYTHON_TYPES:Dict[MjoType,type] = OrderedDict({
     #NOTE: not a real type flag <INTERNAL USE ONLY>

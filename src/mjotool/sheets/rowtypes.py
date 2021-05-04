@@ -63,12 +63,12 @@ class Status(enum.Enum):
 
 EMPTY:str = '-'  # used to denote field is filled in, but there is nothing to show
 
-#void,any,any/void,int,bool,file*,page*,sprite*,float,string,int[],float[],string[],
+#void,any,any/void,int,int?,bool,file*,page*,sprite*,float,string,int[],float[],string[],
 
 TYPEDEFS:Dict[MjoType,List[str]] = OrderedDict([
     (MjoType.UNKNOWN, ['']),
     (Ellipsis,        ['void','any','any/void']),
-    (MjoType.INT,     ['int','bool','file*','page*','sprite*']),
+    (MjoType.INT,     ['int','int?','bool','file*','page*','sprite*']),
     (MjoType.FLOAT,   ['float']),
     (MjoType.STRING,  ['string']),
     (MjoType.INT_ARRAY,    ['int[]']),
@@ -82,14 +82,6 @@ TYPEDEF_LOOKUP:Dict[str,MjoType] = OrderedDict(chain(*[[(k,t) for k in keys] for
 #######################################################################################
 
 #region ## HELPER FUNCTIONS ##
-
-# Syscall  = namedtuple('Group', ('Hash', 'Address', 'Return', 'Name', 'Arguments', 'Status', 'Notes'))
-# Group    = namedtuple('Group', ('Hash', 'Source', 'Name', 'Status', 'Notes'))
-# Function = namedtuple('Function', ('Hash', 'Source', 'Return', 'Name', 'Group', 'Arguments', 'Status', 'Notes'))
-# Variable = namedtuple('Variable', ('Hash', 'Source', 'Scope', 'Type', 'Name', 'Group', 'Status', 'Notes'))
-# Local    = namedtuple('Local', ('Hash', 'Type', 'Name', 'Status', 'Notes'))
-# Callback = namedtuple('Callback', ('Hash', 'Invoked_by', 'Name', 'Status', 'Notes'))
-# Game     = namedtuple('Game', ('Release', 'Developer', 'Name', 'Engine_Build_Date', 'Notes'))
 
 class Typedef(enum.Enum):
     UNKNOWN  = ''         # type not documented/known

@@ -4,7 +4,7 @@
 <https://docs.google.com/spreadsheets/d/1p03_q6VTfYQEjlDhpypgoPdLQREhXwXz2ObTUkz5dlY>
 """
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __date__    = '2021-04-27'
 __author__  = 'Robert Jordan'
 
@@ -12,119 +12,20 @@ __all__ = []
 
 #######################################################################################
 
-import csv, enum, io, os, statistics, string
-from collections import namedtuple, Counter, OrderedDict
-from itertools import chain
-from types import SimpleNamespace
-from typing import List, Dict, Optional, Tuple, Union
+# import enum
+import csv, io, os, statistics, string
+from collections import Counter, OrderedDict
+# from itertools import chain
+from typing import List, Dict
 
 from mjotool._util import Fore as F, Style as S
-from mjotool.flags import MjoType, MjoTypeMask, MjoScope
+from mjotool.flags import MjoType
 from mjotool.crypt import hash32
 
-#######################################################################################
-
-#region ## GOOGLE SHEET DOWNLOAD ##
-
-# SheetID = namedtuple('SheetID', ('longid', 'gid'))
-class GoogleSheet(namedtuple('GoogleSheet', ('longid', 'gid'))):
-    def __new__(cls, longid:str, gid:Optional[int]=None):
-        return super().__new__(cls, longid, gid)
-    
-    def with_gid(self, gid:int) -> 'GoogleSheet':
-        """gsheet.with_gid(gid) -> GoogleSheet(gsheet.longid, gid)
-        """
-        return GoogleSheet(self.longid, gid)
-
-    @property
-    def url(self) -> str:
-        """gsheet.url -> csv_download_url:str
-
-        alias for: gsheet.geturl()
-        """
-        return self.geturl()
-    def geturl(self, gid:int=..., *, format:str='csv') -> str:
-        """gsheet.get_url() -> csv_download_url:str
-        gsheet.get_url([gid], format='tsv') -> tsv_download_url:str for new gid
-
-        arguments:
-          gid      - override GID "sheet" ID.
-          format   - file format supported by Google Sheets (i.e. 'csv', 'tsv').
-
-        returns:
-          str - download url for Google Sheet.
-        """
-        #source: <https://stackoverflow.com/a/37706008/7517185>
-        if gid is Ellipsis:
-            gid = 0 if self.gid is None else self.gid
-        elif gid is None:
-            gid = 0
-        return f'https://docs.google.com/spreadsheets/d/{self.longid}/export?gid={gid}&format={format}&id={self.longid}'
-    
-    def download(self, gid:int=..., *, format:str='csv', remove_crlf:bool=True, ignore_status:bool=False) -> str:
-        """gsheet.download() -> csv_file:str
-        gsheet.download([gid], format='tsv') -> tsv_file:str for new gid
-
-        arguments:
-          gid      - override GID "sheet" ID.
-          format   - file format supported by Google Sheets (i.e. 'csv', 'tsv').
-          remove_crlf   - replace all newlines '\\r\\n' (CRLF) with '\\n' (LF).
-          ignore_status - do not raise exception for non-200 HTTP statuses.
-
-        returns:
-          str - text data of downloaded Google Sheet in specified format.
-        """
-        url:str = self.geturl(gid, format=format)
-
-        #source: <https://stackoverflow.com/a/7244263/7517185>
-        import urllib.request  # this import is sloooooooooooow
-        response = urllib.request.urlopen(url)
-        if not ignore_status and response.status != 200:
-            raise Exception(f'Unexpected HTTP response status {response.status}')
-        data:str = response.read().decode('utf-8')
-        if remove_crlf:
-            data = data.replace('\r\n', '\n')
-        return data
-    
-    def open(self, gid:int=..., *, format:str='csv', remove_crlf:bool=True, ignore_status:bool=False) -> io.StringIO:
-        """gsheet.open() -> io.StringIO(csv_file:str)
-        gsheet.open([gid], format='tsv') -> io.StringIO(tsv_file:str for new gid)
-
-        arguments:
-          gid      - override GID "sheet" ID.
-          format   - file format supported by Google Sheets (i.e. 'csv', 'tsv').
-          remove_crlf   - replace all newlines '\\r\\n' (CRLF) with '\\n' (LF).
-          ignore_status - do not raise exception for non-200 HTTP statuses.
-
-        returns:
-          io.StringIO - string reader of downloaded Google Sheet in specified format.
-        """
-        return io.StringIO(self.download(gid, format=format, remove_crlf=remove_crlf, ignore_status=ignore_status))
-
-#endregion
+from mjotool.sheets.majirodata import SheetSyscalls, MajiroData_Syscalls
+from mjotool.sheets.rowtypes import Status, Field, TYPEDEFS, TYPEDEF_LOOKUP, GROUP_SYSCALL, GROUP_LOCAL
 
 #######################################################################################
-
-GROUP_SYSCALL:str = 'MAJIRO_INTER'
-GROUP_DEFAULT:str = 'GLOBAL'
-GROUP_LOCAL:str   = ''
-
-MajiroData:GoogleSheet = GoogleSheet(r"1p03_q6VTfYQEjlDhpypgoPdLQREhXwXz2ObTUkz5dlY")
-## Hash|Address|Return|Name|Arguments|Status|Notes
-MajiroData_Syscalls:GoogleSheet = MajiroData.with_gid(0)
-## Hash|Source|Name|Status|Notes
-MajiroData_Groups:GoogleSheet = MajiroData.with_gid(1562764366)
-## Hash|Source|Return|Name|Group|Arguments|Status|Notes
-MajiroData_Functions:GoogleSheet = MajiroData.with_gid(72122782)
-## Hash|Source|Scope|Type|Name|Group|Status|Notes
-MajiroData_Variables:GoogleSheet = MajiroData.with_gid(380736744)
-## Hash|Type|Name|Status|Notes
-MajiroData_Locals:GoogleSheet = MajiroData.with_gid(1596196937)
-## Hash|Invoked by|Name|Status|Notes
-MajiroData_Callbacks:GoogleSheet = MajiroData.with_gid(750354284)
-## Release|Developer|Name|Engine Build Date|Notes
-MajiroData_Games:GoogleSheet = MajiroData.with_gid(2017266804)
-
 
 ## MAIN FUNCTION ##
 
@@ -135,10 +36,10 @@ def main(argv:list=None) -> int:
 
     parser.add_argument('inputs', metavar='CSVFILE', nargs='*',
         help='local csv syscalls file to read')
-    parser.add_argument('-G', '--google', dest='sheets', default=[], const=MajiroData_Syscalls, action='append_const', required=False,
+    parser.add_argument('-G', '--google', dest='google', default=False, action='store_true', required=False,
         help='download csv syscalls file from Google Sheets')
-    parser.add_argument('-C', '--google-cache', metavar='CSVFILE', dest='sheet_cache', action='store_const', const='syscalls_cached.{}', default=None, required=False,
-        help='cache or used cached Google Sheets file \"syscalls_cached.<ext>\" (updates cache if -G option is present)')
+    parser.add_argument('-U', '--update', dest='update', action='store_true', default=False, required=False,
+        help='update Google Sheet cached files and always download new copies')
     parser.add_argument('-o', '--google-output', metavar='CSVFILE', dest='sheet_output', default=None, required=False,
         help='save downloaded Google Sheets file to location')
     parser.add_argument('-t', '--tsv', dest='format', const='tsv', default='csv', action='store_const', required=False,
@@ -172,54 +73,35 @@ def main(argv:list=None) -> int:
     letter_sort:bool = args.letter_sort
     show_status:bool = args.show_status
     show_returns:bool = args.show_returns
-    inputs:list = args.sheets + args.inputs
-    cache:str = args.sheet_cache
-    cache_exists:bool = False
-    SCRIPT_DIR:str = os.path.abspath(os.path.dirname(__file__))
-    if cache:
-        cache = cache.format(gformat)
-        cachepath = os.path.join(SCRIPT_DIR, cache)
-        cache_exists = os.path.isfile(cachepath)
-        if not cache_exists and not args.sheets:
-            raise argparse.ArgumentError('--google-cache', 'cached file not found! use -C with -G option to download and cache file')
-        elif cache_exists and not args.sheets:
-            # only use cache if -G option is missing (otherwise cache is updated)
-            #NOTE: REMOVES args.sheets from inputs
-            inputs = [cachepath] + args.inputs
+    inputs:list = args.inputs
+    if args.google:
+        inputs.insert(0, SheetSyscalls)
 
     ###########################################################################
 
+
+    ##LEGACY: keep these available if they ever get removed from sheets.rowtypes (which is likely)
     # helpers for reading:
-    class Field(enum.Enum):
-        HASH      = 'Hash'      # hex hash value taken from the engine. Should be checked with hash32(f'${name}@MAJIRO_INTER')
-        ADDRESS   = 'Address'   # hex syscall function address in ClosedGAME Majiro engine (expect "inline" values)
-        RETURN    = 'Return'    # return value, uses type aliases for ints when necessary (expect other names like any/void, etc.)
-        NAME      = 'Name'      # syscall name (sometimes ends with '?' for unsure names)
-        ARGUMENTS = 'Arguments' # function arguments, there is a syntax to these, but at the moment they're not used
-        STATUS    = 'Status'    # name status, is this name confirmed to be correct? (see Status enum below)
-        NOTES     = 'Notes'     # other notes, only included for unexpected or strange behavior
+    # class Field(enum.Enum):
+    #     HASH      = 'Hash'      # hex hash value taken from the engine. Should be checked with hash32(f'${name}@MAJIRO_INTER')
+    #     ADDRESS   = 'Address'   # hex syscall function address in ClosedGAME Majiro engine (expect "inline" values)
+    #     RETURN    = 'Return'    # return value, uses type aliases for ints when necessary (expect other names like any/void, etc.)
+    #     NAME      = 'Name'      # syscall name (sometimes ends with '?' for unsure names)
+    #     ARGUMENTS = 'Arguments' # function arguments, there is a syntax to these, but at the moment they're not used
+    #     STATUS    = 'Status'    # name status, is this name confirmed to be correct? (see Status enum below)
+    #     NOTES     = 'Notes'     # other notes, only included for unexpected or strange behavior
 
-    class Status(enum.Enum):
-        NONE      = ''          # no status, not even inspected yet
-        UNHASHED  = 'unhashed'  # name has been confirmed AND unhashed name matches hash value
-        COLLISION = 'collision' # name is unhashed, but possibly only a collision, and not the original name
-        PARTIAL   = 'partial'   # partial name has been unhashed through XOR proofs (either prefix or postfix)
-        INCORRECT = 'incorrect' # guessed/likely name did not match hash value
-        CONFIRMED = 'confirmed' # name is confirmed through inspection of .mjs soruce scripts
-        LIKELY    = 'likely'    # name is likely, by going off of log/error messages found in asm
-        GUESSED   = 'guessed'   # name is purely guessed (and may only be used to describe function)
-
-    TYPEDEFS:Dict[MjoType,List[str]] = OrderedDict([
-        (MjoType.UNKNOWN, ['']),
-        (Ellipsis,        ['void','any','any/void']),
-        (MjoType.INT,     ['int','bool','file*','page*','sprite*']),
-        (MjoType.FLOAT,   ['float']),
-        (MjoType.STRING,  ['string']),
-        (MjoType.INT_ARRAY,    ['int[]']),
-        (MjoType.FLOAT_ARRAY,  ['float[]']),
-        (MjoType.STRING_ARRAY, ['string[]']),
-    ])
-    TYPEDEF_LOOKUP:Dict[str,MjoType] = OrderedDict(chain(*[[(k,t) for k in keys] for t,keys in TYPEDEFS.items()]))
+    # TYPEDEFS:Dict[MjoType,List[str]] = OrderedDict([
+    #     (MjoType.UNKNOWN, ['']),
+    #     (Ellipsis,        ['void','any','any/void']),
+    #     (MjoType.INT,     ['int','int?','bool','file*','page*','sprite*']),
+    #     (MjoType.FLOAT,   ['float']),
+    #     (MjoType.STRING,  ['string']),
+    #     (MjoType.INT_ARRAY,    ['int[]']),
+    #     (MjoType.FLOAT_ARRAY,  ['float[]']),
+    #     (MjoType.STRING_ARRAY, ['string[]']),
+    # ])
+    # TYPEDEF_LOOKUP:Dict[str,MjoType] = OrderedDict(chain(*[[(k,t) for k in keys] for t,keys in TYPEDEFS.items()]))
 
 
     # read a csv syscalls file using the known field column names (see Field enum)
@@ -235,12 +117,12 @@ def main(argv:list=None) -> int:
 
         for row in reader:
             hashvalue:int = int(row[Field.HASH.value], 16)
-            address:str   = row[Field.ADDRESS.value]
+            address:str   = row[Field.ADDRESS.value]  # pylint: disable=unused-variable
             retvalue:str  = row[Field.RETURN.value]
             name:str      = row[Field.NAME.value]
-            arguments:str = row[Field.ARGUMENTS.value]
+            arguments:str = row[Field.ARGUMENTS.value]  # pylint: disable=unused-variable
             status:Status = Status(row[Field.STATUS.value])
-            notes:str     = row[Field.NOTES.value]
+            notes:str     = row[Field.NOTES.value]  # pylint: disable=unused-variable
 
             # name corrections:
             if name and name[0] != '$': # syscalls don't include '$' prefix
@@ -371,7 +253,7 @@ def main(argv:list=None) -> int:
                     # cnts_parts = []
                     for j,cntx in enumerate(cnts[1:]):
                         comma = ',' if j < 2 else ''
-                        just = 4 if j < 2 else 3
+                        # just = 4 if j < 2 else 3
                         if not cntx:
                             j,cntx = -1,'0'
                             # j,cntx = -1,'-'
@@ -435,40 +317,6 @@ def main(argv:list=None) -> int:
                     print(f'{S.DIM}{F.WHITE}',end='')
                 else:
                     print(f'{S.BRIGHT}{F.BLACK}',end='')
-                # if cnt >= max_letter_count / 3:
-                #     print(f'{S.BRIGHT}{F.YELLOW}',end='')
-                # elif cnt >= max_letter_count / 6:
-                #     print(f'{S.DIM}{F.YELLOW}',end='')
-                # elif cnt >= max_letter_count / 30:
-                #     print(f'{S.DIM}{F.CYAN}',end='')
-                # else:
-                #     print(f'{S.BRIGHT}{F.BLUE}',end='')
-                # if cnt >= max_letter_count / 2:
-                #     print(f'{S.BRIGHT}{F.YELLOW}',end='')
-                # elif cnt >= max_letter_count / 4:
-                #     print(f'{S.BRIGHT}{F.GREEN}',end='')
-                # elif cnt >= max_letter_count / 12:
-                #     print(f'{S.DIM}{F.GREEN}',end='')
-                # elif cnt >= max_letter_count / 30:
-                #     print(f'{S.DIM}{F.CYAN}',end='')
-                # elif cnt >= 10:
-                #     print(f'{S.BRIGHT}{F.BLUE}',end='')
-                # else:
-                #     print(f'{S.DIM}{F.BLUE}',end='')
-                # if cnt >= max_letter_count / 2:
-                #     print(f'{S.BRIGHT}{F.RED}',end='')
-                # elif cnt >= max_letter_count / 3:
-                #     print(f'{S.NORMAL}{F.RED}',end='')
-                # elif cnt >= max_letter_count / 5:
-                #     print(f'{S.BRIGHT}{F.MAGENTA}',end='')
-                # elif cnt >= max_letter_count / 12:
-                #     print(f'{S.NORMAL}{F.MAGENTA}',end='')
-                # elif cnt >= max_letter_count / 30:
-                #     print(f'{S.NORMAL}{F.CYAN}',end='')
-                # elif cnt >= 10:
-                #     print(f'{S.BRIGHT}{F.BLUE}',end='')
-                # else:
-                #     print(f'{S.NORMAL}{F.BLUE}',end='')
                 print(f'{l}{S.RESET_ALL}',end='')
             print()
             # print(f' appear: {S.BRIGHT}{F.WHITE}{"".join(letter_counts_nonzero)}{S.RESET_ALL}')#, end='')
@@ -483,16 +331,6 @@ def main(argv:list=None) -> int:
             # print(f'      mode: {repr(Counter(letter_counts_nonzero_nums).most_common(1)[0])[1:-1]}')
             print(f'  stdev: {statistics.stdev(letter_counts_nonzero_nums):g}')
             print()
-            # print(f'       max: {max(letter_counts_nonzero_nums)}')
-            # print(f'       min: {min(letter_counts_nonzero_nums)}')
-            # print(f'       sum: {sum(letter_counts_nonzero_nums)}')
-            # print(f'      mean: {statistics.mean(letter_counts_nonzero_nums)}')
-            # print(f'    median: {statistics.median(letter_counts_nonzero_nums)}')
-            # # print(f'      mode: {repr(Counter(letter_counts_nonzero_nums).most_common(1)[0])[1:-1]}')
-            # print(f'     stdev: {statistics.stdev(letter_counts_nonzero_nums)}')
-            # # print(f'    pstdev: {statistics.pstdev(letter_counts_nonzero_nums)}')
-            # # print(f'  variance: {statistics.variance(letter_counts_nonzero_nums)}')
-            # # print(f' pvariance: {statistics.pvariance(letter_counts_nonzero_nums)}')
             for l,cnts in letter_counts_ordered:
                 cnt = cnts[0]
 
@@ -506,7 +344,7 @@ def main(argv:list=None) -> int:
                 color = f'' if cnt else f'{S.BRIGHT}{F.BLACK}'
                 for j,cntx in enumerate(cnts[1:]):
                     comma = ',' if j < 2 else ''
-                    just = 5 if j < 2 else 4
+                    # just = 5 if j < 2 else 4
                     if not cntx:
                         j,cntx = -1,'0'
                         # j,cntx = -1,'-'
@@ -522,39 +360,41 @@ def main(argv:list=None) -> int:
                 # print(f' {k.ljust(max_kwd_len)} : {f"{cnt},".ljust(4)}{S.RESET_ALL} [{cnts_parts}]')
                 print(f' {color}{k.ljust(max_kwd_len)} : {cnt}{S.DIM}{F.BLACK},{S.RESET_ALL}{"".ljust(4-len(str(cnt)))} {color}[{S.RESET_ALL}{cnts_parts}{color}]{S.RESET_ALL}')
 
-
-        
-
-        
-        #kwds_sorted.sort()
-
-
+    ###########################################################################
 
     # read from all inputs: (which includes Google Sheets for the -G option)
     for i,infile in enumerate(inputs):
         # special handling for Google Sheet input files:
-        if isinstance(infile, GoogleSheet):
-            outfile:str = args.sheet_output
-            print(f'{S.BRIGHT}{F.YELLOW}Downloading:{S.RESET_ALL} {S.DIM}{F.GREEN}{infile!r}{S.RESET_ALL}')
-            sheet = infile.download(format=gformat)
-            if cache is not None:
-                print(f'{S.BRIGHT}{F.MAGENTA}Caching:{S.RESET_ALL} {S.DIM}{F.CYAN}{cache!r}{S.RESET_ALL}')
-                with open(cachepath, 'wt+', encoding='utf-8') as swriter:
+        cache_file = None
+        if infile is SheetSyscalls:
+            sheettype:type = infile
+            cache_file = f'sheet_{sheettype.NAME}_cached.{gformat}'
+            if args.update or not os.path.isfile(cache_file):
+                # we're still suck with the read function using the csv parser, so only download the sheet
+                print(f'{S.BRIGHT}{F.YELLOW}Downloading:{S.RESET_ALL} {S.DIM}{F.GREEN}Majiro Data - {sheettype.NAME}{S.RESET_ALL}')
+                sheet = sheettype.SHEET.download(format=gformat)
+                print(f'{S.BRIGHT}{F.MAGENTA}Caching:{S.RESET_ALL} {S.DIM}{F.CYAN}{cache_file}{S.RESET_ALL}')
+                with open(cache_file, 'wt+', encoding='utf-8') as swriter:
                     swriter.write(sheet)
                     swriter.flush()
-            if outfile is not None:
-                print(f'{S.BRIGHT}{F.MAGENTA}Saving:{S.RESET_ALL} {S.DIM}{F.CYAN}{outfile!r}{S.RESET_ALL}')
-                with open(outfile, 'wt+', encoding='utf-8') as swriter:
-                    swriter.write(sheet)
-                    swriter.flush()
-            f = io.StringIO(sheet)
-        else:
-            if infile is cachepath:
-                inname = cache.replace("\\","/")
-                print(f'{S.BRIGHT}{F.CYAN}Cached:{S.RESET_ALL} {S.DIM}{F.CYAN}{inname!r}{S.RESET_ALL}')
+                outfile:str = args.sheet_output
+                if outfile is not None:
+                    print(f'{S.BRIGHT}{F.MAGENTA}Saving:{S.RESET_ALL} {S.DIM}{F.CYAN}{outfile}{S.RESET_ALL}')
+                    with open(outfile, 'wt+', encoding='utf-8') as swriter:
+                        swriter.write(sheet)
+                        swriter.flush()
+                f = io.StringIO(sheet)
+            else:
+                infile = cache_file  # load cache file below
+
+        # we still hit this if we're loading the cached Google Sheet file
+        if isinstance(infile, str):
+            if infile is cache_file and cache_file is not None:
+                inname = infile.replace("\\","/")
+                print(f'{S.BRIGHT}{F.MAGENTA}Cached:{S.RESET_ALL} {S.DIM}{F.CYAN}{inname}{S.RESET_ALL}')
             else:
                 inname = infile.replace("\\","/")
-                print(f'{S.BRIGHT}{F.CYAN}Reading:{S.RESET_ALL} {S.DIM}{F.CYAN}{inname!r}{S.RESET_ALL}')
+                print(f'{S.BRIGHT}{F.CYAN}Reading:{S.RESET_ALL} {S.DIM}{F.CYAN}{inname}{S.RESET_ALL}')
             f = open(infile, 'rt', encoding='utf-8')
         with f:
             read_file(csv.DictReader(f, delimiter=delimiter))

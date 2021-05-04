@@ -13,7 +13,9 @@ __all__ = ['GoogleSheet']
 
 #######################################################################################
 
-# runtime imports: urllib.request [GoogleSheet.download(...)]
+## runtime imports:
+# import urllib.request  # used in GoogleSheet.download(...)
+
 import io
 from collections import namedtuple
 from typing import Optional

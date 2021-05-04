@@ -3,12 +3,11 @@
 """
 """
 
-__version__ = '1.0.0'
-__date__    = '2021-05-03'
+__version__ = '0.1.0'
+__date__    = '2021-05-04'
 __author__  = 'Robert Jordan'
-
-__all__ = []
 
 #######################################################################################
 
 from .identifiers import *
+from .mjsreader import MjsReader

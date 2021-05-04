@@ -22,7 +22,7 @@ from .._util import Fore as F, Style as S
 from ..flags import MjoType, MjoTypeMask, MjoScope
 from ..crypt import hash32
 
-from ..parse_hashes.identifiers import GROUP_SYSCALL, GROUP_LOCAL, GROUP_DEFAULT, Identifier, SyscallSig, FunctionSig, VariableSig, ArgumentSig, LocalSig
+from ..mjs.identifiers import GROUP_SYSCALL, GROUP_LOCAL, GROUP_DEFAULT, Identifier, SyscallSig, FunctionSig, VariableSig, ArgumentSig, LocalSig
 from .googlesheets import GoogleSheet
 # from .sheetinfo import Status, Typedef, TYPEDEFS, TYPEDEF_LOOKUP
 

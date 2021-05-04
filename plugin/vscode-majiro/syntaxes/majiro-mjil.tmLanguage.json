@@ -86,7 +86,7 @@
         {
           "comment": "Inline hash function implicit ($NAME)  [note: valid hex hashes take priority]  [optional: +emphasis]",
           "name": "meta.inline-hash.mjil",
-          "match": "(?<=\\s|^)(?:(\\$)(?:([0-9A-Za-z][_%@#$0-9A-Za-z]*)|([$][_%@#$0-9A-Za-z]*)|([_%@#][_%@#$0-9A-Za-z]*)))(?=$|\\s|[(;\\/])",
+          "match": "(?<=\\s|^)(?:(\\$)(?:([0-9A-Za-z!~][_%@#$!~0-9A-Za-z]*)|([$][_%@#$!~0-9A-Za-z]*)|([_%@#][_%@#$!~0-9A-Za-z]*)))(?=$|\\s|[(;\\/])",
           "captures": {
             "1": { "name": "constant.character.inline-hash.function.mjil" },
             "2": { "name": "entity.name.class.operand.hash.syscall.mjil" },
@@ -107,7 +107,7 @@
         },{
           "comment": "Inline resource function implicit (%NAME)  [optional: +emphasis]",
           "name": "meta.inline-resource.mjil",
-          "match": "(?<=\\s|^)(?:(%)([_%@#$0-9A-Za-z]*))(?=$|\\s|[(;\\/])",
+          "match": "(?<=\\s|^)(?:(%)([_%@#$!~0-9A-Za-z]*))(?=$|\\s|[(;\\/])",
           "captures": {
             "1": { "name": "constant.character.inline-resource.function.mjil" },
             "2": { "name": "meta.embedded.operand.resource.mjil" }

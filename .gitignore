@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+## Copyright + sensitive data
+
+/data/gamedata
+/data/copyright
+/docs/copyright
+
 ## Majiro data files
 
 # bytecode script
@@ -20,6 +26,8 @@ _backup/
 *_cached.*
 src/*.csv
 
+# Test-mode hashes output files
+*__test.*
 
 
 # Django stuff: (moved above log include)

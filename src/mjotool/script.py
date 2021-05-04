@@ -187,13 +187,13 @@ class Instruction:
             name = known_hashes.SYSCALLS.get(self.hash, None)
             syscall = True
         elif self.is_call:
-            name = known_hashes.USERCALLS.get(self.hash, None)
+            name = known_hashes.FUNCTIONS.get(self.hash, None)
         elif self.is_load or self.is_store:
             # TODO: this could be optimized to use the type flags
             #       and search in the scope-independent dicts
             name = known_hashes.VARIABLES.get(self.hash, None)
         elif self.opcode.mnemonic == "ldc.i": # 0x800
-            name = known_hashes.USERCALLS.get(unsigned_I(self.int_value), None)
+            name = known_hashes.FUNCTIONS.get(unsigned_I(self.int_value), None)
             # TODO: Uncomment if it's observed that int literals
             #       will use hashes for types other than usercalls
             if name is None:
@@ -746,7 +746,7 @@ class Function(_BlockContainer):
 
         known_hash:str = None
         if options.known_hashes:
-            known_hash = known_hashes.USERCALLS.get(self.name_hash, None)
+            known_hash = known_hashes.FUNCTIONS.get(self.name_hash, None)
         if known_hash is not None:
             #TODO: move check hash function somewhere more fitting
             known_hash = Instruction.check_hash_group(known_hash, False, options=options)

@@ -17,8 +17,8 @@ from mjotool.flags import MjoType, MjoScope
 from mjotool.analysis import ControlFlowGraph
 from mjotool.sheets.majirodata import SheetSyscalls, SheetGroups, SheetFunctions, SheetVariables, SheetLocals, SheetCallbacks, SheetGames
 from mjotool.sheets.csvsheet import CsvSheet
-from mjotool.parse_hashes.mjsreader import MjsReader, load_mjs_hashes
-from mjotool.parse_hashes.identifiers import GROUP_SYSCALL, GROUP_LOCAL, GROUP_DEFAULT, Identifier, SyscallSig, FunctionSig, VariableSig, ArgumentSig, LocalSig
+from mjotool.mjs.mjsreader import MjsReader, load_mjs_hashes
+from mjotool.mjs.identifiers import GROUP_SYSCALL, GROUP_LOCAL, GROUP_DEFAULT, Identifier, SyscallSig, FunctionSig, VariableSig, ArgumentSig, LocalSig
 from mjotool.sheets.rowtypes import Typedef, Status
 from mjotool.known_hashes import GROUPS as KNOWN_GROUPS
 

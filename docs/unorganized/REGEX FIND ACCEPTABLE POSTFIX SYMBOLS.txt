@@ -1,0 +1,133 @@
+# REGEX FIND ACCEPTABLE POSTFIX SYMBOLS
+
+
+LEGAL: "#$%_"
+
+POSSIBLY_LEGAL: "!~"
+
+ILLEGAL: " ()*+,;@<=>"
+
+LIKELY_ILLEGAL: "[]{}="
+
+!"#$%&'()*+,-./:;<=>?@[\]^`{|}~
+
+[A-Za-z0-9_$#%@][!\"#$%&')*+\-./:;<=>?\[\\\]^`{|}~]
+
+[A-Za-z0-9_$#%@][!\"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~]
+
+[A-Za-z0-9_$#%@][!\"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~]
+
+
+re.compile(r"[!\"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~]")
+
+[A-Za-z0-9_$#%]<
+
+[!-.0-~]\/[^0-9]
+
+
+
+PREFIX_OPERATORS:List[str] = ('++', '--', '-', '~', '!')  # and maybe '+'
+POSTFIX_OPERATORS:List[str] = ('++', '--')
+UNARY_OPERATORS:List[str] = PREFIX_OPERATORS  # identical list
+BINARY_OPERATORS:List[str] = ('+', '-', '*', '/', '%', '<<', '>>', '&', '|', '^', '&&', '||', '==', '!=', '<', '<=', '>', '>=')
+ASSIGN_OPERATORS:List[str] = ('=', '+=', '-=', '*=', '/=', '<<=', '>>=', '%=', '&=', '|=', '^=')
+
+ALL_OPERATORS:Set[str] = set(chain(UNARY_OPERATORS, BINARY_OPERATORS, ASSIGN_OPERATORS))
+
+
+FIND_DIV: [^\/]\/(?!\/)
+
+[^\t !+=<>a-z_$)\-]=
+
+///EXAMPLES:
+
+$pic_unpack_zyouzan(_pg, _fn_ho$, -(_x-(600/2)), -(_y-(700/2)));// 乗算差分
+
+var @fn_console_off$, @fn_console_on$, @fn_console_push$;
+
+if (@con_mode!=0) return(0);
+
+case 2: $sprite_animate_define(_wspr2, 0, _ct/2, 1, _ct, 0, _ct/2);
+
+//Note: these last two names are defines, which may be important
+$console_color(@dc@KOEKOE, CONSOLE_KAGE_COL|(CONSOLE_MOZI_KAGE<<24));
+
+void $conosle_picfix(_page[, _xin, _yin])
+
+__SYS__NumParams>=3
+
+if (@name_mode==1)
+
+if (__SYS__NumParams>=1) _mode= _mode_in;	// モード設定
+
+_y+=(#confont_yl@SYSTEM*6/4);		// 凄いパッチ^^;
+
+if ($strleft$(_cx$, 2)=="#0")
+
+if (@last_font_name$!=$get_font_name$())
+
+if (_x!=0)
+
+$grp_extcopy(_page, _x+_len1, _y-20, -_len1, _yl+20, #con_disp, _x+_len1, _y-20);	// #con_dispにコピー
+
+$grp_extboxfill($get_alfapage($sprite_get_page(#spr_low)), 0, 0, 9999, 9999, 255, 255*#conhalf@CONFIG/192);
+
+$grp_extcopy($get_alfapage(_tmp), FACE_POS_START, FACE_POS_LEN, $get_alfapage($sprite_get_page(#spr_low)), 0, 0, 255-(255*(#conhalf@CONFIG-192)/(255-192)));
+
+while(_tx<_xl);
+
+if ($strstr(_fixname$, "：")!=-1)
+
+if ($strlen(_fixname$)==2) _fixname$ = $strleft$(_fixname$, 1)+"　"+$strright$(_fixname$, 1);
+
+if ((@name_disp$=="")||(@name_disp$=="　"))
+
+$fontout_color($rgb(255, 255, 255), $rgb(0, 0, 0)|(CONSOLE_MOZI_KAGE<<24));
+
+_isr = (__SYS__NumParams>=2)?(_is_recover):(0);
+
+if ($abs($timer()-@face_erase_time)<100)
+
+_fn_ho$ = $picpic_longfix$("b_"+_name$);
+
+if (!$pic_is_exist(_name$))
+
+@re_enter_in_face_disp ++;
+
+@re_enter_in_face_disp--;
+
+if ((@con_mode==0)&&(!$is_sca())) _fast = 1;
+
+#kaisou_modori@GLOBAL = 1;
+
+_x-=@con_ofs_x;
+
+if (_stat&2) {		// Escape
+  @is_select = 2;
+  @ret = -1;
+  return;
+}
+
+if (@ret>=0)
+
+_cy = $console_curpos_y()+@con_ofs_y+#winkpos2_y@SYSTEM+#confont_yl@SYSTEM-$page_len_y($sprite_get_page(_wspr));
+
+while ($mk_read() & (16+8))
+
+for (_i=0; _i<2; _i++)
+
+if ($voice_stat()) {
+  $voice_wait();
+  $wait($get_autospeed()*0.8*2);	// 標準で.5秒待つ。
+} else {
+  $wait($get_autospeed()*3*2);		// 標準で1.5秒待つ。
+}
+
+_timemax = (_xl*@timemax_fixed)*3/2/1000;
+
+var _tmp_page, _tmp, _cf;
+
+_sz = $pic_len_x(#skip_fn$@SYSTEM)/#num_skip_parts@SYSTEM;
+
+if (#console_file_push$@SYSTEM=="NULL")
+

@@ -14,6 +14,7 @@ Contains:
  516 syscall hashes
 """
 
+__version__ = '1.1.0'
 __date__    = '2021-05-04'
 __author__  = 'Robert Jordan'
 

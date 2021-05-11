@@ -236,7 +236,7 @@ define_array_assignment_operator(0x320, "stelemp.or",  "|=",  MjoTypeMask.INT, T
 
 # 0800 range opcodes #
 define_opcode(0x800, "ldc.i", None, "i", ".i")
-define_opcode(0x801, "ldstr", None, "s", ".s", "ld.s")
+define_opcode(0x801, "ldstr", None, "s", ".s", "ldc.s")
 define_opcode(0x802, "ld", None, "fho", ".#t", "ldvar")
 define_opcode(0x803, "ldc.r", None, "r", ".f")
 
@@ -247,18 +247,18 @@ define_opcode(0x829, "alloca", None, "t", ".[#t]")  # official name
 define_opcode(0x82b, "ret", None, "", "[*].", "return")
 
 define_opcode(0x82c, "br", None, "j", ".", "jmp")
-define_opcode(0x82d, "brtrue", None, "j", "p.", "jnz", "jne")
+define_opcode(0x82d, "brtrue", None, "j", "p.", "brinst", "jnz", "jne")
 define_opcode(0x82e, "brfalse", None, "j", "p.", "brnull", "brzero", "jz", "je")
 
 define_opcode(0x82f, "pop", None, "", "*.")
 
 # non-sequential switch jumps (stores and reuses variable from br.v)
-define_opcode(0x830, "br.v", None, "j", "p.1", "jmp.v")   # !!non-final name!!
-define_opcode(0x831, "bne.v", None, "j", "p.1", "jne.v")  # !!non-final name!!
-define_opcode(0x832, "bgt.v", None, "j", "p.1", "jgt.v")  # !!non-final name!!
-define_opcode(0x833, "bge.v", None, "j", "p.1", "jge.v")  # !!non-final name!!
-define_opcode(0x838, "ble.v", None, "j", "p.1", "jle.v")  # !!non-final name!!
-define_opcode(0x839, "blt.v", None, "j", "p.1", "jlt.v")  # !!non-final name!!
+define_opcode(0x830, "br.case", None, "j", "p.1", "br.v", "jmp.v")    # !!non-final name!!
+define_opcode(0x831, "bne.case", None, "j", "p.1", "bne.v", "jne.v")  # !!non-final name!!
+define_opcode(0x832, "bge.case", None, "j", "p.1", "bge.v", "jge.v")  # !!non-final name!!
+define_opcode(0x833, "ble.case", None, "j", "p.1", "ble.v", "jle.v")  # !!non-final name!!
+define_opcode(0x838, "blt.case", None, "j", "p.1", "blt.v", "jlt.v")  # !!non-final name!!
+define_opcode(0x839, "bgt.case", None, "j", "p.1", "bgt.v", "jgt.v")  # !!non-final name!!
 
 define_opcode(0x834, "syscall",  None, "ha", "[*#a].*")
 define_opcode(0x835, "syscallp", None, "ha", "[*#a].")

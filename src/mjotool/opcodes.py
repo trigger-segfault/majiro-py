@@ -252,7 +252,7 @@ define_opcode(0x82e, "brfalse", None, "j", "p.", "brnull", "brzero", "jz", "je")
 
 define_opcode(0x82f, "pop", None, "", "*.")
 
-# non-sequential switch jumps (stores and reuses variable from br.v)
+# non-sequential switch jumps (stores and reuses variable from br.case)
 define_opcode(0x830, "br.case", None, "j", "p.1", "br.v", "jmp.v")    # !!non-final name!!
 define_opcode(0x831, "bne.case", None, "j", "p.1", "bne.v", "jne.v")  # !!non-final name!!
 define_opcode(0x832, "bge.case", None, "j", "p.1", "bge.v", "jge.v")  # !!non-final name!!

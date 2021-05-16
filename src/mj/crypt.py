@@ -3,14 +3,14 @@
 """Majiro encryption and hashing utils
 """
 
-__version__ = '1.1.1'
-__date__    = '2021-05-07'
+__version__ = '1.1.2'
+__date__    = '2021-05-15'
 __author__  = 'Robert Jordan'
 __credits__ = '''Original C# implementation by AtomCrafty - 2021
 Converted to Python library by Robert Jordan - 2021
 '''
 
-__all__ = ['crypt32', 'crypt64', 'hash32', 'hash64', 'invhash32', 'find_hashlen', 'check_hashend', 'check_hashdiffs']
+__all__ = ['crypt32', 'initkey32', 'hash32', 'hash64', 'invhash32', 'check_hashmid', 'check_hashbegin', 'check_hashend', 'check_hashdiffs']
 
 # <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>
 # <https://users.ece.cmu.edu/~koopman/crc/crc32.html>
@@ -335,4 +335,3 @@ def backout_data(init:IntBytes, orig_init:IntBytes, count:int) -> bytes:
 
 
 del Union  # cleanup declaration-only imports
-# del pack, Union  # cleanup declaration-only imports

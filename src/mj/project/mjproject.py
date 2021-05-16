@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
-"""Majiro script opcode flags and enums (mostly for variables)
+"""
 """
 
 __version__ = '0.1.0'

@@ -47,6 +47,15 @@ def to_hash32(value:IntBytes) -> int:
     """
     return unsigned_I(value) if isinstance(value, int) else hash32(value)
 
+def to_hash64(value:IntBytes) -> int:
+    """to_hash64(bytes) -> hash64(bytes)
+    to_hash64(str)   -> hash64(str)
+    to_hash64(int)   -> unsigned_Q(int)
+
+    helper function to allow passing a hash name or value.
+    """
+    return unsigned_Q(value) if isinstance(value, int) else hash64(value)
+
 #endregion
 
 #######################################################################################
@@ -99,25 +108,46 @@ CRYPT64_KEY:bytes = pack('<256Q', *CRC64_TABLE)
 #region ## CRC XOR CIPHER FUNCTIONS ##
 
 # XOR encryption/decryption method applied to b"MajiroObjX1.000\x00" bytecode
-def crypt32(data:bytes, key_offset:int=0) -> bytes:
+def crypt32(data:bytes, key_off:int=0, key:bytes=CRYPT32_KEY) -> bytes:
     """crypt32(encrypted32_bytes) -> decrypted32_bytes
     crypt32(decrypted32_bytes) -> encrypted32_bytes
 
     performs a reciprocal XOR cipher that encrypts or decrypts the given input data.
     """
-    K = CRYPT32_KEY
     # & 0x3ff == bitwise % 1024  (length of CRYPT32_KEY)
-    return bytes(K[(key_offset+i) & 0x3ff] ^ b for i,b in enumerate(data))
+    return bytes(key[(key_off+i) & 0x3ff] ^ b for i,b in enumerate(data))
 
-def crypt64(data:bytes, key_offset:int=0) -> bytes:
+def crypt64(data:bytes, key_off:int=0, key:bytes=CRYPT64_KEY) -> bytes:
     """crypt64(encrypted64_bytes) -> decrypted64_bytes
     crypt64(decrypted64_bytes) -> encrypted64_bytes
 
     performs a reciprocal XOR cipher that encrypts or decrypts the given input data.
     """
-    K = CRYPT64_KEY
     # & 0x7ff == bitwise % 2048  (length of CRYPT64_KEY)
-    return bytes(K[(key_offset+i) & 0x7ff] ^ b for i,b in enumerate(data))
+    return bytes(key[(key_off+i) & 0x7ff] ^ b for i,b in enumerate(data))
+
+# XOR encryption/decryption method applied to RCT image data
+# this key is found in start.mjo, as a string passed to
+# the syscall `$pic_key_set@MAJIRO_INTER` (0x7a7b6ed4).
+def initkey32(seed:IntBytes) -> bytes:
+    """initkey32('mypassword') -> key:bytes
+    initkey32(0xcb730b84) -> key:bytes
+
+    returns an initialized key for `crypt32` by passing a password string or uint64 seed.
+    """
+    seed = to_hash32(seed)
+    return pack('<256I', *[x^seed for x in CRC32_TABLE])
+
+def initkey64(seed:IntBytes) -> bytes:
+    """initkey64('mypassword') -> key:bytes
+    initkey64(0xbcedc40d9f8ac29f) -> key:bytes
+
+    returns an initialized key for `crypt64` by passing a password string or uint64 seed.
+    """
+    seed = to_hash64(seed)
+    return pack('<256Q', *[x^seed for x in CRC64_TABLE])
+
+
 
 #endregion
 
@@ -168,11 +198,13 @@ def invhash32(text:StrBytes, init:int) -> int:
 
 #region ## CRC-32 PROOFS AND PARTIAL UNHASHING ##
 
-def find_hashlen(value1:IntBytes, value2:IntBytes, diff1:StrBytes, diff2:StrBytes, max_len:int=64) -> list:
-    """find_hashlen(0xf8fd08f6, 0x65f2e980, b'x', b'y') -> [13]
+def check_hashmid(value1:IntBytes, value2:IntBytes, diff1:StrBytes, diff2:StrBytes, max_len:int=64) -> list:
+    """check_hashmid(0xf8fd08f6, 0x65f2e980, b'x', b'y') -> [13]
 
     finds the number of characters that appear after the specified differences.
-    the lengths cannot vary between diff1 and diff2.
+    the lengths cannot vary between diff1 and diff2, but the beginning does not
+    need to be known.
+    return value can also be treated as bool, just like with `check_hashend`.
 
     arguments:
       value1 - hash value of name #1
@@ -189,7 +221,31 @@ def find_hashlen(value1:IntBytes, value2:IntBytes, diff1:StrBytes, diff2:StrByte
         raise ValueError('diff argument lengths do not match')
     init1, init2 = hash32(diff1), hash32(diff2)
     target = to_hash32(value1) ^ to_hash32(value2)
-    return [i for i in range(max_len+1) if (hash32(b'_'*i, init1) ^ hash32(b'_'*i, init2))==target]
+    return [i for i in range(max_len+1) if (hash32(bytes(i), init1) ^ hash32(bytes(i), init2))==target]
+
+def check_hashbegin(value1:IntBytes, value2:IntBytes, diff1:StrBytes, diff2:StrBytes, begin:StrBytes=b'', max_len:int=64) -> list:
+    """check_hashbegin(0x99a5de25, 0xeb5cc468, b'is', b'set', b'$') -> [18]
+
+    finds the number of characters that appear after the specified differences.
+    the beginning before diff1 and diff2 must also be known, but the lengths are
+    allowed to vary between diff1 and diff2.
+    return value can also be treated as bool, just like with `check_hashend`.
+
+    arguments:
+      value1 - hash value of name #1
+      value2 - hash value of name #2
+      diff1  - differences of name #1.
+      diff2  - differences of name #2.
+      end    - (optional) shared name beginning of both diff1 and diff2.
+      max_len - stop scanning for matches after this length.
+
+    returns:
+      list  - list of int lengths that equal the number of characters after diff1/diff2.
+      empty - no matches found for diff1 and diff2, length may be different.
+    """
+    init1, init2 = hash32(diff1, hash32(begin)), hash32(diff2, hash32(begin))
+    target = to_hash32(value1) ^ to_hash32(value2)
+    return [i for i in range(max_len+1) if (hash32(bytes(i), init1) ^ hash32(bytes(i), init2))==target]
 
 def check_hashend(value1:IntBytes, value2:IntBytes, diff1:StrBytes, diff2:StrBytes, end:StrBytes=b'') -> bool:
     """check_hashend(0x2bd1709d, 0x7e0b8320, b'height', b'width', b'@MAJIRO_INTER') -> True
@@ -278,4 +334,5 @@ def backout_data(init:IntBytes, orig_init:IntBytes, count:int) -> bytes:
 #endregion
 
 
-del pack, Union  # cleanup declaration-only imports
+del Union  # cleanup declaration-only imports
+# del pack, Union  # cleanup declaration-only imports

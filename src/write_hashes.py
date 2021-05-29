@@ -3,7 +3,7 @@
 """Read Majiro Engine hashes and names from a multitude of files and write to output files
 """
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __date__    = '2021-05-04'
 __author__  = 'Robert Jordan'
 
@@ -174,6 +174,7 @@ def write_python_file(writer:io.TextIOBase, hash_items:List[HashSelection], grou
         all_names.append(item.varname)
     writer.write('"""\n')
     writer.write('\n')
+    writer.write(f'__version__ = {__version__!r}\n')
     writer.write(f'__date__    = {__date__!r}\n')
     writer.write(f'__author__  = {__author__!r}\n')
     writer.write('\n')
@@ -399,11 +400,15 @@ def load_sheet(sheettype:type, format:str='csv', update:bool=False, *, verbose:b
     if update or not os.path.isfile(cache_file):
         if verbose:
             print(f'{S.BRIGHT}{F.YELLOW}Including Sheet:{S.RESET_ALL} {S.BRIGHT}{F.GREEN}[Downloading]{S.RESET_ALL} {S.DIM}{F.GREEN}Majiro Data - {sheettype.NAME}{S.RESET_ALL}')
-        return sheettype.fromsheet(format=format, cache_file=cache_file)
+        sheet = sheettype.fromsheet(format=format, cache_file=cache_file)
     else:
         if verbose:
             print(f'{S.BRIGHT}{F.YELLOW}Including Sheet:{S.RESET_ALL} {S.BRIGHT}{F.MAGENTA}[Cached]{S.RESET_ALL} {S.DIM}{F.GREEN}Majiro Data - {sheettype.NAME}{S.RESET_ALL}')
-        return sheettype.fromfile(cache_file, format=format)
+        sheet = sheettype.fromfile(cache_file, format=format)
+
+    for item in sheet.verify(error=False):
+        print(f'{S.BRIGHT}{F.RED}Error: mismatch {F.BLUE}{item.hash:08x}{F.RED} != {F.YELLOW}{hash32(item.fullname):08x}{F.RED} for {F.YELLOW}"{item.name}"{S.RESET_ALL}')
+    return sheet
 
 def load_sheets_all(var_hashes:Dict[int,str], func_hashes:Dict[int,str], sys_hashes:Dict[int,str], group_names:Set[str], evt_names:Set[str], sys_list:List[int], *, verbose:bool, format:str='csv', update:bool=False, allow_collisions:list=()):
     # syscalls:
@@ -576,6 +581,16 @@ def main(argv:list=None) -> int:
     #  group hashes are stored as a hash with the `$main` function for easy `#group` preprocessor identification
     group_hashes:Dict[int,str] = dict((hash32(f'$main@{g}'), g) for g in group_names)
     callback_hashes:Dict[int,str] = dict((hash32(c), c) for c in callback_names)
+
+
+    ###########################################################################
+
+    ### VALIDATION (NOTE: also performed by load_sheet())
+
+    for h,v in list(var_hashes.items()) + list(func_hashes.items()):
+        if hash32(v)!=h: print(f'{S.BRIGHT}{F.RED}Error: mismatch {F.BLUE}{h:08x}{F.RED} != {F.YELLOW}{hash32(v):08x}{F.RED} for {F.YELLOW}"{v}"{S.RESET_ALL}')
+    for h,v in [(h,v+'@MAJIRO_INTER') for h,v in sys_hashes.items()]:
+        if hash32(v)!=h: print(f'{S.BRIGHT}{F.RED}Error: mismatch {F.BLUE}{h:08x}{F.RED} != {F.YELLOW}{hash32(v):08x}{F.RED} for {F.YELLOW}"{v}"{S.RESET_ALL}')
 
     ###########################################################################
 

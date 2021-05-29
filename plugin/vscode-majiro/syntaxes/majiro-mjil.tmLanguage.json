@@ -192,14 +192,14 @@
           }
         },{
           "comment": "System calls / recolor hash  (includes op.* IDs)   old name = 'support.class.opcode.syscall.mjil'",
-          "match": "\\b(syscallp?|op\\.834|op\\.835)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
+          "match": "\\b(syscallp?|op\\.83[45])(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
           "captures": {
             "1": { "name": "keyword.control.class.opcode.syscall.mjil" },
             "2": { "name": "entity.name.class.operand.hash.syscall.mjil"}
           }
         },{
           "comment": "Load constant int / recolor hash  (includes op.* IDs)  [sometimes ints are loading function hashes (basically func ptrs)]",
-          "match": "\\b(ldc.i|op\\.800)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
+          "match": "\\b(ldc\\.i|op\\.800)(?:\\s+(\\$[0-9A-Fa-f]{8}))?\\b",
           "captures": {
             "1": { "name": "keyword.operator.opcode.special.mjil" },
             "2": { "name": "entity.name.function.operand.hash.usercall.mjil" }
@@ -214,7 +214,7 @@
         },{
           "comment": "store/load operator opcodes  [capture opcode space so we can redefine invert flags, which use same names as opcodes...]",
           "name": "mjil.varspace",
-          "match": "\\b(stp?\\.[irs](?:arr)?|stelemp?\\.[irs]|st(?:elem)?p?(?:rem|mod|shr|shl|and|or|xor)(?:\\.i)?|st(?:elem)?p?(?:mul|div|sub)\\.[ir]|st(?:elem)?p?(?:add)\\.[irs]|ld(?:elem|var)?|op\\.(?:1b[012345]|1b[89]|1c[01]|1c8|1d[012]|1d[89]|1e0|1e8|1f0|1f8|200|21[012345]|21[89]|22[01]|228|23[012]|23[89]|240|248|250|258|260|27[012]|27[89]|28[01]|288|29[012]|29[89]|2a0|2a8|2b0|2b8|2c0|2d[012]|2d[89]|2e[01]|2e8|2f[012]|2f[89]|300|308|310|318|320|802|837))(?:(\\s+.*)?|\\b)",
+          "match": "\\b(stp?\\.[irs](?:arr)?|stelemp?\\.[irs]|st(?:elem)?p?(?:rem|mod|shr|shl|and|or|xor)(?:\\.i)?|st(?:elem)?p?(?:mul|div|sub)\\.[ir]|st(?:elem)?p?(?:add)\\.[irs]|ld(?!c)(?:elem|var)?|op\\.(?:1b[012345]|1b[89]|1c[01]|1c8|1d[012]|1d[89]|1e0|1e8|1f0|1f8|200|21[012345]|21[89]|22[01]|228|23[012]|23[89]|240|248|250|258|260|27[012]|27[89]|28[01]|288|29[012]|29[89]|2a0|2a8|2b0|2b8|2c0|2d[012]|2d[89]|2e[01]|2e8|2f[012]|2f[89]|300|308|310|318|320|802|837))(?:(\\s+.*)?|\\b)",
           "captures": {
             "1": { "name": "keyword.operator.opcode.var.mjil" },
             "2": {
@@ -253,7 +253,7 @@
             },{
               "match": "\\b(st(?:elem)?p?(?:add)\\.[irs])\\b"
             },{
-              "match": "\\b(ld(?:elem|var)?)\\b"
+              "match": "\\b(ld(?!c)(?:elem|var)?)\\b"
           } ]
         },{
           "comment": "normal operator opcodes",
@@ -270,11 +270,11 @@
         },{
           "comment": "0x8** control flow opcodes",
           "name": "keyword.control.opcode.control.mjil",
-          "match": "\\b(?:callp?|ret(?:urn)?|(?:br|bne|bgt|bge|ble|blt)\\.case|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|br(?:true|inst)|jnz|br(?:false|null|zero)|jz|syscallp?|bsel\\.(?:[123x45]|clr|jmp\\.4)|switch)\\b"
+          "match": "\\b(?:callp?|ret(?:urn)?|(?:br|bne|bgt|bge|ble|blt)\\.case|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|br(?:true|inst)|jnz|br(?:false|null|zero)|jz|syscallp?|bsel\\.(?:[123x45]|[lmr]?mb|[cd]tor|clr|jmp\\.(?:4|ctor))|switch)\\b"
         },{
           "comment": "0x8** opcodes",
           "name": "keyword.operator.opcode.special.mjil",
-          "match": "\\b(?:ldc\\.[irs]|ldstr|callp?|alloca|ret(?:urn)?|(?:br|bne|bgt|bge|ble|blt)\\.case|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|br(?:true|inst)|jnz|br(?:false|null|zero)|jz|pop|syscallp?|argcheck|sigchk|line|bsel\\.(?:[123x45]|clr|jmp\\.4)|conv\\.[ir]|text|proc|ctrl|switch)\\b"
+          "match": "\\b(?:ldc\\.[irs]|ldstr|callp?|alloca|ret(?:urn)?|(?:br|bne|bgt|bge|ble|blt)\\.case|(?:br|jmp|[bj]ne|[bj]gt|[bj]ge|[bj]le|[bj]lt)\\.v|br|jmp|br(?:true|inst)|jnz|br(?:false|null|zero)|jz|pop|syscallp?|argcheck|sigchk|line|bsel\\.(?:[123x45]|[lmr]?mb|[cd]tor|clr|jmp\\.(?:4|ctor))|conv\\.[ir]|text|proc|ctrl|switch)\\b"
         },{
           "comment": "all nop.* opcodes by ID",
           "match": "\\b(?:(nop\\.(?:191|1a[89]))|(nop\\.[0-9a-f]{3}))\\b",

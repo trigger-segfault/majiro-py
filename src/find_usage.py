@@ -5,7 +5,7 @@
 import enum, io, os, re
 from collections import namedtuple, OrderedDict
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, Pattern, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, Match, Optional, Pattern, Tuple, Union
 # from mjotool._util import Fore as F, Style as S
 
 # S2 = SimpleNamespace(RESET_ALL='\x1b[0m', BRIGHT='\x1b[1m', DIM='\x1b[2m', NORMAL='\x1b[22m', BOLD='\x1b[1m', ITALIC='\x1b[3m', UNDERLINE='\x1b[4m', BLINKING='\x1b[5m', INVERSE='\x1b[7m', INVISIBLE='\x1b[8m', STRIKETHROUGH='\x1b[9m')

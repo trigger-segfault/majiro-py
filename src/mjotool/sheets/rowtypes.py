@@ -16,7 +16,7 @@ from collections import namedtuple, Counter, OrderedDict
 from datetime import datetime
 from itertools import chain
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, NoReturn, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .._util import Fore as F, Style as S
 from ..flags import MjoType, MjoTypeMask, MjoScope

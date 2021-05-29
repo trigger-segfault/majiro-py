@@ -18,7 +18,7 @@ __all__ = ['Opcode']
 #######################################################################################
 
 import enum, re
-from typing import Dict, List, NoReturn, Optional  # for hinting in declarations
+from typing import Dict, List, Optional  # for hinting in declarations
 
 from .flags import MjoType, MjoTypeMask
 
@@ -108,7 +108,7 @@ def alias_type(postfix:str, *aliases:str) -> tuple:
 def alias_intonly(postfix:str, mnemonic:str, *aliases:str) -> tuple:
     return aliases + alias_type(postfix, mnemonic, *aliases)
 
-def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str, *aliases:str) -> NoReturn:
+def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str, *aliases:str) -> None:
     opcode = Opcode(value, mnemonic, op, encoding, transition, aliases=aliases)
     Opcode.LIST.append(opcode)
     existing = Opcode.BYVALUE.get(value, None)
@@ -126,7 +126,7 @@ def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str,
         Opcode.ALIASES[alias] = opcode
     Opcode.NAMES[mnemonic] = opcode
 
-def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_comparison:bool, *aliases:str) -> NoReturn:
+def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_comparison:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS):
         if allowed_types & t_mask:
             comparison = _COMPARISON_TRANSITIONS[is_comparison]
@@ -137,7 +137,7 @@ def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:M
             else:
                 define_opcode(base_value + i, mnemonic + postfix, op, "", comparison, *alias_type(postfix, *aliases))
 
-def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> NoReturn:
+def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS):
         if allowed_types & t_mask:
             pop = _POP_TRANSITIONS[is_pop]
@@ -148,7 +148,7 @@ def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_typ
             else:
                 define_opcode(base_value + i, mnemonic + postfix, op, "fho", pop, *alias_type(postfix, *aliases))
 
-def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> NoReturn:
+def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS): #TODO: this is a waste, only the first 3 types should be enumerated
         if allowed_types & t_mask:
             pop = _POPARRAY_TRANSITIONS[is_pop]
@@ -158,6 +158,9 @@ def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allow
                 return # no need to check for others
             else:
                 define_opcode(base_value + i, mnemonic + postfix, op, "fho", pop, *alias_type(postfix, *aliases))
+
+def define_ctrl_subcode(char:str, transition:str) -> None:
+    pass
 
 #endregion
 
@@ -253,7 +256,7 @@ define_opcode(0x80f, "call",  None, "h0a", "[*#a].*")
 define_opcode(0x810, "callp", None, "h0a", "[*#a].")
 
 define_opcode(0x829, "alloca", None, "t", ".[#t]")  # official name
-define_opcode(0x82b, "ret", None, "", "[*].", "return")
+define_opcode(0x82b, "ret", None, "", "*[*].", "return")
 
 define_opcode(0x82c, "br", None, "j", ".", "jmp")
 define_opcode(0x82d, "brtrue", None, "j", "p.", "brinst", "jnz", "jne")
@@ -281,9 +284,9 @@ define_opcode(0x83a, "line", None, "l", ".")  # source script line number
 # branch-selector opcodes #
 # not fully understood, but all have relations to special
 # block definitions: setskip, destructor, constructor(?)
-define_opcode(0x83b, "bsel.1", None, "j", ".")   # !!non-final name!! left mouse button condition
-define_opcode(0x83c, "bsel.3", None, "j", ".")   # !!non-final name!! middle mouse button condition
-define_opcode(0x83d, "bsel.2", None, "j", ".")   # !!non-final name!! right mouse button condition
+define_opcode(0x83b, "bsel.1", None, "j", ".", "bsel.lmb")   # !!non-final name!! left mouse button condition
+define_opcode(0x83c, "bsel.3", None, "j", ".", "bsel.mmb")   # !!non-final name!! middle mouse button condition
+define_opcode(0x83d, "bsel.2", None, "j", ".", "bsel.rmb")   # !!non-final name!! right mouse button condition
 
 define_opcode(0x83e, "conv.i", None, "", "f.i")
 define_opcode(0x83f, "conv.r", None, "", "i.f")
@@ -294,15 +297,40 @@ define_opcode(0x841, "proc", None, "", ".")        # !!non-final name!!  process
 define_opcode(0x842, "ctrl", None, "s", "[#s].")   # !!non-final name!!  varying effect on stack depending on string
 
 # more branch-selector opcodes #
-define_opcode(0x843, "bsel.x", None, "j", ".")     # !!non-final name!! left/middle/right (any) mouse button condition
+define_opcode(0x843, "bsel.x", None, "j", ".", "bsel.mb")     # !!non-final name!! left/middle/right (any) mouse button condition
 define_opcode(0x844, "bsel.clr", None, "", ".")    # !!non-final name!!
-define_opcode(0x845, "bsel.4", None, "j", ".")     # !!non-final name!! never observed before
-define_opcode(0x846, "bsel.jmp.4", None, "", ".")  # !!non-final name!! observed very rarely in older scripts, usually followed by a return, always found in switch statements
-define_opcode(0x847, "bsel.5", None, "j", ".")     # !!non-final name!! stores destructor position (does not actually jump)
+define_opcode(0x845, "bsel.4", None, "j", ".", "bsel.ctor")     # !!non-final name!! never observed before
+define_opcode(0x846, "bsel.jmp.4", None, "", ".", "bsel.jmp.ctor")  # !!non-final name!! observed very rarely in older scripts, usually followed by a return, always found in switch statements
+define_opcode(0x847, "bsel.5", None, "j", ".", "bsel.dtor")     # !!non-final name!! stores destructor position (does not actually jump)
 
 define_opcode(0x850, "switch", None, "c", "i.")
+
+
+
+define_ctrl_subcode("c", "ii.")      # \c(color, flags)                                        | inter: \c0x{color:08x}0x{flags:08x}
+## display/representation of values (primitive).
+define_ctrl_subcode("d", "p.")       # \d(value*)                                              | inter: \d{value}
+## integer values of `-1` treated as "keep default".
+define_ctrl_subcode("f", "iiiis.")   # \f(width, height, lineSkip, isProportional, fontname$)  | inter: \f0x{width:08x}0x{height:08x}0x{lineSkip:08x}0x{isProportional:08x}{fontname}
+## integer values of `-99` are stripped.
+define_ctrl_subcode("g", "iiiiii.")  # \g(a1, a2, a3, a4, a5, a6)                              | inter: \g0x{a1:08x}0x{a2:08x}0x{a3:08x}0x{a4:08x}0x{a5:08x}0x{a6:08x}
+define_ctrl_subcode("l", "ii.")      # \l(x, y)                                                | inter: \l0x{x:08x}0x{y:08x}
+define_ctrl_subcode("n", ".")        # \n                                                      | inter: \n
+define_ctrl_subcode("N", ".")        # \N                                                      | inter: \N
+define_ctrl_subcode("o", "ii.")      # \o(x, y)                                                | inter: \o0x{x:08x}0x{y:08x}
+define_ctrl_subcode("p", ".")        # \p                                                      | inter: \p
+define_ctrl_subcode("P", ".")        # \P                                                      | inter: \P
+define_ctrl_subcode("r", ".")        # \r                                                      | inter: \r
+define_ctrl_subcode("s", "i.")       # \s(speed)                                               | inter: \s0x{speed:08x}
+define_ctrl_subcode("t", "i.")       # \t(time)                                                | inter: \t0x{time:08x}
+## `F` is a single digit (possibly bool), clipname is the voice filename (without extension).
+define_ctrl_subcode("v", ".")        # \vFclipname                                             | inter: \vFclipname
+define_ctrl_subcode("w", ".")        # \w                                                      | inter: \w
+## raises a custom X_CONTROL callback.
+define_ctrl_subcode("x", "s.")       # \x(command$)                                            | inter: \x{command}
+define_ctrl_subcode("z", ".")        # \z                                                      | inter: \z
 
 #endregion ## END OPCODE DEFINITIONS ##
 
 
-del Dict, List, NoReturn, Optional  # cleanup declaration-only imports
+del Dict, List  # cleanup declaration-only imports

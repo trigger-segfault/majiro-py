@@ -14,7 +14,7 @@ __all__ = ['MjILAssembler']
 import csv, enum, io, math, os, re, struct  # math used for isnan()
 from abc import abstractproperty
 from collections import namedtuple, OrderedDict
-from typing import Any, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union  # for hinting in declarations
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union  # for hinting in declarations
 #source: <https://stackoverflow.com/a/38935153/7517185>
 from typing import Match, Pattern  # for regex type hinting
 from enum import auto
@@ -223,7 +223,7 @@ RE_PUNCTUATION = re.compile(r"^[(){}\[\],]")
 
 #region ## PARSE MATCHED TOKENS ##
 
-def parse_target(token:ParseToken) -> NoReturn:
+def parse_target(token:ParseToken) -> None:
     # pattern: RE_TARGET
     m:Match = token.match
     if m[2]: # explicit offset
@@ -238,7 +238,7 @@ def parse_target(token:ParseToken) -> NoReturn:
         token.value = m[4]
         token.kind = TokenKind.LABEL
 
-def parse_label(token:ParseToken) -> NoReturn:
+def parse_label(token:ParseToken) -> None:
     # pattern: RE_LABEL
     m:Match = token.match
     if m[2]: # address
@@ -249,13 +249,13 @@ def parse_label(token:ParseToken) -> NoReturn:
         token.value = m[3]
         token.kind = TokenKind.LABEL
 
-def parse_line_number(token:ParseToken) -> NoReturn:
+def parse_line_number(token:ParseToken) -> None:
     # pattern: RE_LINE_NUMBER
     m:Match = token.match
     token.value = int(m[1], 10)
     token.kind = TokenKind.LINE_NUMBER
 
-def parse_keyword(token:ParseToken) -> NoReturn:
+def parse_keyword(token:ParseToken) -> None:
     name = token.text
 
     # types implementing function: cls.fromname(name:str, default=...)
@@ -292,24 +292,24 @@ def parse_keyword(token:ParseToken) -> NoReturn:
     else:
         raise Exception(f'unknown symbol or keyword {name!r}')
 
-def parse_string(token:ParseToken) -> NoReturn:
+def parse_string(token:ParseToken) -> None:
     # pattern: RE_LITERAL_STRING
     m:Match = token.match
     token.value = unescape_string(m[2])
     token.kind = TokenKind.LITERAL_STRING
 
-def parse_float(token:ParseToken) -> NoReturn:
+def parse_float(token:ParseToken) -> None:
     # pattern: RE_LITERAL_FLOAT
     # Python supports parsing all formats: [+-]fixed, [+-]exponent, [+-]inf(inity), NaN
     token.value = float(token.text)
     token.kind = TokenKind.LITERAL_FLOAT
 
-def parse_int(token:ParseToken) -> NoReturn:
+def parse_int(token:ParseToken) -> None:
     # pattern: RE_LITERAL_INT
     token.value = signed_i(int(token.text, 0))  # 0 checks prefix for base type
     token.kind = TokenKind.LITERAL_INT
 
-def parse_hash(token:ParseToken) -> NoReturn:
+def parse_hash(token:ParseToken) -> None:
     # pattern: RE_ANY_HASH
     m:Match = token.match
     if m[2]: # hex
@@ -322,7 +322,7 @@ def parse_hash(token:ParseToken) -> NoReturn:
         token.value = m[4]
         token.kind = TokenKind.INLINE_HASH
 
-def parse_resource(token:ParseToken) -> NoReturn:
+def parse_resource(token:ParseToken) -> None:
     ## pattern: RE_RESOURCE
     m:Match = token.match
     if m[2]: # inline implicit
@@ -332,17 +332,17 @@ def parse_resource(token:ParseToken) -> NoReturn:
         token.value = m[3]
         token.kind = TokenKind.INLINE_RESOURCE
 
-def parse_punctuation(token:ParseToken) -> NoReturn:
+def parse_punctuation(token:ParseToken) -> None:
     # pattern: RE_PUNCTUATION
     token.value = token.text
     token.kind = TokenKind.PUNCTUATION
 
-def parse_whitespace(token:ParseToken) -> NoReturn:
+def parse_whitespace(token:ParseToken) -> None:
     # pattern: RE_WHITESPACE
     token.value = token.text
     token.kind = TokenKind.WHITESPACE
 
-def parse_eol(token:ParseToken) -> NoReturn:
+def parse_eol(token:ParseToken) -> None:
     # pattern: RE_EOL
     token.value = ''
     token.kind = TokenKind.EOL
@@ -621,7 +621,7 @@ class MjILAssembler:
             self.file = None
             return True
         return False
-    def open(self) -> NoReturn:
+    def open(self) -> None:
         self.close()
         self.file = open(self.filename, 'rt', encoding=self.encoding)
         # self.line = None
@@ -649,39 +649,39 @@ class MjILAssembler:
     def main_offset(self) -> Optional[int]:
         return self.script.main_offset
     @main_offset.setter
-    def main_offset(self, main_offset:Optional[int]) -> NoReturn:
+    def main_offset(self, main_offset:Optional[int]) -> None:
         self.script.main_offset = main_offset
     @property
     def bytecode_offset(self) -> Optional[int]:
         return self.script.bytecode_offset
     @bytecode_offset.setter
-    def bytecode_offset(self, bytecode_offset:Optional[int]) -> NoReturn:
+    def bytecode_offset(self, bytecode_offset:Optional[int]) -> None:
         self.script.bytecode_offset = bytecode_offset
     @property
     def bytecode_size(self) -> Optional[int]:
         return self.script.bytecode_size
     @bytecode_size.setter
-    def bytecode_size(self, bytecode_size:Optional[int]) -> NoReturn:
+    def bytecode_size(self, bytecode_size:Optional[int]) -> None:
         self.script.bytecode_size = bytecode_size
     #
     @property
     def line_count(self) -> int:
         return self.script.line_count
     @line_count.setter
-    def line_count(self, line_count:int) -> NoReturn:
+    def line_count(self, line_count:int) -> None:
         self.script.line_count = line_count
     #
     @property
     def functions(self) -> List[FunctionEntry]:
         return self.script.functions
     @functions.setter
-    def functions(self, functions:List[FunctionEntry]) -> NoReturn:
+    def functions(self, functions:List[FunctionEntry]) -> None:
         self.script.functions = functions
     @property
     def instructions(self) -> List[Instruction]:
         return self.script.instructions
     @instructions.setter
-    def instructions(self, instructions:List[Instruction]) -> NoReturn:
+    def instructions(self, instructions:List[Instruction]) -> None:
         self.script.instructions = instructions
     #
     #endregion

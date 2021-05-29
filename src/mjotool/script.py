@@ -17,7 +17,7 @@ __all__ = ['Instruction', 'MjoScript', 'BasicBlock', 'Function']
 import io, math, re  # math used for isnan()
 from abc import abstractproperty
 from collections import namedtuple
-from typing import Iterator, List, NoReturn, Optional, Tuple  # for hinting in declarations
+from typing import Iterator, List, Optional, Tuple  # for hinting in declarations
 
 from ._util import StructIO, DummyColors, Colors, signed_i, unsigned_I
 from .flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
@@ -66,7 +66,7 @@ class ILFormat:
         self.opcode_padding:int    = 13    # number of EXTRA spaces to pad opcodes with (from the start of the opcode)
                                            # one mandatory space is always added AFTER this for operands
 
-    def set_address_len(self, bytecode_size:int) -> NoReturn:
+    def set_address_len(self, bytecode_size:int) -> None:
         self.address_len = max(2, len(f'{bytecode_size:x}'))
 
     def address_fmt(self, offset) -> str:
@@ -204,7 +204,7 @@ class Instruction:
 
         return (self.check_hash_group(name, syscall, options=options), syscall)
 
-    def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, **kwargs) -> NoReturn:
+    def print_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, **kwargs) -> None:
         print(self.format_instruction(options=options, resource_key=resource_key), **kwargs)
     def format_instruction(self, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None) -> str:
         colors:dict = options.colors
@@ -446,7 +446,7 @@ class Instruction:
         instruction.size = reader.tell() - offset
         return instruction
     
-    def write_instruction(self, writer:StructIO) -> NoReturn:
+    def write_instruction(self, writer:StructIO) -> None:
         offset = writer.tell()
         opcode = self.opcode
         writer.pack('<H', opcode.value)
@@ -548,7 +548,7 @@ class MjoScript:
                 return i
         return -1
     
-    def assemble_script(self, writer:io.BufferedWriter) -> NoReturn:
+    def assemble_script(self, writer:io.BufferedWriter) -> None:
         if not isinstance(writer, StructIO):
             writer = StructIO(writer)
 
@@ -604,7 +604,7 @@ class MjoScript:
 
         return MjoScript(signature, main_offset, line_count, bytecode_offset, bytecode_size, functions, instructions)
 
-    def assemble_bytecode(self, writer:StructIO) -> NoReturn:
+    def assemble_bytecode(self, writer:StructIO) -> None:
         if not isinstance(writer, StructIO):
             writer = StructIO(writer)
 
@@ -627,7 +627,7 @@ class MjoScript:
 
         return instructions
 
-    def print_readmark(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
+    def print_readmark(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
         print(self.format_readmark(options=options), **kwargs)
     def format_readmark(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
         #FIXME: temp solution to print all directives in one go
@@ -701,7 +701,7 @@ class BasicBlock(_Block):
         else:
             return 'block_{:05x}'.format(self.start_offset)
 
-    def print_basic_block(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
+    def print_basic_block(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
         print(self.format_basic_block(options=options), **kwargs)
     def format_basic_block(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
         colors:dict = options.colors
@@ -736,7 +736,7 @@ class Function(_BlockContainer):
     def is_entrypoint(self) -> bool:
         return self.start_offset == self.script.main_offset
 
-    def print_function(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
+    def print_function(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
         print(self.format_function(options=options), **kwargs)
     def format_function(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
         colors:dict = options.colors
@@ -776,10 +776,10 @@ class Function(_BlockContainer):
                 s += '  {BRIGHT}{BLACK}; {DIM}{BLUE}${.name_hash:08x}{RESET_ALL}'.format(self, **colors)
     
         return s
-    def print_function_close(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> NoReturn:
+    def print_function_close(self, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
         print(self.format_function_close(options=options), **kwargs)
     def format_function_close(self, *, options:ILFormat=ILFormat.DEFAULT) -> str:
         return '}' if options.braces else ''
 
 
-del abstractproperty, namedtuple, Iterator, NoReturn, Optional, Tuple  # cleanup declaration-only imports
+del abstractproperty, namedtuple, Iterator, Optional, Tuple  # cleanup declaration-only imports

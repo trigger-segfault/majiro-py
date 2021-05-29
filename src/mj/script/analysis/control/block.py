@@ -44,11 +44,9 @@ class _Block:
         self.first_instruction_index:int = -1
         self.last_instruction_index:int = -1
 
-
-
     @abstractproperty
-    def script(self) -> MjoScript:
-        raise NotImplementedError('_Block.script')
+    def script(self) -> MjoScript: raise NotImplementedError('_Block.script')
+
     @property
     def instruction_count(self) -> int:
         if self.first_instruction_index == -1 or self.last_instruction_index == -1:
@@ -63,10 +61,10 @@ class _Block:
         #     yield self.script.instructions[i]
     @property
     def first_instruction(self) -> Instruction:
-        self.script.instructions[self.first_instruction_index]
+        return self.script.instructions[self.first_instruction_index]
     @property
     def last_instruction(self) -> Instruction:
-        self.script.instructions[self.last_instruction_index]
+        return self.script.instructions[self.last_instruction_index]
     @property
     def start_offset(self) -> int:
         if self.first_instruction_index == -1 or self.last_instruction_index == -1:
@@ -79,18 +77,17 @@ class _Block:
 class BasicBlock(_Block):
     """Simple block of instructions
     """
-    def __init__(self, function:'Function', name:str):
+    def __init__(self, function:'Function'): #TODO: #, name:str):
         super().__init__()
         self.function:'Function' = function
-        self.name:str = name
+        #TODO: # self.name:str = name
         self.is_entry_block:bool = False
         self.is_exit_block:bool = False
         self.is_dtor_block:bool = False  # destructor {} syntax with op.847 (bsel.5)
         self.predecessors:List['BasicBlock'] = []
         self.successors:List['BasicBlock'] = []
     @property
-    def script(self) -> MjoScript:
-        return self.function._script
+    def script(self) -> MjoScript: return self.function._script
     @property
     def name(self) -> str:
         if self.is_entry_block:
@@ -127,22 +124,18 @@ class Function(_BlockContainer):
         super().__init__()
         self._script:MjoScript = script
         self.func_info:FunctionIndexEntry = func_info
-        # self.name_hash:int = name_hash
+        # self.hashname:int = hashname
         self.entry_block:BasicBlock = None
         self.exit_blocks:List[BasicBlock] = None
         self.parameter_types:List[MjoType] = None
     @property
-    def hashname(self) -> HashName:
-        return self.func_info.hashname
+    def hashname(self) -> HashName: return self.func_info.hashname
     @property
-    def hash(self) -> int:
-        return self.func_info.hashname.hash
+    def hash(self) -> int: return self.func_info.hashname.hash
     @property
-    def name(self) -> str:
-        return self.func_info.hashname.name
+    def name(self) -> str: return self.func_info.hashname.name
     @property
-    def script(self) -> MjoScript:
-        return self._script
+    def script(self) -> MjoScript: return self._script
     @property
     def is_entrypoint(self) -> bool:
         return self.start_offset == self.script.main_offset

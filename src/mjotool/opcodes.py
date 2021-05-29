@@ -18,7 +18,7 @@ __all__ = ['Opcode']
 #######################################################################################
 
 import enum, re
-from typing import Dict, List, NoReturn, Optional  # for hinting in declarations
+from typing import Dict, List, Optional  # for hinting in declarations
 
 from .flags import MjoType, MjoTypeMask
 
@@ -99,7 +99,7 @@ def alias_type(postfix:str, *aliases:str) -> tuple:
 def alias_intonly(postfix:str, mnemonic:str, *aliases:str) -> tuple:
     return aliases + alias_type(postfix, mnemonic, *aliases)
 
-def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str, *aliases:str) -> NoReturn:
+def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str, *aliases:str) -> None:
     opcode = Opcode(value, mnemonic, op, encoding, transition, aliases=aliases)
     Opcode.LIST.append(opcode)
     existing = Opcode.BYVALUE.get(value, None)
@@ -117,7 +117,7 @@ def define_opcode(value:int, mnemonic:str, op:str, encoding:str, transition:str,
         Opcode.ALIASES[alias] = opcode
     Opcode.NAMES[mnemonic] = opcode
 
-def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_comparison:bool, *aliases:str) -> NoReturn:
+def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_comparison:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS):
         if allowed_types & t_mask:
             comparison = _COMPARISON_TRANSITIONS[is_comparison]
@@ -128,7 +128,7 @@ def define_binary_operator(base_value:int, mnemonic:str, op:str, allowed_types:M
             else:
                 define_opcode(base_value + i, mnemonic + postfix, op, "", comparison, *alias_type(postfix, *aliases))
 
-def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> NoReturn:
+def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS):
         if allowed_types & t_mask:
             pop = _POP_TRANSITIONS[is_pop]
@@ -139,7 +139,7 @@ def define_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_typ
             else:
                 define_opcode(base_value + i, mnemonic + postfix, op, "fho", pop, *alias_type(postfix, *aliases))
 
-def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> NoReturn:
+def define_array_assignment_operator(base_value:int, mnemonic:str, op:str, allowed_types:MjoTypeMask, is_pop:bool, *aliases:str) -> None:
     for i, t_mask in enumerate(_TYPE_MASKS): #TODO: this is a waste, only the first 3 types should be enumerated
         if allowed_types & t_mask:
             pop = _POPARRAY_TRANSITIONS[is_pop]
@@ -296,4 +296,4 @@ define_opcode(0x850, "switch", None, "c", "i.")
 #endregion ## END OPCODE DEFINITIONS ##
 
 
-del Dict, List, NoReturn, Optional  # cleanup declaration-only imports
+del Dict, List, Optional  # cleanup declaration-only imports

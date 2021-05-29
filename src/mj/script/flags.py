@@ -114,7 +114,7 @@ class MjoType(enum.IntEnum):
     def array(self) -> 'MjoType':
         if self is MjoType.UNKNOWN:
             return None
-        return MjoType(self.value | 0x4) if self.is_primitive else self
+        return MjoType(self.value + MjoType.INT_ARRAY.value) if self.is_primitive else self
     #
     @property
     def typedef(self) -> 'Typedef':
@@ -541,4 +541,4 @@ def _fromflagname(cls, name:str, default=...) -> enum.Enum:
 # print('MjoInvert._NAMES      :', ', '.join(MjoInvert._NAMES.values()))
 
 
-del chain, OrderedDict, Dict, Optional, Union  # cleanup declaration-only imports
+del chain, OrderedDict, Dict, Union  # cleanup declaration-only imports

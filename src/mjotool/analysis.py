@@ -14,7 +14,7 @@ __all__ = ['ControlFlowGraph']
 
 #######################################################################################
 
-from typing import Iterator, List, NoReturn, Set  # for hinting in declarations
+from typing import Iterator, List, Set  # for hinting in declarations
 
 from ._util import DummyColors, Colors
 from .script import Instruction, MjoScript, BasicBlock, Function
@@ -71,7 +71,7 @@ class ControlFlowGraph:
                 yield instruction.offset + 2 + 2 + (i + 1)*4 + case_offset
 
     @classmethod
-    def analyze_function(cls, function:Function) -> NoReturn:
+    def analyze_function(cls, function:Function) -> None:
         script:MjoScript = function.script
         instructions:List[Instruction] = script.instructions
 
@@ -139,7 +139,7 @@ class ControlFlowGraph:
             cls.analyze_basic_block(basic_block)
 
     @classmethod
-    def analyze_basic_block(cls, basic_block:BasicBlock) -> NoReturn:
+    def analyze_basic_block(cls, basic_block:BasicBlock) -> None:
         function:Function = basic_block.function
         script:MjoScript = function.script
         instructions:List[Instruction] = script.instructions
@@ -171,4 +171,4 @@ class ControlFlowGraph:
                 last_instruction.switch_targets[i] = function.basic_block_from_offset(target)
 
 
-del Iterator, NoReturn  # cleanup declaration-only imports
+del Iterator  # cleanup declaration-only imports

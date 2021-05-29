@@ -16,7 +16,7 @@ __all__ = []
 
 import io
 from struct import calcsize, pack, unpack
-from typing import Any, Callable, List, NoReturn, Optional, Dict, Tuple, Union
+from typing import Any, Callable, List, Optional, Dict, Tuple, Union
 
 from .opcodes import Opcode
 from .flags import MjoFlags, MjoType
@@ -25,7 +25,6 @@ from .instruction import Instruction
 
 
 # function entry type declared in table in MjoScript header before bytecode
-# FunctionIndexEntry = namedtuple('FunctionIndexEntry', ('name_hash', 'offset'))
 
 class FunctionIndexEntry:
     """FunctionIndexEntry(hashname:Union[HashName,int,str], offset:int, is_entrypoint:bool=False)
@@ -158,7 +157,7 @@ class MjoScript:
 
         return MjoScript(signature, main_offset, line_count, bytecode_size, functions, instructions)
 
-    def write(self, writer:io.BufferedWriter) -> NoReturn:
+    def write(self, writer:io.BufferedWriter) -> None:
         # header:
         if self.signature not in (self.SIGNATURE_ENCRYPTED, self.SIGNATURE_DECRYPTED):
             raise Exception(f'{self.__class__.__name__} signature must be {self.SIGNATURE_ENCRYPTED.decode("cp932")!r} or {self.SIGNATURE_DECRYPTED.decode("cp932")!r}, not {self.signature.decode("cp932")!r}')
@@ -204,7 +203,7 @@ class MjoScript:
 
         return instructions
 
-    def write_bytecode(self, writer:io.BufferedWriter) -> NoReturn:
+    def write_bytecode(self, writer:io.BufferedWriter) -> None:
 
         for instr in self.instructions:
             instr.write_instruction(writer)

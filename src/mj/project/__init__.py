@@ -18,7 +18,7 @@ __all__ = ['MjFunction', 'MjProject']
 import os
 from .mjproject import MjFunction, MjProject, MjoType
 from ..script import MjoScript, MjoScope, Instruction, Opcode
-from typing import Any, Callable, List, NoReturn, Optional, Dict, Tuple, Union
+from typing import Any, Callable, List, Optional, Dict, Tuple, Union
 
 
 def save_project(projroot:str, projname:str='mjproject.json') -> MjProject:

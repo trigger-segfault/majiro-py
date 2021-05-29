@@ -34,6 +34,8 @@ MajiroData_Locals:GoogleSheet = MajiroData.with_gid(1596196937)
 MajiroData_Callbacks:GoogleSheet = MajiroData.with_gid(750354284)
 ## Release|Developer|Name|Engine Build Date|Notes
 MajiroData_Games:GoogleSheet = MajiroData.with_gid(2017266804)
+## Release|Mnemonic|Aliases|Operands|Sym|Pops|Pushes|Status|Notes
+MajiroData_Instructions:GoogleSheet = MajiroData.with_gid(1541038462)
 
 #endregion
 

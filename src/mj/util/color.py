@@ -15,7 +15,7 @@ __version__ = '0.1.0'
 __date__    = '2021-05-06'
 __author__  = 'Robert Jordan'
 
-__all__ = ['ansi_support']
+__all__ = ['ansi_support', 'Fore', 'Back', 'Style', 'StyleEx', 'DummyFore', 'DummyBack', 'DummyStyle', 'DummyStyleEx', 'rgbf', 'rgbb', 'colorama_enabled', 'vt_mode_enabled']
 
 #######################################################################################
 
@@ -209,6 +209,13 @@ DummyFore = SimpleNamespace(**dict((k,'') for k,v in Fore.__dict__.items()))
 DummyBack = SimpleNamespace(**dict((k,'') for k,v in Back.__dict__.items()))
 DummyStyle = SimpleNamespace(**dict((k,'') for k,v in Style.__dict__.items()))
 DummyStyleEx = SimpleNamespace(**dict((k,'') for k,v in StyleEx.__dict__.items()))
+
+
+##LEGACY: dictionaries for "easier" **foreground** color formatting
+# >>> '{DIM}{GREEN}{!s}{RESET_ALL}'.format('hello world', **Colors)
+DummyColors = dict(**DummyFore.__dict__, **DummyStyle.__dict__)
+Colors = dict(**Fore.__dict__, **Style.__dict__)
+
 
 #endregion
 

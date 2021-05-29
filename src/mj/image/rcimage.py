@@ -18,7 +18,7 @@ __all__ = ['RctImage', 'Rc8Image']
 import enum, io, os, shutil, threading
 from collections import namedtuple
 from struct import calcsize, pack, unpack, iter_unpack, unpack_from, pack_into, Struct
-from typing import Any, Callable, Iterable, Iterator, List, NoReturn, Optional, Dict, Tuple, Union
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Dict, Tuple, Union
 
 
 

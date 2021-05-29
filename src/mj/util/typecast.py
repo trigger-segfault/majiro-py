@@ -3,15 +3,14 @@
 """Type-casting and ensuring functions
 """
 
-__version__ = '0.1.0'
-__date__    = '2021-05-06'
+__version__ = '0.1.1'
+__date__    = '2021-05-28'
 __author__  = 'Robert Jordan'
 
 __all__ = ['to_bytes', 'to_str', 'to_float', 'signed_b', 'signed_h', 'signed_i', 'signed_q', 'unsigned_B', 'unsigned_H', 'unsigned_I', 'unsigned_Q']
 
 #######################################################################################
 
-from struct import pack, unpack
 from typing import Union
 
 
@@ -50,77 +49,47 @@ def to_float(num:Union[float,int]) -> float:
 
 #region ## INT SIGNEDNESS HELPERS ##
 
-def signed_b(num:int) -> int:
-    """Return signed value of unsigned (or signed) 8-bit integer (struct fmt 'b')
-    also performs bounds checking
-    """
-    if num > 0x7f: # greater than SCHAR_MAX
-        return unpack('=b', pack('=B', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=b', pack('=b', num))[0]
+## source: <https://stackoverflow.com/a/37095855/7517185>
 
 def unsigned_B(num:int) -> int:
-    """Return unsigned value of signed (or unsigned) 8-bit integer (struct fmt 'B')
-    also performs bounds checking
+    """Returns unsigned value of signed (or unsigned) 8-bit integer (struct fmt 'B')
     """
-    if num < 0: # signed
-        return unpack('=B', pack('=b', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=B', pack('=B', num))[0]
+    return num & 0xff
 
-def signed_h(num:int) -> int:
-    """Return signed value of unsigned (or signed) 16-bit integer (struct fmt 'h')
-    also performs bounds checking
+def signed_b(num:int) -> int:
+    """Returns signed value of unsigned (or signed) 8-bit integer (struct fmt 'b')
     """
-    if num > 0x7fff: # greater than SHRT_MAX
-        return unpack('=h', pack('=H', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=h', pack('=h', num))[0]
+    return ((num & 0xff) ^ 0x80) - 0x80
 
 def unsigned_H(num:int) -> int:
-    """Return unsigned value of signed (or unsigned) 16-bit integer (struct fmt 'H')
-    also performs bounds checking
+    """Returns unsigned value of signed (or unsigned) 16-bit integer (struct fmt 'H')
     """
-    if num < 0: # signed
-        return unpack('=H', pack('=h', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=H', pack('=H', num))[0]
+    return num & 0xffff
 
-def signed_i(num:int) -> int:
-    """Return signed value of unsigned (or signed) 32-bit integer (struct fmt 'i')
-    also performs bounds checking
+def signed_h(num:int) -> int:
+    """Returns signed value of unsigned (or signed) 16-bit integer (struct fmt 'h')
     """
-    if num > 0x7fffffff: # greater than INT_MAX
-        return unpack('=i', pack('=I', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=i', pack('=i', num))[0]
+    return ((num & 0xffff) ^ 0x8000) - 0x8000
 
 def unsigned_I(num:int) -> int:
-    """Return unsigned value of signed (or unsigned) 32-bit integer (struct fmt 'I')
-    also performs bounds checking
+    """Returns unsigned value of signed (or unsigned) 32-bit integer (struct fmt 'I')
     """
-    if num < 0: # signed
-        return unpack('=I', pack('=i', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=I', pack('=I', num))[0]
+    return num & 0xffffffff
 
-def signed_q(num:int) -> int:
-    """Return signed value of unsigned (or signed) 64-bit integer (struct fmt 'q')
-    also performs bounds checking
+def signed_i(num:int) -> int:
+    """Returns signed value of unsigned (or signed) 32-bit integer (struct fmt 'i')
     """
-    if num > 0x7fffffffffffffff: # greater than LLONG_MAX
-        return unpack('=q', pack('=Q', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=q', pack('=q', num))[0]
+    return ((num & 0xffffffff) ^ 0x80000000) - 0x80000000
 
 def unsigned_Q(num:int) -> int:
-    """Return unsigned value of signed (or unsigned) 64-bit integer (struct fmt 'Q')
-    also performs bounds checking
+    """Returns unsigned value of signed (or unsigned) 64-bit integer (struct fmt 'Q')
     """
-    if num < 0: # signed
-        return unpack('=Q', pack('=q', num))[0]
-    else: # lazy limits bounds checking
-        return unpack('=Q', pack('=Q', num))[0]
+    return num & 0xffffffffffffffff
+
+def signed_q(num:int) -> int:
+    """Returns signed value of unsigned (or signed) 64-bit integer (struct fmt 'q')
+    """
+    return ((num & 0xffffffffffffffff) ^ 0x8000000000000000) - 0x8000000000000000
 
 #endregion
 

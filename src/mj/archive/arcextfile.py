@@ -14,7 +14,7 @@ __all__ = ['MajiroArcExtFile']
 
 import io, os
 from struct import calcsize, pack, unpack
-from typing import Any, Callable, List, NoReturn, Optional, Dict, Tuple, Union
+from typing import Any, Callable, List, Optional, Dict, Tuple, Union
 
 from ..util.typecast import to_str
 

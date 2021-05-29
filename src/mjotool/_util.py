@@ -15,7 +15,7 @@ import io, re, struct
 from collections import namedtuple
 from struct import calcsize, pack, unpack
 from types import SimpleNamespace
-from typing import Any, List, Match, NoReturn, Union
+from typing import Any, List, Match, Union
 
 
 #region ## FILE HELPERS ##
@@ -38,7 +38,7 @@ class StructIO:
         return unpack(fmt, self._stream.read(calcsize(fmt)))
     def unpackone(self, fmt:str) -> Any:
         return unpack(fmt, self._stream.read(calcsize(fmt)))[0]
-    def pack(self, fmt:str, *v) -> NoReturn:
+    def pack(self, fmt:str, *v) -> None:
         return self._stream.write(pack(fmt, *v))
 
 #endregion
@@ -378,4 +378,4 @@ def print_hexdump(data:bytes, start:int=None, stop:int=None, *highlights:List[hd
 #endregion
 
 
-del namedtuple, SimpleNamespace, Any, List, Match, NoReturn, Union  # cleanup declaration-only imports
+del namedtuple, SimpleNamespace, Any, List, Match, Union  # cleanup declaration-only imports

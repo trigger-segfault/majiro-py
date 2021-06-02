@@ -41,8 +41,9 @@ class MjoType(enum.IntEnum):
     STRING_ARRAY = 5  # '$#' postfix (stringarray, [sarr])
     #
     #NOTE: WHAT THE HELL!??  (also possibly "any")
-    # INTERNAL     = 8  #  '~' postfix (observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision)
+    INTERNAL     = 8  #  '~' postfix (observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision)
     #                 #              (it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe)
+    VOID         = 9  #  ''
     #
     def __bool__(self) -> bool: return self is not MjoType.UNKNOWN
     #
@@ -58,8 +59,8 @@ class MjoType(enum.IntEnum):
     #
     @property
     def postfix(self) -> str:
-        # if self is MjoType.INTERNAL:
-        #     return self._POSTFIXES_ALT[self]  # INTERNAL only has an alt type since we still don't really understand it
+        if self is MjoType.INTERNAL:
+            return self._POSTFIXES_ALT[self]  # INTERNAL only has an alt type since we still don't really understand it
         return self._POSTFIXES[self]
     @classmethod
     def frompostfix(cls, postfix:str, default=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
@@ -92,7 +93,8 @@ class MjoType(enum.IntEnum):
         for i in range(len(name) - 1, -1, -1): # (i=len(name)-1; i >= 0; i--)
             # consume as many postfix characters as possible to check invalid character usage
             #                            normal        doc   MAJIRO_INTER
-            if i == 0 or name[i] not in ('%','$','#',  '?',  '!'): #,'~'): #cls._POSTFIX_LOOKUP:
+            if i == 0 or name[i] not in ('%','$','#',  '?',  '!','~'): #cls._POSTFIX_LOOKUP:
+            # if i == 0 or name[i] not in ('%','$','#',  '?',  '!'): #,'~'): #cls._POSTFIX_LOOKUP:
                 postfix = name[i+1:]
                 break
         return postfix
@@ -159,7 +161,8 @@ class MjoScope(enum.IntEnum):
     THREAD     = 2  # '%' prefix (thread)
     LOCAL      = 3  # '_' prefix (local,      [loc])
     #NOTE: not a real scope flag <INTERNAL USE ONLY>
-    # FUNCTION   = 8  # '$' prefix (func,       [void])
+    FUNCTION   = 8  # '$' prefix (func,       [void])
+    SYSCALL    = 9  # '$' prefix, '@MAJIRO_INTER' group
     #
     def __bool__(self) -> bool: return self is not MjoScope.UNKNOWN
     #
@@ -190,25 +193,38 @@ class MjoScope(enum.IntEnum):
             name = ''
         return cls.fromprefix(name[:1], default, allow_unk=allow_unk)
     # #
-    # @property
-    # def is_var(self) -> bool: return (MjoScope.PERSISTENT <= self <= MjoScope.LOCAL)
-    # @property
-    # def is_func(self) -> bool: return (self is MjoScope.FUNCTION)
+    @property
+    def is_var(self) -> bool: return (MjoScope.PERSISTENT <= self <= MjoScope.LOCAL)
+    @property
+    def is_local_var(self) -> bool: return (self is MjoScope.LOCAL)
+    @property
+    def is_global_var(self) -> bool: return (MjoScope.PERSISTENT <= self <= MjoScope.THREAD)
+    @property
+    def is_func(self) -> bool: return (MjoScope.FUNCTION <= self <= MjoScope.SYSCALL)
+    @property
+    def is_call(self) -> bool: return (self is MjoScope.FUNCTION)
+    @property
+    def is_syscall(self) -> bool: return (self is MjoScope.SYSCALL)
     #
     @property
     def identifier(self) -> 'IdentifierKind':
         from ..identifier import IdentifierKind
+        if self is MjoScope.FUNCTION: return IdentifierKind.FUNCTION
+        if self is MjoScope.SYSCALL:  return IdentifierKind.SYSCALL
         return IdentifierKind(self.value)
     # @classmethod
     # def fromidentifier(cls, kind:'IdentifierKind') -> 'MjoScope':
     #     return MjoScope(kind.value) if kind.is_var else MjoScope.UNKNOWN
     @classmethod
     def fromidentifier(cls, kind:'IdentifierKind', default=..., allow_unk:bool=False) -> 'MjoScope':
-        if kind.value > MjoScope.LOCAL.value or (not allow_unk and kind.value == MjoType.UNKNOWN.value):
+        from ..identifier import IdentifierKind
+        if kind is IdentifierKind.FUNCTION: return MjoScope.FUNCTION
+        if kind is IdentifierKind.SYSCALL:  return MjoScope.SYSCALL
+        if kind.value > MjoScope.LOCAL.value or (not allow_unk and kind.value == MjoScope.UNKNOWN.value):
             if default is Ellipsis:
                 raise ValueError(f'no valid {cls.__name__} enum exists for {kind!s}')
             return default
-        return MjoType(kind.value)
+        return MjoScope(kind.value)
     #endregion
 
 
@@ -384,19 +400,24 @@ MjoType._POSTFIXES:Dict[MjoType,str] = OrderedDict({
     MjoType.INT_ARRAY:    '#',
     MjoType.FLOAT_ARRAY:  '%#',
     MjoType.STRING_ARRAY: '$#',
+    #
+    #NOTE: not a real type flag <INTERNAL USE ONLY>
+    MjoType.VOID:         '',
 })
 MjoType._POSTFIXES_ALT:Dict[MjoType,str] = OrderedDict({
-    #NOTE: WHAT THE HELL!??
-    #      observed for syscall: $46b18379 "$rand!@MAJIRO_INTER", which returns a float between 0 and 1 (DOUBLE??)
+    #NOTE: legacy float type prefix '!', observed with 3 syscalls: 
+    #       * $46b18379 "$rand!@MAJIRO_INTER"         (still present)
+    #       * $2cd009af "$dim_create!#@MAJIRO_INTER"  (removed in releases after Mahjong [v1509])
+    #       * $20caeb0e "$dim_release!#@MAJIRO_INTER" (removed in releases after Mahjong [v1509])
     MjoType.FLOAT:        '!',
-    #MjoType.FLOAT_ARRAY:  '!#',
+    MjoType.FLOAT_ARRAY:  '!#',
     #
     # #NOTE: WHAT THE HELL!??
     # #      observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision.
     # #      it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe.
-    # MjoType.INTERNAL:     '~',
+    MjoType.INTERNAL:     '~',
 })
-MjoType._POSTFIX_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES.items())
+MjoType._POSTFIX_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES.items() if k is not MjoType.VOID)
 MjoType._POSTFIX_ALT_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES_ALT.items())
 
 MjoType._PYTHON_TYPES:Dict[MjoType,type] = OrderedDict({
@@ -409,6 +430,9 @@ MjoType._PYTHON_TYPES:Dict[MjoType,type] = OrderedDict({
     MjoType.INT_ARRAY:    list,
     MjoType.FLOAT_ARRAY:  list,
     MjoType.STRING_ARRAY: list,
+    #
+    #NOTE: not a real type flag <INTERNAL USE ONLY>
+    MjoType.VOID:         type(None),
 })
 
 # MjoScope:
@@ -418,7 +442,8 @@ MjoScope._NAMES:Dict[MjoScope,str] = OrderedDict({
     MjoScope.THREAD:     'thread',
     MjoScope.LOCAL:      'local',
     # #NOTE: not a real scope flag <INTERNAL USE ONLY, EXCLUDED FROM _LOOKUP>
-    # MjoScope.FUNCTION:   'func',
+    MjoScope.FUNCTION:   'call',
+    MjoScope.SYSCALL:    'syscall',
 })
 MjoScope._ALIASES:Dict[MjoScope,str] = OrderedDict({
     MjoScope.PERSISTENT: 'persist',
@@ -437,9 +462,10 @@ MjoScope._PREFIXES:Dict[MjoScope,str] = OrderedDict({
     MjoScope.THREAD:     '%',
     MjoScope.LOCAL:      '_',
     # #NOTE: not a real scope flag <INTERNAL USE ONLY>
-    # MjoScope.FUNCTION:   '$',
+    MjoScope.FUNCTION:   '$',
+    MjoScope.SYSCALL:    '$',
 })
-MjoScope._PREFIX_LOOKUP:Dict[str,MjoScope] = OrderedDict((v,k) for k,v in MjoScope._PREFIXES.items())
+MjoScope._PREFIX_LOOKUP:Dict[str,MjoScope] = OrderedDict((v,k) for k,v in MjoScope._PREFIXES.items() if k is not MjoScope.SYSCALL)
 
 # MjoInvert:
 MjoInvert._NAMES:Dict[MjoInvert,str] = OrderedDict({

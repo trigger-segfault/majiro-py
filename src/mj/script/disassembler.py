@@ -194,7 +194,7 @@ def check_known_hash(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT) -> 
         # TODO: this could be optimized to use the type flags
         #       and search in the scope-independent dicts
         name = known_hashes.VARIABLES.get(self.hash, None)
-    elif self.opcode.mnemonic == "ldc.i": # 0x800
+    elif self.opcode.value == 0x800: ##mnemonic == "ldc.i": # 0x800
         name = known_hashes.FUNCTIONS.get(unsigned_I(self.integer), None)
         # TODO: Uncomment if it's observed that int literals
         #       will use hashes for types other than usercalls
@@ -206,10 +206,10 @@ def check_known_hash(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT) -> 
 
     return (check_hash_group(name, syscall, options=options), syscall)
 
-def print_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, **kwargs) -> None:
-    print(format_instruction(self, options=options, resource_key=resource_key), **kwargs)
+def print_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, script_functions:Set[int]=None, **kwargs) -> None:
+    print(format_instruction(self, options=options, resource_key=resource_key), script_functions=script_functions, **kwargs)
 
-def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None) -> str:
+def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, script_functions:Set[int]=None) -> str:
     colors:dict = options.colors
     sb:str = ''
 
@@ -227,9 +227,11 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
     # padding after opcode (min 1 space, which is not included in padding option count)
     sb += ' ' + (' ' * max(0, options.opcode_padding - len(self.opcode.mnemonic)))
 
-    known_hash_name, known_hash_is_syscall = None, False
+    known_hash_name, known_hash_is_syscall, hash_is_func_ptr = None, False, False
     if options.known_hashes:
         known_hash_name, known_hash_is_syscall = check_known_hash(self, options=options)
+    if script_functions and self.opcode.value == 0x800: ##mnemonic == "ldc.i": # 0x800
+        hash_is_func_ptr = unsigned_I(self.integer) in script_functions
 
     operands = []
     for operand in self.opcode.encoding:
@@ -293,15 +295,15 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
             # integer constant
             # integer literals will sometimes use hashes for usercall function pointers
             # this entire if statement tree is terrifying...
-            if known_hash_name is not None:
+            if hash_is_func_ptr or known_hash_name is not None:
                 if known_hash_is_syscall:
                     hash_color = '{BRIGHT}{YELLOW}'.format(**colors)
-                elif known_hash_name[0] == '$':
+                elif hash_is_func_ptr or known_hash_name[0] == '$':
                     hash_color = '{BRIGHT}{BLUE}'.format(**colors)
                 else: #elif self.is_load or self.is_store:
                     hash_color = '{BRIGHT}{RED}'.format(**colors)
 
-                if options.inline_hash and options.int_inline_hash and (options.syscall_inline_hash or not known_hash_is_syscall):
+                if known_hash_name and (options.inline_hash and options.int_inline_hash and (options.syscall_inline_hash or not known_hash_is_syscall)):
                     known_hash_name2 = known_hash_name
                     if known_hash_is_syscall:
                         known_hash_name2 = known_hash_name.lstrip('$') # requirement for syscall hash lookup syntax
@@ -311,7 +313,7 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
                         op = '{BRIGHT}{CYAN}${RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name2, **colors)
                 else:
                     # print as hex for simplicity (this can also be printed with $XXXXXXXX notation)
-                    op = '0x{:08x}'.format(unsigned_I(self.integer))
+                    op = '${:08x}'.format(unsigned_I(self.integer))
             else:
                 op = '{:d}'.format(signed_i(self.integer))
         elif operand == 'r':
@@ -357,7 +359,7 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
     if operands: # append space-separated operands
         sb += ' '.join(operands)
 
-    if known_hash_name is None or not options.annotations:
+    if (known_hash_name is None and not hash_is_func_ptr) or not options.annotations:
         pass  # no hash name comments
     elif self.is_syscall: # 0x834, 0x835
         if not options.inline_hash or not options.syscall_inline_hash:
@@ -380,7 +382,7 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
         # check for loading function hashes (which are often passed to )
         if known_hash_is_syscall:
             hash_color = '{DIM}{YELLOW}'.format(**colors)
-        elif known_hash_name[0] == '$':
+        elif hash_is_func_ptr or known_hash_name[0] == '$':
             hash_color = '{DIM}{BLUE}'.format(**colors)
         else: #elif self.is_load or self.is_store:
             hash_color = '{DIM}{RED}'.format(**colors)
@@ -388,11 +390,14 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
         ## testing reversal of the conditional branching behemoth below:
         # def test(a,b,c,d): return (not a or not b or (c and not d)) == (a and b and (not c or d))
         # [tuple(o) for o in combos if test(*o)]
-        if not options.inline_hash or not options.int_inline_hash or (known_hash_is_syscall and not options.syscall_inline_hash):
+        funcptr_str = ' {BRIGHT}{BLUE}(local function){RESET_ALL}'.format(**colors) if hash_is_func_ptr else ''
+        if known_hash_name and (not options.inline_hash or not options.int_inline_hash or (known_hash_is_syscall and not options.syscall_inline_hash)):
             #sb = sb.ljust(ops_offset + 16)
-            sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}{}{RESET_ALL}'.format(hash_color, known_hash_name, **colors)
-        elif options.annotate_hex:
-            sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}${:08x}{RESET_ALL}'.format(hash_color, unsigned_I(self.integer), **colors)
+            sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}{}{RESET_ALL}{}'.format(hash_color, known_hash_name, funcptr_str, **colors)
+        elif known_hash_name and options.annotate_hex:
+            sb += '  {BRIGHT}{BLACK}; {RESET_ALL}{}${:08x}{RESET_ALL}{}'.format(hash_color, unsigned_I(self.integer), funcptr_str, **colors)
+        elif hash_is_func_ptr:
+            sb += '  {BRIGHT}{BLACK};{RESET_ALL}{}'.format(funcptr_str, **colors)
     return sb
 
 
@@ -534,19 +539,60 @@ def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DE
 
 ## WRITE SCRIPT ##
 
+_bruteforceset = None
+
+class AnyVariable:
+    __slots__ = ('scope', 'var_offset', 'hash', 'type', 'name')
+    def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
+        self.scope:MjoScope = MjoScope(scope)
+        self.var_offset:int = var_offset
+        self.hash:HashValue = HashValue(hash) if hash is not None else None
+        self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
+        self.name:str = name
+
+    @property
+    def namedisasm(self) -> str:
+        return f'${self.name}' if self.name is not None else f'${self.hash:08x}'
+
+    def __repr__(self) -> str:
+        namerepr = f'"{self.name}"' if self.name is not None else (f'${self.hash:08x}' if self.hash is not None else '$????????')
+        locrepr = f' {self.var_offset}' if self.scope is MjoScope.LOCAL else ''
+        # return f'<{self.__class__.__name__}: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr} >'
+        typestr = self.type.getname() if self.type is not None else '<?type>'
+        scopestr = self.scope.getname() if self.scope is not None else '<?scope>'
+        return f'<Variable: {scopestr} {typestr} {namerepr}{locrepr}>'
+        # return f'<Variable: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr}>'
+    def __str__(self) -> str: return repr(self)
+
+class GlobalVariable(AnyVariable):
+    def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None):
+        super().__init__(scope, -1, hash, type, name)
+
+class LocalVariable(AnyVariable):
+    def __init__(self, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
+        super().__init__(MjoScope.LOCAL, var_offset, hash, type, name)
+
 def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT):
     """Write analyzed script IL instructions and blocks to .mjil file
     """
+    global _bruteforceset
     options.color = False
     options.set_address_len(script.bytecode_size)
     import csv
     cfg:ControlFlowGraph = analyze_script(script)
 
     resfile = reswriter = None
-    from ..database.hashes import brute_force
-    # print('Loading brute-force locals...', end='', flush=True)
-    brute_force.load_locals_brute()
-    # print('done!')
+    if _bruteforceset is None:
+        print('Loading brute-force locals...', end='', flush=True)
+        from ..database.hashes.brute_force import BruteForceSet
+        brute_force = BruteForceSet('_', pre_postfixes=('',) + tuple(str(n) for n in range(1, 16)))
+        brute_force.add_pattern( ((1,4), "a-z") )
+        brute_force.compute(True) #False)
+        _bruteforceset = brute_force
+        print('done!')
+    else:
+        brute_force = _bruteforceset
+
     groupname:str = known_hashes.GROUPS.get(script.main_function.hash)
 
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
@@ -563,71 +609,14 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
         writer.write(format_readmark(script, options=options) + '\n')
         # writer.write('\n')
 
-        from mj.script.flags import MjoType
-        from mj.identifier import HashName, HashValue
-        from mj.crypt import hash32
-        from mj.name import splitgroup, splitpostfix, splitprefix, splitsymbols, joingroup, joinsymbols
-        import mj.name
+        from .flags import MjoType
+        from ..identifier import HashName, HashValue
+        from ..crypt import hash32
+        # from ..name import splitgroup, splitpostfix, splitprefix, splitsymbols, joingroup, joinsymbols
+        from .. import name as mj_name
         function_hashes:Dict[int, Function] = {}
         for function in cfg.functions:
             function_hashes[function.hash] = function
-        class AnyVariable:
-            __slots__ = ('scope', 'var_offset', 'hash', 'type', 'name')
-            def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-                self.scope:MjoScope = MjoScope(scope)
-                self.var_offset:int = var_offset
-                self.hash:HashValue = HashValue(hash) if hash is not None else None
-                self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
-                self.name:str = name
-            # @property
-            # def var_offset(self) -> int: return None
-            # @property
-            # def scope(self) -> MjoScope: return None #MjoScope.UNKNOWN
-            @property
-            def namedisasm(self) -> str:
-                return f'${self.name}' if self.name is not None else f'${self.hash:08x}'
-            def __repr__(self) -> str:
-                namerepr = f'"{self.name}"' if self.name is not None else (f'${self.hash:08x}' if self.hash is not None else '$????????')
-                locrepr = f' {self.var_offset}' if self.scope is MjoScope.LOCAL else ''
-                # return f'<{self.__class__.__name__}: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr} >'
-                typestr = self.type.getname() if self.type is not None else '<?type>'
-                scopestr = self.scope.getname() if self.scope is not None else '<?scope>'
-                return f'<Variable: {scopestr} {typestr} {namerepr}{locrepr}>'
-                # return f'<Variable: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr}>'
-            def __str__(self) -> str: return self.__repr__()
-        class GlobalVariable(AnyVariable):
-            # __slots__ = AnyVariable.__slots__ + ('scope',)
-            def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None):
-                super().__init__(scope, -1, hash, type, name)
-            #     self.scope:MjoScope = MjoScope(scope)
-            # @property
-            # def var_offset(self) -> int: return -1
-        class LocalVariable(AnyVariable):
-            # __slots__ = AnyVariable.__slots__ + ('var_offset',)
-            def __init__(self, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-                super().__init__(MjoScope.LOCAL, var_offset, hash, type, name)
-            #     self.var_offset:int = var_offset
-            # @property
-            # def scope(self) -> MjoScope: return MjoScope.LOCAL
-
-        # class GlobalVariable:
-        #     __slots__ = ('scope', 'hash', 'name', 'type')
-        #     def __init__(self, scope:MjoScope, hash:HashValue=None, name:str=None, type:MjoType=None):
-        #         self.scope:MjoScope = MjoScope(scope)
-        #         self.hash:HashValue = HashValue(hash) if hash is not None else None
-        #         self.name:str = name
-        #         self.type:MjoType = MjoType(type) if type is not None else MjoType.UNKNOWN
-        #     @property
-        #     def var_offset(self) -> int: return -1
-        # class LocalVariable:
-        #     __slots__ = ('var_offset', 'hash', 'name', 'type')
-        #     def __init__(self, var_offset:int, hash:HashValue=None, name:str=None, type:MjoType=None):
-        #         self.var_offset:int = var_offset
-        #         self.hash:HashValue = HashValue(hash) if hash is not None else None
-        #         self.name:str = name
-        #         self.type:MjoType = MjoType(type) if type is not None else MjoType.UNKNOWN
-        #     @property
-        #     def scope(self) -> MjoScope: return MjoScope.LOCAL
 
         found_names:Dict[int,str] = {}
         notfound_names:Set[str] = set()
@@ -681,7 +670,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     elif globalvar.type != type: print(f'mismatch type {globalvar!r}')
                 if name is not None:
                     if   globalvar.name is None: globalvar.name = name
-                    elif globalvar.name != type: print(f'mismatch name {globalvar!r}')
+                    elif globalvar.name != name: print(f'mismatch name {globalvar!r}')
                     
                 if globalvar.name is None and globalvar.hash not in notfound_names:
                     globalvar.name = found_names.get(globalvar.hash)
@@ -694,11 +683,11 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     if globalvar.name is None:
                         notfound_names.add(globalvar.hash)
                     if globalvar.name is None and globalvar.type is not None:
-                        results = brute_force.find_custom_brutes(globalvar.hash, globalvar.scope.prefix, globalvar.type.postfix)
+                        results = brute_force.find_hash(globalvar.hash, globalvar.scope.prefix, globalvar.type.postfix)
                         if not results:
                             notfound_names.add(globalvar.hash)
                         else:
-                            groupresults = [r for r in results if mj.name.groupname(r)==groupname]
+                            groupresults = [r for r in results if mj_name.groupname(r)==groupname]
                             if len(results) > 1:
                                 print(f'{S.DIM}{F.CYAN}Collisions for {globalvar.scope.getname()} var ${globalvar.hash:08x}: {results}{S.RESET_ALL}')
                                 notupper = [s for s in (groupresults or results) if not s[1].isupper()]
@@ -715,7 +704,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     found_names.setdefault(globalvar.hash, globalvar.name)
 
                 if globalvar.type is None and globalvar.name is not None:
-                    postfix = mj.name.postfixsymbol(globalvar.name)
+                    postfix = mj_name.postfixsymbol(globalvar.name)
                     if postfix is not None:
                         globalvar.type = MjoType.frompostfix(postfix)
                 
@@ -739,7 +728,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     elif localvar.type != type: print(f'mismatch type {localvar!r}')
                 if name is not None:
                     if   localvar.name is None: localvar.name = name
-                    elif localvar.name != type: print(f'mismatch name {localvar!r}')
+                    elif localvar.name != name: print(f'mismatch name {localvar!r}')
 
                 # if hash is not None and localvar.hash is None:
                 #     localvar.hash = HashValue(hash)
@@ -753,7 +742,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     if localvar.name is None:
                         localvar.name = known_hashes.LOCAL_VARS.get(localvar.hash)
                     if localvar.name is None and localvar.type is not None:
-                        results = brute_force.find_local_brute(localvar.hash, localvar.type.postfix)
+                        results = brute_force.find_hash(localvar.hash, localvar.scope.prefix, localvar.type.postfix, '')
                         if not results:
                             notfound_names.add(localvar.hash)
                         else:
@@ -769,7 +758,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     found_names.setdefault(localvar.hash, localvar.name)
 
                 if localvar.type is None and localvar.name is not None:
-                    postfix = mj.name.postfixsymbol(localvar.name)
+                    postfix = mj_name.postfixsymbol(localvar.name)
                     if postfix is not None:
                         localvar.type = MjoType.frompostfix(postfix)
 
@@ -869,8 +858,8 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     return f'{myvar.name}{modestr}'
                 elif myvar.hash is not None:
                     if myvar.type is not None or myvar.scope is not None:
-                        typestr = myvar.type.postfix if myvar.type is not None else ''
-                        scopestr = myvar.scope.prefix if myvar.scope is not None else ''
+                        typestr = myvar.type.postfix if myvar.type is not None else '?'
+                        scopestr = myvar.scope.prefix if myvar.scope is not None else '?'
                         return f'{scopestr}{{{myvar.hash:08x}}}{typestr}{modestr}'
                     else:
                         return f'${myvar.hash:08x}{modestr}'
@@ -900,7 +889,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                     reskey = script.get_resource_key(instruction, options=options) if reswriter is not None else None
                     if reskey is not None:
                         reswriter.writerow([reskey, instruction.string])
-                    writer.write('  ' + format_instruction(instruction, options=options, resource_key=reskey) + '\n')
+                    writer.write('  ' + format_instruction(instruction, options=options, resource_key=reskey, script_functions=function_hashes) + '\n')
                 if i + 1 < len(function.basic_blocks):
                     writer.write(' \n')
             writer.write(format_function_close(function, options=options) + '\n')

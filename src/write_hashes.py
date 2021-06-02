@@ -483,6 +483,7 @@ def main(argv:list=None) -> int:
         add_help=True)
 
     # pgroup = parser.add_mutually_exclusive_group()
+    # parser.add_argument('-o', '--output', metavar='PYFILE', required=False, help='output python _hashes module file')
     parser.add_argument('-i', '--input', dest='inputs', metavar='MJSFILE', nargs='+', default=[], required=False, help='parse hashes and groups from mjs/mjh files')
     parser.add_argument('-I', '--input-mjs', dest='inputs2', action='store_const', const=DEFAULT_MJS, default=[], required=False, help='parse hashes and groups from all repo mjs/mjh files')
     parser.add_argument('-A', '--ame-mjs', dest='inputs3', action='store_const', const=AME_ORIGINALS, default=[], required=False, help='parse hashes and groups from all repo \"Ame no Marginal original\" script files (not included)')
@@ -654,7 +655,8 @@ def main(argv:list=None) -> int:
     # write python for our library
     hash_items = [HashSelection(n.replace('_', ' ').rstrip('s'), n.upper(), f'{n.upper()}_LOOKUP', fn(d), p,c) for n,d,p,fn,c in PY_HASHES]
     group_items = [GroupSelection(n1.replace('_', ' ').rstrip('s'), n2.upper(), l, t, c) for n1,n2,l,t,c in GROUPS]
-    filename = f'../src/mjotool/known_hashes/_hashes{args.test_name}.py'
+    #filename = f'../src/mjotool/known_hashes/_hashes{args.test_name}.py'
+    filename = f'../src/mj/database/hashes/_hashes{args.test_name}.py'
     print(f'{S.BRIGHT}{F.GREEN}Writing:{S.RESET_ALL} {S.BRIGHT}{F.BLUE}{filename}{S.RESET_ALL}')
     with open(filename, 'wt+', encoding='utf-8') as writer:
         write_python_file(writer, hash_items, group_items, readable=False, sort=True)

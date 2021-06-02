@@ -127,7 +127,7 @@ class KeywordUnhasher:
                                                                  *[self._prep_word(w, False, False) for w in self.config.words])))
         self.words_tr:tuple = ordered_unique(list_to_bytes(chain(*[self._prep_word(w, True,  True)  for w in self.config.words_raw],
                                                                  *[self._prep_word(w, False, True)  for w in self.config.words])))
-        if len(self.words_tr) == len(self.words):
+        if len(self.words_tr) == len(self.words) and self.words_tr[0] == self.words[0]:  # lazy check which usually is required when doing only-underscores
             self.words_tr = self.words  # nothing changed, keep original instance
 
         self.prefixes:tuple  = ordered_unique(list_to_bytes(self.config.prefixes))  or (b'',)
@@ -157,8 +157,13 @@ class KeywordUnhasher:
         if self.config.capitalize: words.append(word.capitalize())
         if self.config.upper:      words.append(word.upper())
         if self.config.lower:      words.append(word.lower())
+        if self.config.underscore and not (self.config.normal or self.config.capitalize or self.config.upper or self.config.lower):
+            if trailing and not self.config.trailing:
+                words.append(word)
+            if not trailing or self.config.trailing:
+                words.append(word+'_')
         # skip adding underscores? (this is for words list of last word at depth)
-        if self.config.underscore and (not trailing or self.config.trailing):
+        elif self.config.underscore and (not trailing or self.config.trailing):
             words.extend([w+'_' for w in words] if words else [word+'_']) # lazy handling for empty list, just word_
         return words
 

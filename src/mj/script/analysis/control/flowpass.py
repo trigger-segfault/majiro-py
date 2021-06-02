@@ -33,7 +33,8 @@ from .block import BasicBlock, Function
 
 
 class ControlFlowGraph:
-    def __init__(self, functions:List[Function]):
+    def __init__(self, script:MjoScript, functions:List[Function]):
+        self.script:MjoScript = script
         self.functions:List[Function] = functions
     
     @classmethod
@@ -65,7 +66,7 @@ class ControlFlowGraph:
         for function in functions:
             cls.analyze_function(function)
         
-        return ControlFlowGraph(functions)
+        return ControlFlowGraph(script, functions)
 
     @classmethod
     def possible_next_instruction_offsets(cls, instruction:Instruction) -> Iterator[int]:

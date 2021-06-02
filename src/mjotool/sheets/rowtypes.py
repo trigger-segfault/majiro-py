@@ -91,12 +91,12 @@ class Typedef(enum.Enum):
     ANY      = 'any'
     ANY_VOID = 'any/void' # Return types only
 
-    INT_UNK  = 'int?'     # type: int (usage unknown)
-    INT      = 'int'      # type: int (usage known)
-    BOOL     = 'bool'     # type: int (0 or 1)
-    FILE     = 'file*'    # type: int (ptr to FILE)
-    PAGE     = 'page*'    # type: int (ptr to PAGE)
-    SPRITE   = 'sprite*'  # type: int (ptr to SPRITE)
+    INT_UNK  = 'int?'     # base type: int (usage unknown)
+    INT      = 'int'      # base type: int (usage known)
+    BOOL     = 'bool'     # base type: int (0 or 1)
+    FILE     = 'file*'    # base type: int (ptr to FILE)
+    PAGE     = 'page*'    # base type: int (ptr to PAGE)
+    SPRITE   = 'sprite*'  # base type: int (ptr to SPRITE)
 
     FLOAT    = 'float'
     STRING   = 'string'

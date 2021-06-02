@@ -79,7 +79,7 @@ def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DE
 def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT):
     """Write analyzed script IL instructions and blocks to .mjil file
     """
-    return disassembler.disassemble_script(filename, script, outfilename, options=options)
+    disassembler.disassemble_script(filename, script, outfilename, options=options)
     # options.color = False
     # options.set_address_len(script.bytecode_size)
     # cfg:ControlFlowGraph = analyze_script(script)

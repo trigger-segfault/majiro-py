@@ -9,7 +9,7 @@ __version__ = '0.1.0'
 __date__    = '2021-05-03'
 __author__  = 'Robert Jordan'
 
-__all__ = ['GROUP_SYSCALL', 'GROUP_DEFAULT', 'GROUP_LOCAL', 'IdentifierKind', 'Typedef', 'HashValue', 'HashName']#, 'Identifier', 'VariableSig', 'LocalSig', 'ArgumentSig', 'FunctionSig', 'SyscallSig']#, 'FunctionReturn'
+__all__ = ['GROUP_SYSCALL', 'GROUP_DEFAULT', 'GROUP_LOCAL', 'IdentifierKind', 'Typedef', 'HashValue', 'HashName']
 
 #######################################################################################
 
@@ -17,22 +17,17 @@ __all__ = ['GROUP_SYSCALL', 'GROUP_DEFAULT', 'GROUP_LOCAL', 'IdentifierKind', 'T
 # from .crypt import hash32       # used by verify()
 # from .crypt import to_hash32    # used by HashName() when passed a str value
 # from .database.hashes import *  # used by HashValue.lookup*() functions
-# from .util.typecast import unsigned_I  # used by HashValue()
 
+import enum
+from typing import Any, Optional, Tuple, Union
 
-import enum #, re
-# from collections import namedtuple
-from itertools import chain
-from typing import Dict, List, Optional, Pattern, Tuple, Union
-
-# from .util.typecast import to_bytes, to_str, unsigned_I, unsigned_Q
-from .name import GROUP_LOCAL, GROUP_DEFAULT, GROUP_SYSCALL, splitgroup, joingroup, groupname, hasgroup
-
-# from ..flags import MjoType, MjoFlags, MjoScope
+from . import name as mj_name
+from .name import GROUP_LOCAL, GROUP_DEFAULT, GROUP_SYSCALL, splitgroup, joingroup, groupname, basename, hasgroup, splitsymbols, prefixsymbol, postfixsymbol
 
 
 #######################################################################################
 
+#region ## ENUM TYPES ##
 
 class IdentifierKind(enum.IntEnum):
     """Identifier kind for names and hashes.
@@ -47,18 +42,65 @@ class IdentifierKind(enum.IntEnum):
     CALLBACK   = 6
     # OTHER      = enum.auto()
 
-    @property
-    def is_func(self) -> bool:
-        return (IdentifierKind.FUNCTION <= self <= IdentifierKind.SYSCALL)
-    @property
-    def is_var(self) -> bool:
-        return (IdentifierKind.PERSISTENT <= self <= IdentifierKind.LOCAL)
-    @property
-    def is_cb(self) -> bool:
-        return (self is IdentifierKind.CALLBACK)
+    def __bool__(self) -> bool: return self is not IdentifierKind.UNKNOWN
 
-    def __bool__(self) -> bool:
-        return self is not IdentifierKind.UNKNOWN
+    @property
+    def is_var(self) -> bool: return (IdentifierKind.PERSISTENT <= self <= IdentifierKind.LOCAL)
+    @property
+    def is_global_var(self) -> bool: return (IdentifierKind.PERSISTENT <= self <= IdentifierKind.THREAD)
+    @property
+    def is_local_var(self) -> bool: return (self is IdentifierKind.LOCAL)
+    @property
+    def is_func(self) -> bool: return (IdentifierKind.FUNCTION <= self <= IdentifierKind.SYSCALL)
+    @property
+    def is_call(self) -> bool: return (self is IdentifierKind.FUNCTION)
+    @property
+    def is_syscall(self) -> bool: return (self is IdentifierKind.SYSCALL)
+    @property
+    def is_cb(self) -> bool: return (self is IdentifierKind.CALLBACK)
+
+    def to_mjoscope(self, default:Any=None) -> Optional['MjoScope']:
+        from .script.flags import MjoScope
+        if IdentifierKind.PERSISTENT <= self <= IdentifierKind.LOCAL:
+            return MjoScope(self.value)
+        elif self is IdentifierKind.FUNCTION:
+            return MjoScope.FUNCTION
+        elif self is IdentifierKind.SYSCALL:
+            return MjoScope.SYSCALL
+        elif self is IdentifierKind.UNKNOWN:
+            return MjoScope.UNKNOWN
+        return default
+    @classmethod
+    def from_mjoscope(cls, mjoscope:'MjoScope', default:Any=None) -> 'IdentifierKind':
+        from .script.flags import MjoScope
+        if MjoScope.PERSISTENT <= mjoscope <= MjoScope.LOCAL:
+            return IdentifierKind(mjoscope.value)
+        elif mjoscope is MjoScope.FUNCTION:
+            return IdentifierKind.FUNCTION
+        elif mjoscope is MjoScope.SYSCALL:
+            return IdentifierKind.SYSCALL
+        elif mjoscope is MjoScope.UNKNOWN:
+            return IdentifierKind.UNKNOWN
+        return default
+
+    @property
+    def prefix(self) -> str: return self._PREFIXES[self]
+    @classmethod
+    def fromprefix(cls, prefix:str, default:Any=..., allow_unk:bool=False) -> 'IdentifierKind':
+        if not allow_unk and prefix == IdentifierKind.UNKNOWN.prefix:
+            if default is not Ellipsis:
+                return default
+            raise KeyError(prefix)
+        if default is not Ellipsis:
+            return cls._PREFIX_LOOKUP.get(prefix, default)
+        return cls._PREFIX_LOOKUP[prefix]
+    @classmethod
+    def fromprefix_name(cls, name:str, default:Any=..., allow_unk:bool=False) -> 'IdentifierKind':
+        prefix = prefixsymbol(name)
+        if allow_unk and prefix not in cls._PREFIX_LOOKUP:
+            name = ''
+        return cls.fromprefix(prefix, default, allow_unk=allow_unk)
+
 
 class Typedef(enum.IntFlag):
     """Identifier types and typedef aliases.
@@ -66,10 +108,10 @@ class Typedef(enum.IntFlag):
     UNKNOWN      = -1   # ('?' postfix used internally to specify the name is unknown)
     #
     INT          = 0x0  #   '' postfix (int,         [i])  (also used for handles/function pointers)
-    FLOAT        = 0x1  #  '%' postfix (float,       [r])  (observed as '!' for syscall: $46b18379 "$rand!@MAJIRO_INTER")
+    FLOAT        = 0x1  #  '%' postfix (float,       [r])  (includes legacy postfix: '!')
     STRING       = 0x2  #  '$' postfix (string,      [s])
     INT_ARRAY    = 0x3  #  '#' postfix (intarray,    [iarr])
-    FLOAT_ARRAY  = 0x4  # '%#' postfix (floatarray,  [rarr])
+    FLOAT_ARRAY  = 0x4  # '%#' postfix (floatarray,  [rarr])  (includes legacy postfix: '!#')
     STRING_ARRAY = 0x5  # '$#' postfix (stringarray, [sarr])
     #
     ANY          = 0x6
@@ -103,24 +145,141 @@ class Typedef(enum.IntFlag):
     #
     @property
     def basetype(self) -> 'Typedef':
-        """returns the base type of the Typedef.
-        """
+        """returns the base type of the Typedef."""
         return self if self is Typedef.UNKNOWN else Typedef(self.value & Typedef._TYPEMASK)
     #
     def is_int(self) -> bool:
         return self is not Typedef.UNKNOWN and (self & Typedef._TYPEMASK) is Typedef.INT
-    #
     def is_ptr(self) -> bool:
         return self is not Typedef.UNKNOWN and (self & Typedef._PTRMASK) is Typedef.PTR
-        # return self is not Typedef.UNKNOWN and (self & (Typedef._TYPEMASK | Typedef.PTR)) is Typedef.PTR
+    def is_float(self) -> bool:
+        return self is not Typedef.UNKNOWN and (self & Typedef._TYPEMASK) is Typedef.FLOAT
+    def is_string(self) -> bool:
+        return self is not Typedef.UNKNOWN and (self & Typedef._TYPEMASK) is Typedef.STRING
     #
     def is_any(self) -> bool:
         return self is not Typedef.UNKNOWN and (self & Typedef._TYPEMASK) is Typedef.ANY
-    #
     def is_void(self) -> bool:
         return self is not Typedef.UNKNOWN and (self & Typedef._TYPEMASK) is Typedef.VOID or (self is Typedef.ANY_VOID)
+    # def is_array(self) -> bool:
+    #     return self is not Typedef.UNKNOWN and (Typedef.INT_ARRAY <= (self & Typedef._TYPEMASK) <= Typedef.STRING_ARRAY)
+    #
+    @property
+    def is_numeric(self) -> bool: return (Typedef.INT <= self.basetype <= Typedef.FLOAT)
+    @property
+    def is_reference(self) -> bool: return (Typedef.STRING <= self.basetype <= Typedef.STRING_ARRAY)
+    @property
+    def is_primitive(self) -> bool: return (Typedef.INT <= self.basetype <= Typedef.STRING)
+    @property
+    def is_array(self) -> bool: return (Typedef.INT_ARRAY <= self.basetype <= Typedef.STRING_ARRAY)
+    @property
+    def element(self) -> 'Typedef':
+        return Typedef(self.value - Typedef.INT_ARRAY.value) if self.is_array else self
+    @property
+    def array(self) -> 'Typedef':
+        if self is Typedef.UNKNOWN: return None
+        return Typedef(self.value + Typedef.INT_ARRAY.value) if self.is_primitive else self
+    #
+    #
+    def to_mjotype(self, default:Any=None) -> 'MjoType':
+        from .script.flags import MjoType
+        base = self.basetype
+        if Typedef.INT <= base <= Typedef.STRING_ARRAY:
+            return MjoType(base.value)
+        elif self is Typedef.UNKNOWN:
+            return MjoType.UNKNOWN
+        elif self is Typedef.INTERNAL:
+            return MjoType.INTERNAL
+        elif base is Typedef.VOID:
+            return MjoType.VOID
+        return default
+    @classmethod
+    def from_mjotype(cls, mjotype:'MjoType', default:Any=None) -> 'Typedef':
+        from .script.flags import MjoType
+        if MjoType.INT <= mjotype <= MjoType.STRING_ARRAY:
+            return Typedef(mjotype.value)
+        elif mjotype is MjoType.UNKNOWN:
+            return Typedef.UNKNOWN
+        elif mjotype is MjoType.INTERNAL:
+            return Typedef.INTERNAL
+        elif mjotype is MjoType.VOID:
+            return Typedef.VOID
+        return default
+    
+    @property
+    def postfix(self) -> str:
+        if self is Typedef.INTERNAL:
+            return self._POSTFIXES_ALT[self]  # INTERNAL only has an alt type since we still don't really understand it
+        return self._POSTFIXES[self]
+    @classmethod
+    def frompostfix(cls, postfix:str, default:Any=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'Typedef':
+        if not allow_unk and postfix == Typedef.UNKNOWN.postfix:
+            if default is not Ellipsis:
+                return default
+            raise KeyError(postfix)
+        name = None
+        if allow_alt:
+            name = cls._POSTFIX_ALT_LOOKUP.get(postfix)
+        # do name checks here to "cleanly" handle default values
+        if default is not Ellipsis:
+            return name if name is not None else cls._POSTFIX_LOOKUP.get(postfix, default)
+        else:
+            return name if name is not None else cls._POSTFIX_LOOKUP[postfix]
+    @classmethod
+    def frompostfix_name(cls, fullname:str, default:Any=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'Typedef':
+        postfix = postfixsymbol(fullname)
+        return cls.frompostfix(postfix, default, allow_unk=allow_unk, allow_alt=allow_alt)
 
+# Typedef:
+Typedef._POSTFIXES = {
+    #NOTE: not a real type flag <INTERNAL USE ONLY>
+    Typedef.UNKNOWN:      mj_name.DOC_POSTFIX_UNKNOWN,  # '?'
+    #
+    Typedef.INT:          mj_name.POSTFIX_INT,          # ''
+    Typedef.FLOAT:        mj_name.POSTFIX_FLOAT,        # '%'
+    Typedef.STRING:       mj_name.POSTFIX_STRING,       # '$'
+    Typedef.INT_ARRAY:    mj_name.POSTFIX_INT_ARRAY,    # '#'
+    Typedef.FLOAT_ARRAY:  mj_name.POSTFIX_FLOAT_ARRAY,  # '%#'
+    Typedef.STRING_ARRAY: mj_name.POSTFIX_STRING_ARRAY, # '$#'
+    #
+    #NOTE: not a real type flag <INTERNAL USE ONLY>
+    Typedef.ANY:          mj_name.POSTFIX_ANY,          # ''
+    Typedef.VOID:         mj_name.POSTFIX_VOID,         # ''
+    Typedef.INTERNAL:     mj_name.POSTFIX_INTERNAL,     # '~'
+}
+Typedef._POSTFIXES_ALT = {
+    #NOTE: legacy float type prefix '!', observed with 3 syscalls: 
+    #       * $46b18379 "$rand!@MAJIRO_INTER"         (still present)
+    #       * $2cd009af "$dim_create!#@MAJIRO_INTER"  (removed in releases after Mahjong [v1509])
+    #       * $20caeb0e "$dim_release!#@MAJIRO_INTER" (removed in releases after Mahjong [v1509])
+    Typedef.FLOAT:        mj_name.LEGACY_POSTFIX_FLOAT,       # '!'
+    Typedef.FLOAT_ARRAY:  mj_name.LEGACY_POSTFIX_FLOAT_ARRAY, # '!#'
+    #
+    # #NOTE: WHAT THE HELL!??
+    # #      observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision.
+    # #      it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe.
+    # Typedef.INTERNAL:     mj_name.POSTFIX_INTERNAL,     # '~'
+}
+Typedef._POSTFIX_LOOKUP = dict((v,k) for k,v in Typedef._POSTFIXES.items() if k is not Typedef.VOID)
+Typedef._POSTFIX_ALT_LOOKUP = dict((v,k) for k,v in Typedef._POSTFIXES_ALT.items())
 
+# IdentifierKind:
+IdentifierKind._PREFIXES = {
+    #NOTE: not a real scope flag <INTERNAL USE ONLY>
+    IdentifierKind.UNKNOWN:    '',
+    #
+    IdentifierKind.PERSISTENT: mj_name.PREFIX_PERSISTENT, # '#'
+    IdentifierKind.SAVEFILE:   mj_name.PREFIX_SAVEFILE,   # '@'
+    IdentifierKind.THREAD:     mj_name.PREFIX_THREAD,     # '%'
+    IdentifierKind.LOCAL:      mj_name.PREFIX_LOCAL,      # '_'
+    # #NOTE: not a real scope flag <INTERNAL USE ONLY>
+    IdentifierKind.FUNCTION:   mj_name.PREFIX_FUNCTION,   # '$'
+    IdentifierKind.SYSCALL:    mj_name.PREFIX_FUNCTION,   # '$'
+    IdentifierKind.CALLBACK:   '',
+}
+IdentifierKind._PREFIX_LOOKUP = dict((v,k) for k,v in IdentifierKind._PREFIXES.items() if k not in (IdentifierKind.SYSCALL, IdentifierKind.CALLBACK))
+
+#endregion
 
 #region ## FLAG NAME DICTIONARIES ##
 
@@ -198,6 +357,30 @@ def verify(hash:int, text:Union[str,bytes], init:int=0) -> bool:
     from .crypt import hash32
     return hash == hash32(text, init)
 
+# class hexint(int):
+#     """Hexadecimal integer representation as: '{self:#x}'"""
+#     def __str__(self) -> str: return f'{self:#08x}'
+#     __repr__ = __str__
+
+# class hexint8(int):
+#     """Hexadecimal 8-bit integer representation as: '{self:#02x}'"""
+#     def __str__(self) -> str: return f'{self:#02x}'
+#     __repr__ = __str__
+
+# class hexint16(int):
+#     """Hexadecimal 16-bit integer representation as: '{self:#04x}'"""
+#     def __str__(self) -> str: return f'{self:#04x}'
+#     __repr__ = __str__
+
+# class hexint32(int):
+#     """Hexadecimal 32-bit integer representation as: '{self:#08x}'"""
+#     def __str__(self) -> str: return f'{self:#08x}'
+#     __repr__ = __str__
+
+# class hexint64(int):
+#     """Hexadecimal 64-bit integer representation as: '{self:#016x}'"""
+#     def __str__(self) -> str: return f'{self:#016x}'
+#     __repr__ = __str__
 
 class HashValue(int):
     """HashValue(int)
@@ -207,8 +390,7 @@ class HashValue(int):
     def __new__(cls, value:int):
         if type(value) is cls and cls is HashValue:
             return value  # return same instance
-        from .util.typecast import unsigned_I
-        return super().__new__(cls, unsigned_I(value))
+        return super().__new__(cls, value & 0xffffffff)
 
     #region ## PROPERTIES TO MATCH HashName ##
 
@@ -308,6 +490,10 @@ class HashName:
     this class is immutable
     """
     __slots__ = ('hash', 'name', 'kind')
+    hash:HashValue
+    name:Optional[str]
+    kind:IdentifierKind
+    
     def __init__(self, value:Union[int,str], kind:IdentifierKind=..., *, group:Optional[str]=None, hash:Optional[int]=None, lookup:bool=False):
         if isinstance(value, HashName):
             self.name = value.name
@@ -360,30 +546,22 @@ class HashName:
     #region ## PROPERTIES ##
 
     @property
-    def value(self) -> Union[HashValue,str]:
-        return self.hash if self.name is None else self.name
+    def value(self) -> Union[HashValue,str]: return self.hash if self.name is None else self.name
 
     #endregion
 
     #region ## SPECIAL METHODS ##
 
-    def __int__(self) -> HashValue:
-        return self.hash
+    def __int__(self) -> HashValue: return self.hash
 
-    def __hash__(self) -> int:
-        return self.hash # ^ ((self.kind.value & 0xffffffff) << 1)
+    def __hash__(self) -> int: return self.hash
     def __eq__(self, other) -> bool:
         return (other is not None) and hasattr(other, '__int__') and (self.hash == int(other))
     def __ne__(self, other) -> bool:
         return (other is None) or not hasattr(other, '__int__') or (self.hash != int(other))
 
-    def __str__(self) -> str:
-        return f'0x{self.hash:08x}' if self.name is None else self.name
+    def __str__(self) -> str: return f'0x{self.hash:08x}' if self.name is None else self.name
     def __repr__(self) -> str:
-        # if self.name is None:
-        #     return f'0x{self.hash:08x}'
-        # else:
-        #     return f'{self.name!r}'
         kind = '' if self.kind is IdentifierKind.UNKNOWN else f', {self.kind!s}'
         if self.name is None:
             return f'{self.__class__.__name__}(0x{self.hash:08x}{kind})'
@@ -396,35 +574,41 @@ class HashName:
 #######################################################################################
 
 # class Identifier:
-#     """Identifier(name:str, *, group:str=None, doc:str=None)
+#     """Identifier(name:str, *, group:Optional[str]=None, doc:Optional[str]=None)
 
 #     if name contains a '@' after the first character, group will be ignored
 #     """
 #     __slots__ = ('name', 'group', 'scope', 'type', 'doc')
+#     name:str
+#     group:Optional[str]
+#     scope:IdentifierKind
+#     type:Typedef
+#     doc:Optional[str]
+    
 #     # group will be resolved from name if found
-#     def __init__(self, name:str, *, group:str=None, doc:str=None):
-#         name, group = splitgroup(name)
-#         self.name, self.group = splitgroup(name, group)
-#         self.name:str = name
-#         self.group:str = group
-#         self.scope:MjoScope = MjoScope.UNKNOWN
-#         self.type:MjoType = MjoType.UNKNOWN
-#         self.doc:str = doc
+#     def __init__(self, name:str, *, group:Optional[str]=None, doc:Optional[str]=None):
+#         name, namegroup = splitgroup(name)
+#         self.name = name
+#         self.group = group if namegroup is None else namegroup
+#         self.scope = IdentifierKind.UNKNOWN
+#         self.type = Typedef.UNKNOWN
+#         self.doc = doc
 
 
 #         if group and group[0] == '@':
-#             raise ValueError(f'group must not contain \'@\' prefix, got {group}')
+#             raise ValueError(f'group must not contain \'@\' separator, got {group}')
 
-#         # realistically identifiers should have at least two chars before group
-#         at_idx = name.find('@', 1)
-#         if at_idx != -1: # group override from default
-#             self.group = name[at_idx+1:]
-#             self.name  = name[:at_idx]
+#         # # realistically identifiers should have at least two chars before group
+#         # base,group = splitgroup(name)
+#         # at_idx = name.find('@', 1)
+#         # if at_idx != -1: # group override from default
+#         #     self.group = name[at_idx+1:]
+#         #     self.name  = name[:at_idx]
 
 #         # get scope / function:
-#         self.scope = MjoScope.fromprefix_name(self.name, allow_unk=True)
+#         self.scope = IdentifierKind.fromprefix_name(self.name, allow_unk=True)
 #         # get type / return type:
-#         self.type = MjoType.frompostfix_name(self.name, allow_unk=True, allow_alt=True)
+#         self.type = Typedef.frompostfix_name(self.name, allow_unk=True, allow_alt=True)
 
 #     @property
 #     def fullname(self) -> str:
@@ -452,18 +636,15 @@ class HashName:
 #     def is_var(self) -> bool:
 #         return self.scope.is_var #(MjoScope.PERSISTENT <= self.scope <= MjoScope.LOCAL)
 #     @property
-#     def is_array(self) -> bool:
-#         return self.type.is_array #(MjoType.INT_ARRAY <= self.type <= MjoType.STRING_ARRAY)
+#     def is_array(self) -> bool: return self.type.is_array #(MjoType.INT_ARRAY <= self.type <= MjoType.STRING_ARRAY)
 #     @property
 #     def hash(self) -> int:
 #         from .crypt import hash32
 #         return hash32(self.fullname)
 #     @property
-#     def hashstr(self) -> str:
-#         return f'${self.hash:08x}'
+#     def hashstr(self) -> str: return f'${self.hash:08x}'
 #     @property
-#     def definition_keyword(self) -> str:
-#         return ''
+#     def definition_keyword(self) -> str: return ''
 
 #     def __repr__(self) -> str:
 #         return f'{self.__class__.__name__}({self.fullname!r})'
@@ -474,7 +655,7 @@ class HashName:
 
 # class VariableSig(Identifier):
 #     __slots__ = Identifier.__slots__
-#     def __init__(self, name:str, *, group:str=None, doc:str=None):
+#     def __init__(self, name:str, *, group:Optional[str]=None, doc:Optional[str]=None):
 #         super().__init__(name, group=group, doc=doc)
 
 #     @property
@@ -487,7 +668,7 @@ class HashName:
 
 # class LocalSig(VariableSig):
 #     __slots__ = VariableSig.__slots__
-#     def __init__(self, name:str, *, doc:str=None):
+#     def __init__(self, name:str, *, doc:Optional[str]=None):
 #         super().__init__(name, group=GROUP_LOCAL, doc=doc) # local group
 #     def __repr__(self) -> str:
 #         return f'{self.__class__.__name__}({self.fullname!r})'
@@ -498,36 +679,35 @@ class HashName:
 
 # class ArgumentSig(LocalSig):
 #     __slots__ = LocalSig.__slots__ + ('optional', 'variadic', 'default', 'tuple_last')
-#     def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:str=None, tuple_last:bool=False, doc:str=None):
+#     optional:bool
+#     variadic:bool
+#     default:Optional[str]
+#     tuple_last:bool
+
+#     def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:Optional[str]=None, tuple_last:bool=False, doc:Optional[str]=None):
 #         super().__init__(name, doc=doc) # local group
-#         self.optional:bool = optional
-#         self.variadic:bool = variadic
-#         self.default:str = default
-#         self.tuple_last:bool = tuple_last
+#         self.optional = optional
+#         self.variadic = variadic
+#         self.default = default
+#         self.tuple_last = tuple_last
+#     #
 #     @property
-#     def definition_keyword(self) -> str:
-#         return ''  # set back to empty
+#     def definition_keyword(self) -> str: return ''  # set back to empty
 #     @property
-#     def is_optional(self) -> bool: # alias to conform with naming
-#         return self.optional
+#     def is_optional(self) -> bool: return self.optional  # alias to conform with naming
 #     @property
-#     def is_variadic(self) -> bool: # alias to conform with naming
-#         return self.variadic
+#     def is_variadic(self) -> bool: return self.variadic  # alias to conform with naming
 #     @property
-#     def is_tuple_last(self) -> bool: # alias to conform with naming
-#         return self.tuple_last
+#     def is_tuple_last(self) -> bool: return self.tuple_last  # alias to conform with naming
 #     @property
-#     def has_default(self) -> bool:
-#         return self.default is not None
+#     def has_default(self) -> bool: return self.default is not None
 #     @property
-#     def default_repr(self) -> str:
-#         return '' if self.default is None else f' = {self.default}'
+#     def default_repr(self) -> str: return '' if self.default is None else f' = {self.default}'
 #     @property
-#     def va_name(self) -> str:
-#         return f'...{self.name}' if self.variadic else self.name
+#     def va_name(self) -> str: return f'...{self.name}' if self.variadic else self.name
 #     @property
-#     def default_name(self) -> str:
-#         return self.name if self.default is None else f'{self.name} = {self.default}'
+#     def default_name(self) -> str: return self.name if self.default is None else f'{self.name} = {self.default}'
+#     #
 #     def __repr__(self) -> str:
 #         return f'{self.__class__.__name__}({self.fullname!r}, optional={self.optional!r}, variadic={self.variadic!r}, default={self.default!r}, tuple_last={self.tuple_last!r})'
 #     def __str__(self) -> str:
@@ -537,6 +717,9 @@ class HashName:
 
 # class FunctionSig(Identifier):
 #     __slots__ = Identifier.__slots__ + ('is_void', '_arguments')
+#     is_void:Optional[bool]
+#     _ARG_TYPE = ArgumentSig
+
 #     _RE_EOL         = re.compile(r"^(\s*)$")
 #     _RE_WHITESPACE  = re.compile(r"^(\s+)")
 #     _RE_VARIADIC    = re.compile(r"^(\.\.\.)")
@@ -549,12 +732,11 @@ class HashName:
 #                 _RE_PUNCTUATION,
 #                 _RE_DEFAULT,
 #                 _RE_ARGUMENT )
-#     _ARG_TYPE = ArgumentSig
 
-#     def __init__(self, name:str, arguments:Union[List[ArgumentSig],str]=(), *, is_void:Optional[bool]=None, group:str=None, doc:str=None):
+#     def __init__(self, name:str, arguments:Union[List[ArgumentSig],str]=(), *, is_void:Optional[bool]=None, group:Optional[str]=None, doc:Optional[str]=None):
 #         super().__init__(name, group=group, doc=doc)
-#         self.is_void:Optional[bool] = is_void
-#         self._arguments:Union[List[ArgumentSig],str] = []
+#         self.is_void = is_void
+#         self._arguments = []  # type: Union[List[ArgumentSig],str]
 #         if arguments is None:
 #             pass
 #         elif isinstance(arguments, str):
@@ -564,7 +746,7 @@ class HashName:
 
 #     @property
 #     def arguments(self) -> List[ArgumentSig]:
-#         # handle lazy exanding (parsing) of arguments
+#         """handle lazy exanding (parsing) of arguments."""
 #         if self._arguments is None:
 #             return None
 #         elif isinstance(self._arguments, str):
@@ -623,9 +805,7 @@ class HashName:
 #         else:
 #             return bool(self._arguments)
 #     @property
-#     def definition_keyword(self) -> str:
-#         # only use void when confirmed(?)
-#         return 'void' if self.is_void is False else 'func'
+#     def definition_keyword(self) -> str: return 'void' if self.is_void is False else 'func'  # only use void when confirmed(?)
 
 #     @property
 #     def args_str(self) -> str:
@@ -635,7 +815,7 @@ class HashName:
 #             return self._arguments
 #         if not self._arguments:
 #             return 'void'
-#         arg_spans:List[Tuple[bool, str, list]] = []  # optional, variadic ('...' or ''), *args:List[str]
+#         arg_spans = []  # type: List[Tuple[bool, str, list]]  # optional, variadic ('...' or ''), *args:List[str]
 #         optional = self._arguments[0].is_optional
 #         variadic = self._arguments[0].is_variadic
 #         arg_spans.append( (optional, '...' if variadic else '', []) )
@@ -668,8 +848,8 @@ class HashName:
 #         if text is None or text.strip() in ('', 'void'):
 #             return  # no arguments :)
 
-#         last_s:str = None
-#         last_p:Pattern = None
+#         last_s        = None  # type: str
+#         last_p        = None  # type: Pattern
 #         optional      = variadic      = False
 #         next_optional = next_variadic = False
 #         next_arg      = next_default  = None
@@ -679,8 +859,8 @@ class HashName:
 #             if not optional:
 #                 self.end_argument_tuple()
 
-#         eol:bool = False
-#         pos:int = 0
+#         eol = False
+#         pos = 0
 #         while not eol:
 #             m = None
 #             for p in self._RE_SET:
@@ -769,21 +949,21 @@ class HashName:
 
 # class SyscallArgumentSig(ArgumentSig):
 #     __slots__ = ArgumentSig.__slots__ + ('any', 'orig_name')
-#     def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:str=None, tuple_last:bool=False, doc:str=None):
-#         self.any:bool = name[-1] == '*' if name else False
-#         self.orig_name:str = name
+#     any:bool
+#     orig_name:str
+
+#     def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:Optional[str]=None, tuple_last:bool=False, doc:Optional[str]=None):
+#         self.any = name[-1] == '*' if name else False
+#         self.orig_name = name
 #         name = f'_{(name[:-1] if self.any else name)}'
 #         super().__init__(name, optional=optional, variadic=variadic, default=default, tuple_last=tuple_last, doc=doc) # local group
 
 #     @property
-#     def is_any(self) -> bool: # alias to conform with naming
-#         return self.any
+#     def is_any(self) -> bool: return self.any  # alias to conform with naming
 #     @property
-#     def default_name(self) -> str:
-#         return self.orig_name if self.default is None else f'{self.orig_name} = {self.default}'
+#     def default_name(self) -> str: return self.orig_name if self.default is None else f'{self.orig_name} = {self.default}'
 #     @property
-#     def va_name(self) -> str:
-#         return f'...{self.orig_name}' if self.variadic else self.orig_name
+#     def va_name(self) -> str: return f'...{self.orig_name}' if self.variadic else self.orig_name
 
 #     def __repr__(self) -> str:
 #         return f'{self.__class__.__name__}({self.orig_name!r}, optional={self.optional!r}, variadic={self.variadic!r}, default={self.default!r}, tuple_last={self.tuple_last!r})'
@@ -793,19 +973,20 @@ class HashName:
 # class SyscallSig(FunctionSig):
 #     __slots__ = FunctionSig.__slots__
 #     _ARG_TYPE = SyscallArgumentSig
-#     def __init__(self, name:str, arguments:Union[List[SyscallArgumentSig],str]=(), *, is_void:Optional[bool]=None, doc:str=None):
-#         self._arguments:Union[List[SyscallArgumentSig],str] = []
+
+#     def __init__(self, name:str, arguments:Union[List[SyscallArgumentSig],str]=(), *, is_void:Optional[bool]=None, doc:Optional[str]=None):
+#         self._arguments = [] # type: Union[List[SyscallArgumentSig],str]
 #         super().__init__(name, arguments, is_void=is_void, group=GROUP_SYSCALL, doc=doc)
 
 #     @property
-#     def definition_keyword(self) -> str:
-#         return f'inter {super().definition_keyword}'
+#     def definition_keyword(self) -> str: return f'inter {super().definition_keyword}'
 
 #     def __repr__(self) -> str:
 #         return f'{self.__class__.__name__}({self.name!r}, {self.args_repr!r}, is_void={self.is_void!r})'
 #     def __str__(self) -> str:
-#         return f'{self.definition_keyword} {self.name}({self.args_str})'#full_args_repr})'
+#         return f'{self.definition_keyword} {self.name}({self.args_str})'
+
 
 #######################################################################################
 
-
+del enum, Any, Optional, Tuple, Union  # cleanup declaration-only imports

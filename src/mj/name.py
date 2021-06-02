@@ -5,8 +5,8 @@
 this module is designed to function similarly to the `os.path` module functions.
 """
 
-__version__ = '1.0.0'
-__date__    = '2021-05-07'
+__version__ = '1.1.0'
+__date__    = '2021-06-02'
 __author__  = 'Robert Jordan'
 
 __all__ = ['GROUP_LOCAL', 'GROUP_DEFAULT', 'GROUP_SYSCALL', 'chgroup', 'joingroup', 'splitgroup', 'basename', 'groupname', 'hasgroup', 'splitsymbols', 'joinsymbols', 'splitprefix', 'splitpostfix', 'prefixsymbol', 'postfixsymbol', 'hasfullqual', 'hasbasequal', 'hasprefix', 'haspostfix']
@@ -14,38 +14,73 @@ __all__ = ['GROUP_LOCAL', 'GROUP_DEFAULT', 'GROUP_SYSCALL', 'chgroup', 'joingrou
 #######################################################################################
 
 import string
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
-#region ## PUBLIC CONSTANTS ##
+#######################################################################################
+
+#region ## SPECIAL CONSTANTS ##
 
 # standard group names
 GROUP_LOCAL:str   = ''
 GROUP_DEFAULT:str = 'GLOBAL'
 GROUP_SYSCALL:str = 'MAJIRO_INTER'
 
-#endregion
-
-#region ## GROUP CONSTANTS ##
-
-# # function name used calculate hashes in GROUPS lookup dictionary
-# GROUP_HASHNAME:str = '$main'
 # separator character between name / group
 GROUP_SEP:str = '@'
-# minimum index to search for group separator character '@' at
-MIN_GROUP_IDX:int = 2 #1
+
+# entrypoint function basename
+FUNC_MAIN:str              = '$main'
+# local variable (var offset -1) used to get the number of arguments passed to a function
+LOCALVAR_NUMPARAMS:str     = '__SYS__NumParams@'
+# internal variable used to store argument of switch statements (only known usage of '~' postfix, though this may be a collision)
+THREADVAR_INTERNALCASE:str = '%Op_internalCase~@MAJIRO_INTER'
+
+# scope prefixes:
+PREFIX_PERSISTENT:str = '#'
+PREFIX_SAVEFILE:str   = '@'
+PREFIX_THREAD:str     = '%'
+PREFIX_LOCAL:str      = '_'
+PREFIX_FUNCTION:str   = '$'
+
+# type postfixes:  (before group name)
+POSTFIX_INT:str                = ''    # includes void, any, etc...
+POSTFIX_ANY:str                = POSTFIX_INT
+POSTFIX_VOID:str               = POSTFIX_INT
+POSTFIX_FLOAT:str              = '%'
+LEGACY_POSTFIX_FLOAT:str       = '!'   # old float postfix before '%' was chosen (still exists in $rand!() syscall)
+POSTFIX_STRING:str             = '$'
+POSTFIX_INT_ARRAY:str          = '#'
+POSTFIX_FLOAT_ARRAY:str        = '%#'
+LEGACY_POSTFIX_FLOAT_ARRAY:str = '!#'  # old float[] postfix before '%#' was chosen (no usages remain outside of Mahjong's engine)
+POSTFIX_STRING_ARRAY:str       = '$#'
+POSTFIX_INTERNAL:str           = '~'   # not exactly a real postfix (and may be collision), see '%Op_internalCase~@MAJIRO_INTER' above
+# documentational type postfixes:
+DOC_POSTFIX_UNKNOWN:str        = '?'
+DOC_POSTFIX_ANY:str            = '*'
 
 #endregion
 
-#region ## PREFIX/POSTFIX SYMBOL CONSTANTS ##
+#region ## GROUP HELPER CONSTANTS ##
+
+# minimum index to search for group separator character '@' at
+# (based on assumption of name containing prefix char, and at least one letter)
+MIN_GROUP_IDX:int = 2  #1
+
+#endregion
+
+#region ## NAME AND PREFIX/POSTFIX SYMBOL HELPER CONSTANTS ##
 
 # set of all known prefixes/postfixes
-PREFIXES:List[str]  = ('#','@','%','_','$')
-POSTFIXES:List[str] = ('', '%', '$', '#', '%#', '$#',  '!','~',  '?','*')
+#NOTE: '!','!#' are legacy postfixes for the float type (superseded by '%','%#')
+PREFIXES:Tuple[str,...]  = (PREFIX_PERSISTENT, PREFIX_SAVEFILE, PREFIX_THREAD, PREFIX_LOCAL, PREFIX_FUNCTION)
+POSTFIXES:Tuple[str,...] = (POSTFIX_INT, POSTFIX_FLOAT, LEGACY_POSTFIX_FLOAT, POSTFIX_STRING,
+                            POSTFIX_INT_ARRAY, POSTFIX_FLOAT_ARRAY, LEGACY_POSTFIX_FLOAT_ARRAY, POSTFIX_STRING_ARRAY,
+                            POSTFIX_INTERNAL)
 # used for documentation:
 #   unknown: '?'
 #  any type: '*'
-DOC_POSTFIXES:List[str] = POSTFIXES + ('?','*')
+DOC_POSTFIXES:Tuple[str,...] = POSTFIXES + (DOC_POSTFIX_UNKNOWN, DOC_POSTFIX_ANY)
 
 # string of all known prefix/postfix/symbol chars
 PREFIX_CHARS:str  = '#$%@_'
@@ -59,7 +94,8 @@ DOC_POSTFIX_CHARS:str = POSTFIX_CHARS + DOC_CHARS
 DOC_SYMBOL_CHARS:str  = '#$%@_!~' + DOC_CHARS
 
 # string of all known characters that are legal in stripped names, and base names with prefixes/postfixes
-NAME_CHARS:str = string.digits + string.ascii_uppercase + '_' + string.ascii_lowercase
+FIRST_CHARS:str    = string.ascii_uppercase + string.ascii_lowercase + '_'  # (assumed: numbers can't be first character in identifier name)
+NAME_CHARS:str     = string.digits + string.ascii_uppercase + string.ascii_lowercase + '_'
 FULLNAME_CHARS:str = string.digits + string.ascii_uppercase + string.ascii_lowercase + SYMBOL_CHARS  #NOTE: SYMBOL_CHARS already contains '_'
 # string of all known cahracters that are legal in base names with prefixes/postfixes
 #  (with documentation-exclusive characters '?' and '*')
@@ -384,7 +420,7 @@ def haspostfix(name:str, *, allow_doc:bool=False, min_idx:int=...) -> bool:
 
 #endregion
 
+
 #######################################################################################
 
-
-del string, List, Optional, Tuple  # cleanup declaration-only imports
+del string, Optional, Tuple  # cleanup declaration-only imports

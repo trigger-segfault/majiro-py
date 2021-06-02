@@ -3,26 +3,29 @@
 """Majiro script IL formatting
 """
 
-__version__ = '0.1.0'
-__date__    = '2021-05-06'
+__version__ = '0.1.1'
+__date__    = '2021-06-02'
 __author__  = 'Robert Jordan'
 
-__all__ = []
+__all__ = ['Instruction']
 
 #######################################################################################
 
-import io, struct
+import io
 from collections import OrderedDict
 from struct import calcsize, pack, unpack
-from typing import Any, Callable, List, Optional, Dict, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from .opcodes import Opcode
 from .flags import MjoFlags, MjoType
-from ..util.typecast import to_str, to_float, signed_i, signed_h, unsigned_I, unsigned_B, unsigned_H
+from ..util.typecast import to_bytes, to_str, to_float, signed_i, signed_h, unsigned_I, unsigned_B, unsigned_H
 from ..identifier import HashValue, HashName, IdentifierKind
 
-class BasicBlock:
-    pass # Dummy
+
+#######################################################################################
+
+# Dummy
+BasicBlock = type  # Type('mj.script.analysis.control.block.BasicBlock')  # dummy
 
 
 # class OperandsList(OrderedDict):
@@ -80,42 +83,39 @@ class BasicBlock:
 #         raise KeyError(f'can\'t move keys in {self.__class__.__name__}')
 
 
+#######################################################################################
+
 class Instruction:
     """MjoScript Instruction class
     """
-    __slots__ = ('opcode',
-        #'operands',
-        #
-        # 'sint16', 'uint16', 'flags', 'integer', 'hash', 'string', 'float', 'type_list', 'switch_offsets'
-        #
-        'flags', 'arg_num',  'line_num', 'var_offset',
-        '_hash', '_integer', 'real',     'string',
-        'jump_offset', 'switch_offsets', 'type_list',
-        #'_call_addr',
-        #
-        'external_key',
-        #'_external_key',
-        'offset', '_size', 'block', 'jump_target', 'switch_targets', 'hashname')
+    __slots__ = ('opcode', 'flags', 'arg_num', 'line_num', 'var_offset', '_hash',
+        '_integer', 'real', 'string', 'jump_offset', 'switch_offsets', 'type_list',
+        'offset', '_size', 'block', 'jump_target', 'switch_targets', 'external_key', 'hashname')
     _op_names_ = {'f':'flags', 'a':'arg_num',  'l':'line_num', 'o':'var_offset',
                   'h':'_hash', 'i':'_integer', 'r':'real',     's':'string',
                   'j':'jump_offset', 'c':'switch_offsets', 't':'type_list'}
-    #
-    # type_list:List[MjoType] = None
-    # flags:MjoFlags = None
-    # arg_num:int = None
-    # line_num:int = None
-    # var_offset:int = None
-    # _hash:int = None
-    # #_call_addr:int = None
-    # _integer:int = None
-    # real:float = None
-    # string:str = None
-    # jump_offset:int = None
-    # switch_offsets:List[int] = None
-    # type_list:List[MjoType] = None
-    # hashname:Optional[HashName] = None
-    # external_key:Optional[str] = None
-    #
+    
+    opcode:Opcode
+    flags:Optional[MjoFlags]
+    arg_num:Optional[int]
+    line_num:Optional[int]
+    var_offset:Optional[int]
+    _hash:Optional[int]
+    #_call_addr:Optional[int]
+    _integer:Optional[int]
+    real:Optional[float]
+    string:Optional[str]
+    jump_offset:Optional[int]
+    switch_offsets:Optional[List[int]]
+    type_list:Optional[List[MjoType]]
+
+    offset:Optional[int]
+    block:Optional[BasicBlock]
+    jump_target:Optional[BasicBlock]
+    switch_offsets:Optional[List[BasicBlock]]
+    external_key:Optional[str]
+    hashname:Optional[HashName]
+
     def __init__(self, opcode:Opcode, *, offset:Optional[int]=None, block:Optional[BasicBlock]=None):
         # shared info:
         if isinstance(opcode, Opcode):
@@ -126,39 +126,39 @@ class Instruction:
             self.opcode = Opcode.fromname(opcode)
         else:
             raise TypeError(f'argument opcode must be Opcode, int or str type, not {opcode.__class__.__name__}')
-        ## self.operands:Dict[str,Any] = OperandsList(self.opcode.encoding, operands)
-        self.type_list:List[MjoType] = None
-        self.flags:MjoFlags = None
-        self.arg_num:int = None
-        self.line_num:int = None
-        self.var_offset:int = None
-        self._hash:int = None
-        #self._call_addr:int = None
-        self._integer:int = None
-        self.real:float = None
-        self.string:str = None
-        self.jump_offset:int = None
-        self.switch_offsets:List[int] = None
-        self.type_list:List[MjoType] = None
-        self.hashname:Optional[HashName] = None
-        self.external_key:Optional[str] = None
-        ## self._external_key:Optional[str] = None
-        ## self.hashname:Optional[HashName] = None
+        ## self.operands = OperandsList(self.opcode.encoding, operands)  # type: Dict[str,Any]
+        self.type_list = None
+        self.flags = None
+        self.arg_num = None
+        self.line_num = None
+        self.var_offset = None
+        self._hash = None
+        #self._call_addr = None
+        self._integer = None
+        self.real = None
+        self.string = None
+        self.jump_offset = None
+        self.switch_offsets = None
+        self.type_list = None
+        self.hashname = None
+        self.external_key = None
+        ## self._external_key = None
+        ## self.hashname = None
         if 'h' in self.opcode.encoding and self._hash is not None:
             self.hashname = HashName(self._hash) #operands['h'])
         elif 'i' in self.opcode.encoding and self._integer is not None:
             self.hashname = HashName(self._integer) #operands['i'])
 
         # InstructionList representation:
-        self.offset:Optional[int] = offset #None  # bytecode offset
-        self._size:Optional[int] = None  # instruction size in bytecode
-        # self.jump_offset:Optional[int] = None
-        # self.switch_offsets:List[int] = None
+        self.offset = offset #None  # bytecode offset
+        self._size = None  # type: Optional[int]  # instruction size in bytecode
+        # self.jump_offset = None
+        # self.switch_offsets = None
 
         # ControlFlowGraph representation:
-        self.block:Optional[BasicBlock] = block #None
-        ## self.jump_target:Optional[BasicBlock] = None
-        ## self.switch_targets:Optional[List[BasicBlock]] = None
+        self.block = block #None
+        ## self.jump_target = None
+        ## self.switch_targets = None
 
         # if isinstance(location, int):
         #     self.offset = location
@@ -354,8 +354,8 @@ class Instruction:
             offset = reader.tell()
         # <uint16 (opcode)>
         value:int = unpack('<H', reader.read(2))[0]
-        opcode:Opcode = Opcode.BYVALUE[value]
-        instr:Instruction = Instruction(opcode, offset=offset)
+        opcode = Opcode.BYVALUE[value]
+        instr = Instruction(opcode, offset=offset)
         instr.read_operands(reader, lookup=lookup)
         return instr
     
@@ -373,7 +373,7 @@ class Instruction:
             if op == 's':       # <uint16 (N), cstring>
                 v = self.string
                 if v is not None:
-                    cstr:bytes = v.encode('cp932')
+                    cstr:bytes = to_bytes(v)
                     size += 2 + len(cstr) + 1  # cstring + null-terminator
                 else:
                     size += 2
@@ -398,7 +398,9 @@ class Instruction:
             if op == 's':     # <uint16 (N), cstring>
                 cnt:int = unpack('<H', reader.read(2))[0]
                 if cnt:
-                    v = unpack(f'<{cnt}s', reader.read(cnt))[0].rstrip(b'\x00').decode('cp932')  # cstring + null-terminator
+                    v = to_str(unpack(f'<{cnt-1}s', reader.read(cnt-1))[0])  # cstring + null-terminator
+                    _nt = reader.read(1)
+                    assert(_nt == b'\x00')
                 else:
                     v = None
                 size += 2 + cnt
@@ -457,7 +459,7 @@ class Instruction:
 
             if op == 's':     # <uint16 (N), cstring>
                 if v is not None:
-                    cstr:bytes = v.encode('cp932')
+                    cstr:bytes = to_bytes(v)
                     writer.write(pack(f'<H{len(cstr)+1}s', len(cstr)+1, cstr))
                     size += 2 + len(cstr) + 1  # cstring + null-terminator
                 else:
@@ -550,3 +552,8 @@ class Instruction:
 # def hexi(n:int) -> str: return f'0x{toint_I(n):08x}'
 
 # def hexq(n:int) -> str: return f'0x{toint_Q(n):016x}'
+
+
+#######################################################################################
+
+del Any, Callable, Dict, List, Optional, Tuple, Union  # cleanup declaration-only imports

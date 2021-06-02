@@ -10,30 +10,35 @@ __credits__ = '''Original C# implementation by AtomCrafty - 2021
 Converted to Python library by Robert Jordan - 2021
 '''
 
-__all__ = ['UsageDatabase', 'ScriptUsageDatabase', 'FunctionUsageDatabase', 'UsageScope', 'UsageMask', 'load_game_usage', 'read_script_usage', 'read_function_usage']
+__all__ = ['UsageDatabase', 'ScriptUsageDatabase', 'FunctionUsageDatabase', 'UsageScope', 'UsageMask', 'load_game_usage', 'load_script_usage', 'read_script_usage', 'read_function_usage', 'load_function_usage']
 
 #######################################################################################
 
-import copy, csv, os
-from mj.script import instruction
-from mj.script.instruction import Instruction
-from mj.util.color import DummyColors, Colors
-from mj.util.typecast import to_bytes, to_str, to_float, unsigned_I, signed_i
-from mj.script.mjoscript import MjoScript
-from mj.script.disassembler import ILFormat
-from mj.script import disassembler
-from mj.script.analysis.control.flowpass import ControlFlowGraph
-from mj.script.analysis.control.block import Function
-from mj.database import hashes as known_hashes
-from mj.database.hashes.brute_force import BruteForceSet
-from mj.archive.arcfile import MajiroArcFile
-from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
-from mj.script.opcodes import Opcode
-from mj.util.color import Fore as F, StyleEx as S
-from mjotool.sheets.majirodata import SheetSyscalls, SheetGroups, SheetFunctions, SheetVariables, SheetLocals, SheetCallbacks
-from mjotool.sheets.rowtypes import RowSyscall, RowGroup, RowFunction, RowVariable, RowLocal, RowCallback, Status, Typedef as Csv_Typedef
+## runtime imports:
+# from .hashes import ...  # used to locate known hash names in multiple functions
+# from .sheets import SheetSyscalls, RowSyscall, Status, Typedef  # used for Root UsageDatabase.__init__() to load syscalls
+
+import enum, os
+from typing import Dict, List, Optional, Tuple, Union
+
+from ..crypt import hash32
+
+from ..util.color import Fore as F, StyleEx as S
+from ..util.typecast import to_bytes, to_str, to_float, unsigned_I, signed_i
+
+from ..name import GROUP_SYSCALL, GROUP_DEFAULT, GROUP_LOCAL, LOCALVAR_NUMPARAMS, THREADVAR_INTERNALCASE, postfixsymbol
+from ..identifier import HashValue, verify
+
+from ..script.flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
+from ..script.opcodes import Opcode
+from ..script.instruction import Instruction
+from ..script.mjoscript import MjoScript
+from ..script.analysis.control import Function, ControlFlowGraph
+
+# from ..archive.arcfile import MajiroArcFile
 
 
+#######################################################################################
 
 ## READ / ANALYZE SCRIPT ##
 
@@ -43,7 +48,7 @@ def read_script(filename:str) -> MjoScript:
     with open(filename, 'rb') as f:
         return MjoScript.read(f)
 
-def analyze_script(script:MjoScript) -> ControlFlowGraph:
+def analyze_script(script:Union[MjoScript,str]) -> ControlFlowGraph:
     """Return the analysis of a script's control flow, blocks, functions, etc.
 
     argument can also be a filename
@@ -52,68 +57,8 @@ def analyze_script(script:MjoScript) -> ControlFlowGraph:
         script = read_script(script)
     return ControlFlowGraph.build_from_script(script)
 
-## WRITE SCRIPT ##
-
-def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT):
-    """Write analyzed script IL instructions and blocks to .mjil file
-    """
-    return disassembler.disassemble_script(filename, script, outfilename, options=options)
-    # options.color = False
-    # options.set_address_len(script.bytecode_size)
-    # cfg:ControlFlowGraph = analyze_script(script)
-
-    # resfile = reswriter = None
-    # with open(outfilename, 'wt+', encoding='utf-8') as writer:
-    #   try:
-    #     if options.resfile_directive is not None:
-    #         #respath = os.path.join(os.path.dirname(filename), options.resfile_directive)
-    #         res_f = open(options._resfile_path or options.resfile_directive, 'wt+', encoding='utf-8')
-    #         # sigh, no way to force quotes for one line
-    #         # lineterminator='\n' is required to stop double-line termination caused by default behavior of "\r\n" on Windows
-    #         reswriter = csv.writer(res_f, quoting=csv.QUOTE_MINIMAL, delimiter=',', quotechar='"', lineterminator='\n')
-    #         reswriter.writerow(['Key','Value'])
-    #     # include extra indentation formatting for language grammar VSCode extension
-    #     writer.write('/// {}\n'.format(os.path.basename(filename)))
-    #     writer.write(disassembler.format_readmark(script, options=options) + '\n')
-    #     # writer.write('\n')
-
-    #     for function in cfg.functions:
-    #         writer.write('\n')
-    #         writer.write(disassembler.format_function(function, options=options) + '\n')
-    #         for i,basic_block in enumerate(function.basic_blocks):
-    #             writer.write(' ' + disassembler.format_basic_block(basic_block, options=options) + '\n')
-    #             for instruction in basic_block.instructions:
-    #                 reskey = disassembler.get_resource_key(script, instruction, options=options) if reswriter is not None else None
-    #                 if reskey is not None:
-    #                     reswriter.writerow([reskey, instruction.string])
-    #                 writer.write('  ' + disassembler.format_instruction(instruction, options=options, resource_key=reskey) + '\n')
-    #             if i + 1 < len(function.basic_blocks):
-    #                 writer.write(' \n')
-    #         writer.write(disassembler.format_function_close(function, options=options) + '\n')
-    #         # writer.write('\n')
-    #     writer.flush()
-    #     if resfile is not None:
-    #         resfile.flush()
-    #   finally:
-    #     if resfile is not None:
-    #         reswriter = None
-    #         #reswriter.close()
-    #         resfile.close()
-
-def assemble_script(script:MjoScript, outfilename:str):
-    """Write script to .mjo file
-    """
-    with open(outfilename, 'wb+') as writer:
-        script.signature = MjoScript.SIGNATURE_DECRYPTED
-        script.assemble_script(writer)
 
 #######################################################################################
-
-from mj.script.flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
-import mj.name
-from mj.identifier import GROUP_SYSCALL, GROUP_DEFAULT, GROUP_LOCAL
-from mj.identifier import HashName, HashValue, verify
-import enum
 
 class UsageMask(enum.IntFlag):
     NONE      = 0
@@ -153,40 +98,40 @@ class UsageMask(enum.IntFlag):
         if not self: return ''
         return f'[{self.letters}]'
 
-# class BasicIdentifier:
-#     __slots__ = ('scope', 'var_offset', 'hash', 'type', 'name')
-#     def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         self.scope:MjoScope = MjoScope(scope)
-#         self.var_offset:int = var_offset
-#         self.hash:HashValue = HashValue(hash) if hash is not None else None
-#         self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
-#         self.name:str = name
+#######################################################################################
+
+
 class BasicIdentifier:
-    __slots__ = ('scope', 'hash', 'type', 'name')#, 'var_offset')
+    __slots__ = ('scope', 'hash', 'type', 'name')
+    scope:MjoScope
+    hash:Optional[HashValue]
+    type:Optional[MjoType]
+    name:Optional[str]
     #
     SYSCALL_PREFIX:str = 'sys'
     NO_HASH:str = '????????'
     #
-    def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None): #, var_offset:int
-        self.scope:MjoScope = MjoScope(scope)
-        # self.var_offset:int = var_offset
-        self.hash:HashValue = HashValue(hash) if hash is not None else None
-        self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
-        self.name:str = name
+    def __init__(self, scope:MjoScope, hash:Optional[HashValue]=None, type:Optional[MjoType]=None, name:Optional[str]=None):
+        self.scope = MjoScope(scope)
+        # self.var_offset = var_offset
+        self.hash = HashValue(hash) if hash is not None else None
+        self.type = MjoType(type) if type is not None else None #MjoType.UNKNOWN
+        self.name = name
         if name is None and scope is not None and hash is not None:
+            from .hashes import LOCAL_VARS, THREAD_VARS, SAVEFILE_VARS, PERSISTENT_VARS, FUNCTIONS, SYSCALLS
             if self.scope is MjoScope.LOCAL:
-                self.name = known_hashes.LOCAL_VARS.get(hash)
+                self.name = LOCAL_VARS.get(hash)
             elif self.scope is MjoScope.THREAD:
-                self.name = known_hashes.THREAD_VARS.get(hash)
+                self.name = THREAD_VARS.get(hash)
             elif self.scope is MjoScope.SAVEFILE:
-                self.name = known_hashes.SAVEFILE_VARS.get(hash)
+                self.name = SAVEFILE_VARS.get(hash)
             elif self.scope is MjoScope.PERSISTENT:
-                self.name = known_hashes.PERSISTENT_VARS.get(hash)
+                self.name = PERSISTENT_VARS.get(hash)
             elif self.scope is MjoScope.FUNCTION:
-                self.name = known_hashes.FUNCTIONS.get(hash)
+                self.name = FUNCTIONS.get(hash)
             elif self.scope is MjoScope.SYSCALL:
-                self.name = known_hashes.SYSCALLS.get(hash)
-    #
+                self.name = SYSCALLS.get(hash)
+
     @property
     def value(self) -> int: return self.hash
     @value.setter
@@ -203,47 +148,11 @@ class BasicIdentifier:
     def is_call(self) -> bool: return self.scope.is_call
     @property
     def is_syscall(self) -> bool: return self.scope.is_syscall
-    
-    # def __repr__(self) -> str:
-    #     namerepr = f'"{self.name}"' if self.name is not None else (f'${self.hash:08x}' if self.hash is not None else '$????????')
-    #     locrepr = f' {self.var_offset}' if self.scope is MjoScope.LOCAL else ''
-    #     # return f'<{self.__class__.__name__}: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr} >'
-    #     typestr  = self.type.getname()  if self.type  is not None else '?type'
-    #     scopestr = self.scope.getname() if self.scope is not None else '?scope'
-    #     return f'<Variable: {scopestr} {typestr} {namerepr}{locrepr}>'
-        
-    def __str__(self) -> str: return repr(self)
+
     def __repr__(self) -> str:
         return self.name if self.name is not None else self.hash_repr()
-        # # usagestr = f' [{usage.letters}]' if self.usage else ''
-        # typestr  = self.type.postfix if self.type  is not None else '?'
-        # scopestr = self.scope.prefix if self.scope is not None else '?'
-        # if self.is_syscall: scopestr = self.SYSCALL_PREFIX
-        # hashstr  = f'{self.hash:08x}' if self.hash is not None else self.NO_HASH
-        # return self.repr_name(f'{scopestr}{{{hashstr}}}{typestr}', usage)
-        # # return f'{scopestr}{{{hashstr}}}{typestr}{usagestr}'
-    # def repr_name(self, namestr:str, usage:UsageMask=UsageMask.NONE) -> str:
-    #     usagestr = f' [{usage.letters}]' if self.usage else ''
-    #     # typestr  = self.type.postfix if self.type  is not None else '?'
-    #     # scopestr = self.scope.prefix if self.scope is not None else '?'
-    #     # hashstr  = f'{self.hash:08x}' if self.hash is not None else '????????'
-    #     return f'{namestr}{usagestr}'
-    
-    # def repr_base(self, usage:UsageMask=UsageMask.NONE) -> str:
-    #     # usagestr = f' [{usage.letters}]' if self.usage else ''
-    #     typestr  = self.type.postfix if self.type  is not None else '?'
-    #     scopestr = self.scope.prefix if self.scope is not None else '?'
-    #     if self.is_syscall: scopestr = self.SYSCALL_PREFIX
-    #     hashstr  = f'{self.hash:08x}' if self.hash is not None else self.NO_HASH
-    #     return self.repr_name(f'{scopestr}{{{hashstr}}}{typestr}', usage)
-    #     # return f'{scopestr}{{{hashstr}}}{typestr}{usagestr}'
-    # def repr_name(self, namestr:str, usage:UsageMask=UsageMask.NONE) -> str:
-    #     usagestr = f' [{usage.letters}]' if self.usage else ''
-    #     # typestr  = self.type.postfix if self.type  is not None else '?'
-    #     # scopestr = self.scope.prefix if self.scope is not None else '?'
-    #     # hashstr  = f'{self.hash:08x}' if self.hash is not None else '????????'
-    #     return f'{namestr}{usagestr}'
-        
+    __str__ = __repr__
+
     def hash_repr(self) -> str:
         # usagestr = f' [{usage.letters}]' if self.usage else ''
         typestr  = self.type.postfix if self.type  is not None else '?'
@@ -253,140 +162,30 @@ class BasicIdentifier:
         return f'{scopestr}{{{hashstr}}}{typestr}'
         # return f'{scopestr}{{{hashstr}}}{typestr}{usagestr}'
 
-# class UserVariable(BasicIdentifier):
-#     def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(scope, hash, type, name)
-
-#     # @property
-#     # def is_var(self) -> bool: return True
-#     # @property
-#     # def is_func(self) -> bool: return False
-
-# # class LocalVariable(BasicIdentifier):
-# #     #
-# #     def __init__(self, hash:HashValue=None, type:MjoType=None, name:str=None):
-# #         super().__init__(MjoScope.LOCAL, hash, type, name)
-# #     #
-# #     @property
-# #     def is_var(self) -> bool: return True
-# #     @property
-# #     def is_func(self) -> bool: return False
-
-# class UserFunction(BasicIdentifier):
-#     def __init__(self, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(MjoScope.FUNCTION, hash, type, name)
-
-#     # @property
-#     # def is_var(self) -> bool: return False
-#     # @property
-#     # def is_func(self) -> bool: return True
-
-# class SyscallFunction(BasicIdentifier):
-#     def __init__(self, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(MjoScope.SYSCALL, hash, type, name)
-    
-#     # @property
-#     # def is_var(self) -> bool: return False
-#     # @property
-#     # def is_func(self) -> bool: return True
-#     # @property
-#     # def is_syscall(self) -> bool: return True
-
-# class LocalVariable(BasicIdentifier):
-#     #
-#     def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(MjoScope.LOCAL, var_offset, hash, type, name)
-#     @property
-#     def is_var(self) -> bool: return True
-
-# class AnyVariable:
-#     __slots__ = ('scope', 'var_offset', 'hash', 'type', 'name')
-#     def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         self.scope:MjoScope = MjoScope(scope)
-#         self.var_offset:int = var_offset
-#         self.hash:HashValue = HashValue(hash) if hash is not None else None
-#         self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
-#         self.name:str = name
-
-#     @property
-#     def namedisasm(self) -> str:
-#         return f'${self.name}' if self.name is not None else f'${self.hash:08x}'
-
-#     def __repr__(self) -> str:
-#         namerepr = f'"{self.name}"' if self.name is not None else (f'${self.hash:08x}' if self.hash is not None else '$????????')
-#         locrepr = f' {self.var_offset}' if self.scope is MjoScope.LOCAL else ''
-#         # return f'<{self.__class__.__name__}: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr} >'
-#         typestr = self.type.getname() if self.type is not None else '<?type>'
-#         scopestr = self.scope.getname() if self.scope is not None else '<?scope>'
-#         return f'<Variable: {scopestr} {typestr} {namerepr}{locrepr}>'
-#         # return f'<Variable: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr}>'
-#     def __str__(self) -> str: return repr(self)
-
-# class GlobalVariable(AnyVariable):
-#     def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(scope, -1, hash, type, name)
-
-# class LocalVariable(AnyVariable):
-#     def __init__(self, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-#         super().__init__(MjoScope.LOCAL, var_offset, hash, type, name)
-
-# class GlobalFunction:
-#     pass
-
-
-# def basic_repr(scope:MjoScope, hash:int, type:MjoType, usage:UsageMask) -> str:
-#     usagestr = f' [{usage.letters}]' if usage else ''
-#     typestr  = type.postfix if type  is not None else '?'
-#     scopestr = scope.prefix if scope is not None else '?'
-#     return f'{scopestr}{{{hash:08x}}}{typestr}{usagestr}'
-
-
-# def repr_var(myvar:AnyVariable, usage:UsageMask):
-#     # modes = []
-#     mode = rmode = wmode = ''
-#     if myvar.hash in reads_vars:    rmode += 'R'
-#     if myvar.hash in accesses_vars: rmode += 'A'
-#     if myvar.hash in writes_vars:   wmode += 'W'
-#     if myvar.hash in modifies_vars: wmode += 'M'
-#     if rmode and wmode: mode = f'{rmode}/{wmode}'
-#     elif rmode: mode = f'{rmode}o'
-#     elif wmode: mode = f'{wmode}o'
-#     # elif rmode or wmode: mode = f'{rmode or wmode}o'
-#     # else: mode = ''
-#     modestr = f' [{mode}]' if mode else ''
-#     if myvar.name is not None:
-#         return f'{myvar.name}{modestr}'
-#     elif myvar.hash is not None:
-#         if myvar.type is not None or myvar.scope is not None:
-#             typestr = myvar.type.postfix if myvar.type is not None else '?'
-#             scopestr = myvar.scope.prefix if myvar.scope is not None else '?'
-#             return f'{scopestr}{{{myvar.hash:08x}}}{typestr}{modestr}'
-#         else:
-#             return f'${myvar.hash:08x}{modestr}'
-#     elif myvar.type is not None:
-#         return f'{myvar.type.getname()}{modestr}'
-#     else:
-#         return f'-{modestr}'
+#######################################################################################
 
 class UsageInfo:
     __slots__ = ('item', 'usage', 'count')
-    def __init__(self, item:BasicIdentifier, usage:UsageMask=UsageMask.NONE, count:int=0):
+    item:Union[BasicIdentifier,Opcode]
+    usage:UsageMask
+    count:int
+
+    def __init__(self, item:Union[BasicIdentifier,Opcode], usage:UsageMask=UsageMask.NONE, count:int=0):
         self.item = item
         self.usage = usage
         self.count = count
-    #
+
     def __getattr__(self, name):
         return self.item.__getattribute__(name)
-    #
     def __setattr__(self, name, value):
         if name not in self.__slots__:
             self.item.__setattr__(name, value)
         super().__setattr__(name, value)
-    #
-    def __str__(self) -> str: repr(self)
+
     def __repr__(self) -> str:
         usagestr = f' [{self.usage.letters}]' if (self.usage & ~UsageMask.DEFINE) is not None else ''
         return f'{self.item!r}{usagestr}'
+    __str__ = __repr__
 
     def merge_usage(self, other:'UsageInfo'):
         self.count += other.count
@@ -400,10 +199,11 @@ class UsageInfo:
 
 class LocalUsageInfo(UsageInfo):
     __slots__ = UsageInfo.__slots__ + ('var_offset',)
-    # def __init__(self, var_offset:int, item:BasicIdentifier, usage:UsageMask=UsageMask.NONE, count:int=0):
+    var_offset:Optional[int]
+
     def __init__(self, item:BasicIdentifier, usage:UsageMask=UsageMask.NONE, count:int=0):
         super().__init__(item, usage, count)
-        self.var_offset = None  # type: int
+        self.var_offset = None
 
     def merge_usage(self, other:'LocalUsageInfo'):
         super().merge_usage(other)
@@ -418,15 +218,16 @@ class LocalUsageInfo(UsageInfo):
 
 class FunctionUsageInfo(UsageInfo):
     __slots__ = UsageInfo.__slots__ + ('arg_counts', 'voidcalls')
+    arg_counts:Dict[int,int]
+    voidcalls:int
+
     def __init__(self, item:BasicIdentifier, usage:UsageMask=UsageMask.NONE, count:int=0):
         super().__init__(item, usage, count)
-        self.arg_counts = {} # type: Dict[int,int]
-        # self.returncalls:int = 0
-        self.voidcalls:int = 0
+        self.arg_counts = {}  # type: Dict[int,int]
+        self.voidcalls = 0
 
     @property
-    def returncalls(self) -> int:
-        return self.count - self.voidcalls
+    def returncalls(self) -> int: return self.count - self.voidcalls
 
     def merge_usage(self, other:'FunctionUsageInfo'):
         super().merge_usage(other)
@@ -441,41 +242,23 @@ class FunctionUsageInfo(UsageInfo):
             self.voidcalls += 1
 
 
+#######################################################################################
+
 class UsageScope(enum.IntEnum):
     ALL      = 0
     GAME     = 1
     SCRIPT   = 2
     FUNCTION = 3
 
-LOCAL_NUMPARAMS = BasicIdentifier(MjoScope.LOCAL, 0xa704bdbd, MjoType.INT, '__SYS__NumParams@')
-THREAD_OPINTERNALCASE = BasicIdentifier(MjoScope.THREAD, 0x11f91fd3, MjoType.INT, '%Op_internalCase~@MAJIRO_INTER')
-
-## GLOBALS ##
-
-
-sheet_syscalls = None # type:SheetSyscalls
-#
-
-def get_syscalls(cached:bool) -> SheetSyscalls:
-    global sheet_syscalls
-    if sheet_syscalls is None:
-        cache_file = f'sheet_{SheetSyscalls.NAME}_cached.csv'
-        if cached and os.path.isfile(cache_file):
-            sheet_syscalls = SheetSyscalls.fromfile(cache_file)
-        else:
-            sheet_syscalls = SheetSyscalls.fromsheet(cache_file=cache_file)
-        # row:RowSyscall = sheet_syscalls[0]
-        # row.type.
-    return sheet_syscalls
+LOCAL_NUMPARAMS = BasicIdentifier(MjoScope.LOCAL, hash32(LOCALVAR_NUMPARAMS), MjoType.INT, LOCALVAR_NUMPARAMS)
+THREAD_OPINTERNALCASE = BasicIdentifier(MjoScope.THREAD, hash32(THREADVAR_INTERNALCASE), MjoType.INT, THREADVAR_INTERNALCASE)
 
 class UsageDatabase:
-    #
     scope:UsageScope
     name:str
     parent:'UsageDatabase'
     children:List['UsageDatabase']
-    #
-    # offsets:Dict[int,UsageInfo]
+
     locals:Dict[int,UsageInfo]
     threads:Dict[int,UsageInfo]
     saves:Dict[int,UsageInfo]
@@ -484,18 +267,17 @@ class UsageDatabase:
     calls:Dict[int,UsageInfo]
     syscalls:Dict[int,UsageInfo]
     opcodes:Dict[int,UsageInfo]
-    #
+
     defines:Dict[int,UsageInfo]
-    #
+
     scopes:Dict[Union[MjoScope,type],Dict[int,UsageInfo]]
-    #
+
     def __init__(self, scope:Union[UsageScope,Opcode], name:str, parent:'UsageDatabase'=None, *, cached:bool=True):
         self.scope  = scope
         self.name   = name
         self.parent = parent
         self.children = []
 
-        # self.offset  = {}
         self.locals   = {}
         self.threads  = {}
         self.saves    = {}
@@ -516,11 +298,12 @@ class UsageDatabase:
         }
         
         if parent is None:
+            from .sheets import SheetSyscalls, RowSyscall, Status, Typedef as Csv_Typedef
             # Preload special identifiers
             self.locals[LOCAL_NUMPARAMS.hash] = UsageInfo(LOCAL_NUMPARAMS)
             self.threads[THREAD_OPINTERNALCASE.hash] = UsageInfo(THREAD_OPINTERNALCASE)
-            # self.update_identifier(MjoScope.LOCAL, 0xa704bdbd, UsageMask.NONE, MjoType.INT, '__SYS__NumParams@')
-            # self.update_identifier(MjoScope.THREAD, 0x11f91fd3, UsageMask.NONE, MjoType.INT, '%Op_internalCase~@MAJIRO_INTER')
+            # self.update_identifier(MjoScope.LOCAL, hash32(LOCALVAR_NUMPARAMS), MjoType.INT, LOCALVAR_NUMPARAMS)
+            # self.update_identifier(MjoScope.THREAD, hash32(THREADVAR_INTERNALCASE), MjoType.INT, THREADVAR_INTERNALCASE)
             
             # define all syscalls...
             #if sheet_syscalls is None:
@@ -547,7 +330,7 @@ class UsageDatabase:
                 Csv_Typedef.INT_ARRAY:    MjoType.INT_ARRAY,
                 Csv_Typedef.FLOAT_ARRAY:  MjoType.FLOAT_ARRAY,
                 Csv_Typedef.STRING_ARRAY: MjoType.STRING_ARRAY,
-            } # type: Dict[Csv_Typedef, Union[MjoType,None]]
+            }  # type: Dict[Csv_Typedef, Union[MjoType,None]]
             def add_syscall_row(row:RowSyscall):
                 name = row.name if row.status in (Status.UNHASHED, Status.CONFIRMED) else None
                 type = typedefs[row.type] if row.type is not None else None
@@ -564,13 +347,13 @@ class UsageDatabase:
             # FILE     = 'file*'    # base type: int (ptr to FILE)
             # PAGE     = 'page*'    # base type: int (ptr to PAGE)
             # SPRITE   = 'sprite*'  # base type: int (ptr to SPRITE)
-    #
-    @property
-    def root(self) -> 'UsageDatabase': return self.parent.root if self.parent is not None else self
-    #
+
     def __getitem__(self, scope:MjoScope) -> Dict[int,UsageInfo]:
         return self.scopes[scope]
-    #
+
+    @property
+    def root(self) -> 'UsageDatabase': return self.parent.root if self.parent is not None else self
+
     def update_opcode(self, instr:Instruction, usage:UsageMask=UsageMask.NONE) -> UsageInfo:
         if self.parent is not None:
             self.parent.update_opcode(instr)
@@ -595,12 +378,6 @@ class UsageDatabase:
                 return self.parent.find_identifier(scope, hash)
             return None, None
         return info, self
-
-    # def update_function(self, scope:MjoScope, hash:int, usage:UsageMask=UsageMask.NONE, type:MjoType=None, name:str=None, arg_num:int=None, voidcall:bool=None) -> FunctionUsageInfo:
-    #     return self.update_identifier(scope, hash, usage, type, name, arg_num, voidcall)
-
-    # def update_variable(self, scope:MjoScope, hash:int, usage:UsageMask=UsageMask.NONE, type:MjoType=None, name:str=None) -> FunctionUsageInfo:
-    #     return self.update_identifier(scope, hash, usage, type, name, UsageInfo)
 
     def _create_usage(self, item:BasicIdentifier, usage:UsageMask=UsageMask.NONE) -> UsageInfo:
         if item.scope is MjoScope.LOCAL:
@@ -645,7 +422,8 @@ class UsageDatabase:
             # if item.name is None and item.hash is not None and item.hash not in notfound_names:
             #     item.name = found_names.get(item.hash)
             #     if item.name is None:
-            #         item.name = known_hashes.LOCAL_VARS.get(item.hash)
+            #         from .hashes import LOCAL_VARS
+            #         item.name = LOCAL_VARS.get(item.hash)
             #     if item.name is None and item.type is not None:
             #         results = brute_force.find_hash(item.hash, item.scope.prefix, item.type.postfix, '')
             #         if not results:
@@ -663,19 +441,18 @@ class UsageDatabase:
             #     found_names.setdefault(item.hash, item.name)
 
             if item.type is None and item.name is not None:
-                postfix = mj.name.postfixsymbol(item.name)
+                postfix = postfixsymbol(item.name)
                 if postfix is not None:
                     item.type = MjoType.frompostfix(postfix)
 
         return info
 
 class ScriptUsageDatabase(UsageDatabase):
-    #
-    defines:Dict[int,UsageInfo]
-    #
+    # defines:Dict[int,UsageInfo]
+
     def __init__(self, scope:UsageScope, name:str, cfg:ControlFlowGraph, parent:'UsageDatabase'=None):
         super().__init__(scope, name, parent)
-        self.defines = {}
+        # self.defines = {}
         self._cfg = cfg
 
     @property
@@ -684,26 +461,24 @@ class ScriptUsageDatabase(UsageDatabase):
     def script(self) -> ControlFlowGraph: return self._cfg.script
 
 class FunctionUsageDatabase(UsageDatabase):
-    #
-    offsets:Dict[int,UsageInfo]
-    #
-    defines:Dict[int,UsageInfo]
-    #
-    def __init__(self, scope:UsageScope, name:str, identity:BasicIdentifier, func:Function, parent:'ScriptUsageDatabase'=None):
+    # defines:Dict[int,UsageInfo]
+    offsets:Dict[int,LocalUsageInfo]
+
+    def __init__(self, scope:UsageScope, name:str, identity:BasicIdentifier, function:Function, parent:'ScriptUsageDatabase'=None):
         super().__init__(scope, name, parent)
+        # self.defines = {}
         self.offsets = {}
-        self.defines = {}
         self._identity = identity
-        self._func = func
+        self._function = function
     
     @property
     def cfg(self) -> ControlFlowGraph: return self.parent._cfg
     @property
-    def script(self) -> MjoScript: return self._func.script
+    def script(self) -> MjoScript: return self._function.script
     @property
     def identity(self) -> BasicIdentifier: return self._identity
     @property
-    def func(self) -> Function: return self._func
+    def function(self) -> Function: return self._function
 
     def define_local(self, var_offset:int=None, type:MjoType=None, name:str=None, *args) -> LocalUsageInfo:
         info = self.offsets.get(var_offset)
@@ -740,41 +515,64 @@ class FunctionUsageDatabase(UsageDatabase):
             info.var_offset = var_offset
         return info
 
-def load_game_usage(db:UsageDatabase, basedir:str):
+
+#######################################################################################
+
+def load_game_usage(self:UsageDatabase, basedir:str):
+    newchildren = []  # type: List[ScriptUsageDatabase]
     for file in os.listdir(basedir):
         filepath = os.path.join(basedir, file)
         if file.lower().endswith('.mjo'):
-            print(file)
-            script = read_script(filepath)
-            db.children.append(read_script_usage(file, script, db))
+            print('Adding:', file)
+            child = ScriptUsageDatabase(UsageScope.SCRIPT, file, analyze_script(filepath), self)
+            self.children.append(child)
+            newchildren.append(child)
+            # self.children.append(read_script_usage(file, script, self))
+    for child in newchildren:
+        print('Scanning:', child.name)
+        load_script_usage(child)
+    
+    return self
 
-def read_script_usage(name:str, script:MjoScript, parent:UsageDatabase=None) -> UsageDatabase:
+def read_script_usage(name:str, script:MjoScript, parent:UsageDatabase=None) -> ScriptUsageDatabase:
     cfg = analyze_script(script)
     db = ScriptUsageDatabase(UsageScope.SCRIPT, name, cfg, parent)
-    for function in cfg.functions:
-        identity = db.update_identifier(MjoScope.FUNCTION, function.hash, UsageMask.DEFINE).item
-        db.children.append(read_function_usage(f'func ${function.hash:08x}', identity, function, cfg, db))
-    
-    return db
+    return load_script_usage(db)
 
-def read_function_usage(name:str, identity:BasicIdentifier, function:Function, cfg:ControlFlowGraph, parent:UsageDatabase=None) -> UsageDatabase:
+def load_script_usage(self:ScriptUsageDatabase) -> ScriptUsageDatabase: #, parent:UsageDatabase=None) -> ScriptUsageDatabase:
+    newchildren = []  # type: List[FunctionUsageDatabase]
+    for function in self.cfg.functions:
+        identity = self.update_identifier(MjoScope.FUNCTION, function.hash, UsageMask.DEFINE).item
+        child = FunctionUsageDatabase(UsageScope.FUNCTION, self.name, identity, function, self)
+        self.children.append(child)
+        newchildren.append(child)
+        #self.children.append(read_function_usage(f'func ${function.hash:08x}', identity, function, cfg, self))
+    for child in newchildren:
+        load_function_usage(child)
+
+    return self
+
+def read_function_usage(name:str, identity:BasicIdentifier, function:Function, cfg:ControlFlowGraph, parent:ScriptUsageDatabase=None) -> FunctionUsageDatabase:
     db = FunctionUsageDatabase(UsageScope.FUNCTION, name, identity, function, parent)
-    script = cfg.script
-    # cfg = analyze_script(cfg.script)
+    return load_function_usage(db)
+
+def load_function_usage(self:FunctionUsageDatabase) -> FunctionUsageDatabase: #, parent:ScriptUsageDatabase=None) -> FunctionUsageDatabase:
+    function = self.function
+    script = function.script
 
     for i in range(function.first_instruction_index, function.last_instruction_index + 1):
         is_first, is_last = (i==function.first_instruction_index), (i==function.last_instruction_index)
-        instr:Instruction = script.instructions[i]
-        db.update_opcode(instr)
+        instr = script.instructions[i]  # type: Instruction
+        self.update_opcode(instr)
         myvar = None
         if instr.is_argcheck:
             for j,type in enumerate(instr.type_list):
                 # print(f'sigchk[{-2 - j}] = {t.name}')
-                db.define_local(-2 - j, type)
+                self.define_local(-2 - j, type)
         elif instr.is_alloca:
             for j,type in enumerate(instr.type_list):
                 # print(f'alloca[{j}] = {t.name}')
-                db.define_local(j, type)
+                self.define_local(j, type)
 
         elif instr.is_load or instr.is_store:
             name = None
@@ -787,19 +585,20 @@ def read_function_usage(name:str, identity:BasicIdentifier, function:Function, c
             # elementtype = type
             if instr.is_element:
                 type = type.array
+
+            # from .hashes import LOCAL_VARS, THREAD_VARS, SAVEFILE_VARS, PERSISTENT_VARS
             # if scope is MjoScope.LOCAL:
-            #     db.update_identifier(scope, )
+            #     self.update_identifier(scope, )
             #     myvar = local_update(var_offset, hash, type)
-            #     # name = known_hashes.LOCAL_VARS.get(hash)
+            #     # name = LOCAL_VARS.get(hash)
             # else:
             #     myvar = global_update(scope, hash, type)
             #     if scope is MjoScope.SAVEFILE:
-            #         name = known_hashes.SAVEFILE_VARS.get(hash)
+            #         name = SAVEFILE_VARS.get(hash)
             #     elif scope is MjoScope.PERSISTENT:
-            #         name = known_hashes.PERSISTENT_VARS.get(hash)
+            #         name = PERSISTENT_VARS.get(hash)
             #     elif scope is MjoScope.THREAD:
-            #         name = known_hashes.THREAD_VARS.get(hash)
-            # known_hashes
+            #         name = THREAD_VARS.get(hash)
 
             # if instr.is_store or flags.modifier is not MjoModifier.NONE:
             #     if instr.is_element:
@@ -835,13 +634,13 @@ def read_function_usage(name:str, identity:BasicIdentifier, function:Function, c
                         usage |= UsageMask.MODIFY
                     else:
                         usage |= UsageMask.WRITE
-            db.update_identifier(scope, hash, usage, type, None, var_offset)
+            self.update_identifier(scope, hash, usage, type, None, var_offset)
         
         elif instr.opcode.value == 0x800: # "ldc.i"
             hash = unsigned_I(instr.integer)
-            info, infodb = db.find_identifier(MjoScope.FUNCTION, hash)
+            info, infodb = self.find_identifier(MjoScope.FUNCTION, hash)
             if info is not None:
-                db.update_identifier(MjoScope.FUNCTION, hash, UsageMask.REFERENCE)
+                self.update_identifier(MjoScope.FUNCTION, hash, UsageMask.REFERENCE)
                 
         elif instr.is_call or instr.is_syscall:
             name = None
@@ -850,6 +649,7 @@ def read_function_usage(name:str, identity:BasicIdentifier, function:Function, c
             type = None
             scope = MjoScope.FUNCTION if instr.is_call else MjoScope.SYSCALL
             voidcall = instr.opcode.value in (0x810, 0x835) # "callp", "syscallp"
+            # from .hashes import FUNCTIONS, SYSCALLS
             if not voidcall and not is_last and script.instructions[i+1].is_store:
                 nextinstr = script.instructions[i+1]
                 if nextinstr.is_element:
@@ -859,9 +659,9 @@ def read_function_usage(name:str, identity:BasicIdentifier, function:Function, c
                         type = nextinstr.flags.type.array
                 else:
                     type = nextinstr.flags.type
-            db.update_identifier(scope, hash, UsageMask.CALL, type, None, arg_num, voidcall)
+            self.update_identifier(scope, hash, UsageMask.CALL, type, None, arg_num, voidcall)
             
-        elif db.parent is not None and instr.is_return and not is_first:
+        elif self.parent is not None and instr.is_return and not is_first:
             instr = script.instructions[i-1]
             type = None
             if instr.opcode.encoding.endswith('.i'):
@@ -886,20 +686,20 @@ def read_function_usage(name:str, identity:BasicIdentifier, function:Function, c
                 type = instr.flags.type
             elif instr.is_call or instr.is_syscall and instr.opcode.value not in (0x810, 0x835): # "callp", "syscallp"
                 scope = MjoScope.FUNCTION if instr.is_call else MjoScope.SYSCALL
-                info, infodb = db.find_identifier(scope, instr.hash)
+                info, infodb = self.find_identifier(scope, instr.hash)
                 if info is not None:
                     type = info.item.type
             if type is not None:
-                db.parent.update_identifier(MjoScope.FUNCTION, db.identity.hash, type=type)
+                self.parent.update_identifier(MjoScope.FUNCTION, self.identity.hash, type=type)
                 
-    return db
+    return self
 
 
 r"""
 
 # TESTING:
 from mj.script.mjoscript import MjoScript
-from mj.database.usage import UsageDatabase, ScriptUsageDatabase, FunctionUsageDatabase, UsageScope, UsageMask, load_game_usage, read_script_usage, read_function_usage
+from mj.database.usage import UsageDatabase, ScriptUsageDatabase, FunctionUsageDatabase, UsageScope, UsageMask, load_game_usage, load_script_usage, read_script_usage, read_function_usage, load_function_usage
 alldb = UsageDatabase(UsageScope.ALL, '<root>')
 majdb = UsageDatabase(UsageScope.GAME, 'Mahjong [v1509]', alldb)
 alldb.children.append(majdb)
@@ -910,16 +710,7 @@ load_game_usage(majdb, r"../../Catalog/scripts/[v1509] Mahjong (NekoNeko Soft)")
 
 """
 
+
 #######################################################################################
 
-## MAIN FUNCTION ##
-
-def main(argv:list=None) -> int:
-    return 0
-
-
-## MAIN CONDITION ##
-
-if __name__ == '__main__':
-    exit(main())
-
+del enum, Dict, List, Optional, Tuple, Union  # cleanup declaration-only imports

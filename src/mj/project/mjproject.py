@@ -20,27 +20,27 @@ from ..script.flags import MjoType
 # from ..name import basename
 from ..identifier import HashName, HashValue, IdentifierKind #, Typedef
 
+
 class MjFunction:
+    declaring_script:Optional[str]
+    parameter_types:Optional[List[MjoType]]
+
     def __init__(self, hashname:HashName=HashName(0,IdentifierKind.FUNCTION), declaring_script:Optional[str]=None, parameter_types:Optional[List[MjoType]]=None):
-        self._hashname:HashName = HashName(hashname, IdentifierKind.FUNCTION)
-        self.declaring_script:str = declaring_script
-        self.parameter_types:List[MjoType] = parameter_types
+        self._hashname = HashName(hashname, IdentifierKind.FUNCTION)
+        self.declaring_script = declaring_script
+        self.parameter_types = parameter_types
     @property
-    def hashname(self) -> HashName:
-        return self._hashname
+    def hashname(self) -> HashName: return self._hashname
     @hashname.setter
-    def hashname(self, value:HashName):
-        self._hashname = HashName(value, IdentifierKind.FUNCTION)
+    def hashname(self, value:HashName): self._hashname = HashName(value, IdentifierKind.FUNCTION)
     @property
-    def hash(self) -> int:
-        return self._hashname.hash
+    def hash(self) -> int: return self._hashname.hash
     @hash.setter
     def hash(self, value:int) -> int:
         if value != self._hashname.hash:
             self._hashname = HashName(value, IdentifierKind.FUNCTION)
     @property
-    def name(self) -> str:
-        return self._hashname.name
+    def name(self) -> str: return self._hashname.name
     @name.setter
     def name(self, value:str):
         if value is None:
@@ -71,18 +71,22 @@ class MjFunction:
 
 
 class MjProject:
+    script_files:List[str]
+    script_functions:Dict[str,List[MjFunction]]
+    function_map:Dict[int,List[MjFunction]]
+
     def __init__(self, script_files:List[str]=None, script_functions:Dict[str,List[MjFunction]]=None, function_map:Dict[int,List[MjFunction]]=None):
-        self.script_files:List[str] = [] if script_files is None else script_files
-        self.script_functions:Dict[str,List[MjFunction]] = {} if script_functions is None else script_functions
-        self.function_map:Dict[int,List[MjFunction]] = {} if function_map is None else function_map
+        self.script_files = [] if script_files is None else script_files
+        self.script_functions = {} if script_functions is None else script_functions
+        self.function_map = {} if function_map is None else function_map
     
     def try_get_function_name(self, hash:HashValue) -> str:
-        functions:List[MjFunction] = self.function_map.get(hash)
+        functions = self.function_map.get(hash)  # type: List[MjFunction]
         if not functions:
             return None
         return functions[0].name
     
-    def save(self, filename:str):
+    def save(self, filename:str) -> None:
         import json
         with open(filename, 'wt+', encoding='utf-8') as writer:
             json.dump(self.serialize(), writer, skipkeys=False, indent='\t', ensure_ascii=False)
@@ -97,7 +101,7 @@ class MjProject:
 
     
     def serialize(self) -> dict:
-        funcs:List[Tuple[MjFunction, dict]] = []
+        funcs = []  # type: List[Tuple[MjFunction, dict]]
         def get_func(func:MjFunction) -> dict:
             # avoid instance duplication when possible
             for other,funcdata in funcs:
@@ -116,7 +120,7 @@ class MjProject:
         script_files = data.get('ScriptFiles')
         script_functions = data.get('ScriptFunctions')
         function_map = data.get('FunctionMap')
-        funcs:List[MjFunction] = []
+        funcs = []  # type: List[MjFunction]
         def get_func(funcdata:dict) -> MjFunction:
             func = MjFunction.deserialize(funcdata)
             # avoid instance duplication when possible
@@ -132,4 +136,8 @@ class MjProject:
             function_map = dict((int(k),[get_func(f) for f in v] if v is not None else None) for k,v in function_map.items())
         return MjProject(script_files, script_functions, function_map)
         
+
+#######################################################################################
+
+del Dict, List, Optional, Tuple  # cleanup declaration-only imports
 

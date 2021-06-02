@@ -10,45 +10,42 @@ __credits__ = '''Based off Meta Language implementation by Haeleth - 2005
 Converted to Python script with extended syntax by Robert Jordan - 2021
 '''
 
-__all__ = []
+__all__ = ['ControlFlowGraph']
 
 #######################################################################################
 
-import enum
-from abc import abstractproperty
-from collections import OrderedDict
-from itertools import chain
-from typing import Dict, Iterator, List, Optional, Set, Union
-
+from typing import Iterator, List, Set
 
 from ...flags import MjoType, MjoScope
 from ...instruction import Instruction
 from ...mjoscript import FunctionIndexEntry, MjoScript
 
 from ....identifier import HashValue, HashName
-from ....name import basename
 from .block import BasicBlock, Function
 
 
-
+#######################################################################################
 
 class ControlFlowGraph:
+    script:MjoScript
+    functions:List[Function]
+
     def __init__(self, script:MjoScript, functions:List[Function]):
-        self.script:MjoScript = script
-        self.functions:List[Function] = functions
+        self.script = script
+        self.functions = functions
     
     @classmethod
     def build_from_script(cls, script:MjoScript) -> 'ControlFlowGraph':
-        start_indices:Set[int] = set()
-        functions:List[Function] = []
+        start_indices = set()  # type: Set[int]
+        functions = []  # type: List[Function]
 
         # mark function start indices
         for function_entry in script.functions:
-            offset:int = function_entry.offset
-            index:int = script.instruction_index_from_offset(offset)
+            offset = function_entry.offset
+            index = script.instruction_index_from_offset(offset)
             if index < 0: raise Exception('No instruction found at offset 0x{:08x}'.format(offset))
 
-            function:Function = Function(script, function_entry)
+            function = Function(script, function_entry)
             function.first_instruction_index = index
             functions.append(function)
             start_indices.add(index)
@@ -85,17 +82,17 @@ class ControlFlowGraph:
 
     @classmethod
     def analyze_function(cls, function:Function) -> None:
-        script:MjoScript = function.script
-        instructions:List[Instruction] = script.instructions
+        script = function.script
+        instructions = script.instructions  # type: List[Instruction]
 
-        entry_block:BasicBlock = BasicBlock(function)
+        entry_block = BasicBlock(function)
         entry_block.first_instruction_index = function.first_instruction_index
         entry_block.is_entry_block = True
         function.entry_block = entry_block
-        function.exit_blocks = []  # BasicBlock[]
+        function.exit_blocks = []
 
-        start_indices:Set[int] = {function.first_instruction_index}
-        basic_blocks:List[BasicBlock] = [entry_block]
+        start_indices = {function.first_instruction_index}  # type: Set[int]
+        basic_blocks = [entry_block]  # type: List[BasicBlock]
 
         def mark_basic_block_start(offset:int, origin:Instruction=None):
             index = script.instruction_index_from_offset(offset)
@@ -118,7 +115,7 @@ class ControlFlowGraph:
             set_len = len(start_indices)
             start_indices.add(index)
             if len(start_indices) != set_len: # new block
-                basic_block:BasicBlock = BasicBlock(function)
+                basic_block = BasicBlock(function)
                 if offset != origin.offset + origin.size and origin.opcode.mnemonic == "bsel.5":  # 0x847
                     basic_block.is_dtor_block = True
                 basic_block.first_instruction_index = index
@@ -127,7 +124,7 @@ class ControlFlowGraph:
         # mark basic block boundaries
         #TODO: should this: " < function.last_instruction_index " be "<=" ? ( + 1)
         for i in range(function.first_instruction_index, function.last_instruction_index):
-            instruction:Instruction = instructions[i]
+            instruction = instructions[i]  # type: Instruction
 
             if instruction.is_jump or instruction.is_switch:
                 for offset in cls.possible_next_instruction_offsets(instruction):
@@ -153,11 +150,11 @@ class ControlFlowGraph:
 
     @classmethod
     def analyze_basic_block(cls, basic_block:BasicBlock) -> None:
-        function:Function = basic_block.function
-        script:MjoScript = function.script
-        instructions:List[Instruction] = script.instructions
+        function = basic_block.function
+        script = function.script
+        instructions = script.instructions  # type: List[Instruction]
 
-        last_instruction:Instruction = instructions[basic_block.last_instruction_index]
+        last_instruction = instructions[basic_block.last_instruction_index]
 
         if last_instruction.is_return:
             function.exit_blocks.append(basic_block)
@@ -165,7 +162,7 @@ class ControlFlowGraph:
             return
         
         for offset in cls.possible_next_instruction_offsets(last_instruction):
-            next_block:BasicBlock = function.basic_block_from_offset(offset)
+            next_block = function.basic_block_from_offset(offset)  # type: BasicBlock
             if next_block is None:
                 raise Exception('Invalid jump target')
             basic_block.successors.append(next_block)
@@ -183,3 +180,7 @@ class ControlFlowGraph:
                 target = last_instruction.offset + 2 + 2 + (i + 1)*4 + case_offset
                 last_instruction.switch_targets[i] = function.basic_block_from_offset(target)
 
+
+#######################################################################################
+
+del Iterator, List, Set  # cleanup declaration-only imports

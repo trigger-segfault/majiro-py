@@ -17,11 +17,15 @@ __all__ = ['Opcode']
 
 #######################################################################################
 
-import enum, re
-from typing import Dict, List, Optional  # for hinting in declarations
+## runtime imports:
+# import re  # used by Opcode.fromname()
+
+from typing import Any, Dict, List, Optional, Tuple  # for hinting in declarations
 
 from .flags import MjoType, MjoTypeMask
 
+
+#######################################################################################
 
 #region ## MAJIRO OPCODE CLASS ##
 
@@ -31,6 +35,13 @@ class Opcode:
     this class is immutable
     """
     __slots__ = ('value', 'mnemonic', 'operator', 'encoding', 'transition', 'aliases')
+    value:int
+    mnemonic:int
+    operator:Optional[str]
+    encoding:str
+    transition:str
+    aliases:Tuple[str,...]
+
     # global opcode definitions:
     LIST:List['Opcode'] = []
     BYVALUE:Dict[int, 'Opcode'] = {}  # lookup by value
@@ -39,19 +50,19 @@ class Opcode:
 
     def __init__(self, value:int, mnemonic:str, operator:Optional[str], encoding:str, transition:str, *, aliases:tuple=()):
         # general #
-        self.value:int      = value
-        self.mnemonic:str   = mnemonic
-        self.operator:str   = operator    # operator symbol (visual helper)
+        self.value      = value
+        self.mnemonic   = mnemonic
+        self.operator   = operator    # operator symbol (visual helper)
 
         # parsing / analysis #
-        self.encoding:str   = encoding    # instruction encoding
-        self.transition:str = transition  # stack transition
+        self.encoding   = encoding    # instruction encoding
+        self.transition = transition  # stack transition
 
         if aliases is None:
             aliases = ()
         elif not isinstance(aliases, tuple):
             raise TypeError(f'{self.__class__.__name__} argument \'aliases\' must be tuple or NoneType, not {aliases.__class__.__name__}')
-        self.aliases:tuple = aliases
+        self.aliases = aliases
 
     #region ## IMMUTABLE ##
 
@@ -63,7 +74,7 @@ class Opcode:
     #endregion
 
     def __repr__(self) -> str: return self.mnemonic
-    def __str__(self) -> str: return repr(self)
+    __str__ = __repr__
 
     @property
     def is_jump(self) -> bool: return self.encoding == 'j'
@@ -74,7 +85,8 @@ class Opcode:
             return f'op.{self.value:03x}'
         return self.mnemonic
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'Opcode':
+    def fromname(cls, name:str, default:Any=...) -> 'Opcode':
+        import re
         # this allows "nop.xxx" for all opcodes, and is more of a convenience
         if re.match(r"^n?op\.[0-9a-f]{3}$", name):
             value = int(name[-3:], 16)
@@ -333,4 +345,6 @@ define_ctrl_subcode("z", ".")        # \z                                       
 #endregion ## END OPCODE DEFINITIONS ##
 
 
-del Dict, List  # cleanup declaration-only imports
+#######################################################################################
+
+del Any, Dict, List, Optional, Tuple  # cleanup declaration-only imports

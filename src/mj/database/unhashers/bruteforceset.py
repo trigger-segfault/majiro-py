@@ -11,11 +11,19 @@ __all__ = ['BruteForceSet'] #, 'tocharset', 'fromcharset']
 
 #######################################################################################
 
+## runtime imports:
+# from ..hashes import GROUPS
+# from zlib import crc32
+# from ...crypt import invhash32
+# from ...name import joingroup
+# from ...crypt import hash32  # used in find_group()
+
 from itertools import chain, product
-# from string import digits, ascii_lowercase, ascii_uppercase
 from typing import Dict, Iterator, List, Tuple, Union
 from ...util.typecast import to_str, to_bytes
 
+
+#######################################################################################
 
 #region ## CHARSET PATTERNS ##
 
@@ -102,6 +110,8 @@ def fromcharset(charset:str) -> str:
 
 #endregion
 
+#######################################################################################
+
 #region ## BRUTE-FORCE HASHSET ##
 
 #BruteForcePattern
@@ -119,32 +129,51 @@ class BruteForceSet:
     """Utility class for pre-computing large numbers of hash/name pairs,
     and checking against them while balancing memory consumption.
     """
-    PRE_POSTFIXES:List[bytes] = ('',) + tuple(str(i) for i in range(0, 16))
-    #
+    __slots__ = ('patterns', 'hashes', 'min_len', 'max_len', 'prefix', 'def_postfix', 'def_groups', 'pre_postfixes')
+    patterns:List[BruteForcePattern]
+    hashes:Dict[int,bytes]
+    min_len:int
+    max_len:int
+    prefix:str
+    def_postfix:str
+    def_groups:Tuple[str,...]
+    pre_postfixes:Tuple[str,...]
+
+    PRE_POSTFIXES:Tuple[str,...] = ('',) + tuple(str(i) for i in range(0, 16))
+
     def __init__(self, prefix:str='', *, def_postfix:str='', def_groups:List[str]=..., pre_postfixes:List[str]=...):
         # state:
-        self.patterns = []  # type: List[BruteForcePattern]
-        self.hashes = {}  # type: Dict[int,bytes]
-        self.min_len:int = 0
-        self.max_len:int = 0
+        self.patterns = []
+        self.hashes = {}
+        self.min_len = 0
+        self.max_len = 0
         #
         # during computation:
-        self.prefix:str = prefix
+        self.prefix = prefix
         #
         # during find:
-        self.def_postfix:str = def_postfix or ''
+        self.def_postfix = def_postfix or ''
         if def_groups is Ellipsis:
-            from ._hashes import GROUPS
+            from ..hashes import GROUPS
             def_groups = tuple(GROUPS.values())
         elif not def_groups:
             def_groups = ('',)
-        self.def_groups = tuple(def_groups)  # type: List[str]
+        self.def_groups = tuple(def_groups)
         # postfixes that are calulated at find-time, in order to balance memory usage with CPU consumption
         if pre_postfixes is Ellipsis:
             pre_postfixes = self.PRE_POSTFIXES
         elif not pre_postfixes:
             pre_postfixes = ('',)
-        self.pre_postfixes = tuple(pre_postfixes)  # type: List[str]
+        self.pre_postfixes = tuple(pre_postfixes)
+    #
+    def __repr__(self) -> str:
+        if self.hashes:
+            return f'<{self.__class__.__name__}: patterns={len(self.patterns)} hashes={len(self.hashes)}>'
+        else:
+            return f'<{self.__class__.__name__}: patterns={len(self.patterns)} unloaded>'
+        
+    def __del__(self):
+        self.hashes.clear()  # forcefully clear excessive memory usage
     #
     ## LOADING/UNLOADING:
     #
@@ -240,7 +269,7 @@ class BruteForceSet:
         from ...name import joingroup
         if not groups:
             groups = self.def_groups
-            # from ._hashes import GROUPS
+            # from ..hashes import GROUPS
             # groups = tuple(g for g in GROUPS.values())# if g not in ('','MAJIRO_INTER'))
             # #groups = tuple(g for g in GROUPS.values() if g not in ('','MAJIRO_INTER'))
             # del GROUPS
@@ -268,8 +297,6 @@ class BruteForceSet:
     def _brute_find_hash(D:Dict[int,bytes], E:bytes, H) -> List[str]:
         """find_local_brute(hashdict, prefix, [(hash,postfix), ...]) -> [fullname, ...]
         """
-        # from ...crypt import invhash32 as C
-        #
         # joined: prefix `E`, match `s`, postfix `o`
         return [(E+s+o).decode('cp932') for s,o in (
                 # iterate: inverse hash `h` postfix `o` patterns
@@ -280,88 +307,92 @@ class BruteForceSet:
     def _brute_find_hash_withprefix(D:Dict[int,bytes], E:bytes, HX) -> List[str]:
         """_find_custom_brutes(hashdict, prefix, product([(hash,postfix), ...], [(xor,n), ...])) -> [fullname, ...]
         """
-        # from ...crypt import invhash32 as C
-        # see: <https://github.com/trigger-segfault/unhash_name/wiki/Lookup-hash-with-custom-prefix>
-        # transformation of one hash prefix into another
-        #
         # joined: prefix `E`, match `s`, postfix `o`
         return [(E+s+o).decode('cp932') for s,o,n in (
                 # iterate: inverse hash `h`, postfix `o` patterns -with- prefix transforms `x` of length `n`
                 (D.get(h^x),o,n) for (h,o),(x,n) in HX
             ) if s is not None and len(s)==n]  # was match found? only valid if: transform length `n` is same as match
 
-# bf = BruteForceSet('_')
-# # bf.add_pattern(*[ ((1,5), "a-z") ])
-# bf.add_pattern(*[ ((1,4), "a-z") ])
-# bf.compute(True)
-# bf.min_len, bf.max_len
-# bf.find_hash(0x633b371d, '@', '')
-# bf.find_hash(crc32(b'_ret@'), '_', '', '')
-# # bf.find_hash_defprefix(crc32(b'_ret@'), '', '')
+
+r"""
+
+# TESTING:
+from mj.crypt import hash32
+from mj.database.unhashers import BruteForceSet
+bf = BruteForceSet('_')
+# bf.add_pattern(*[ ((1,5), "a-z") ])
+bf.add_pattern(*[ ((1,4), "a-z") ])
+bf.compute(True)
+bf.min_len, bf.max_len
+bf.find_hash(0x633b371d, '@', '')
+bf.find_hash(hash32(b'_ret@'), '_', '', '')
+# bf.find_hash_defprefix(hash32(b'_ret@'), '', '')
+
+"""
 
 #endregion
 
 #######################################################################################
 
-## MAIN FUNCTION ##
+# ## MAIN FUNCTION ##
 
-def main(args:list=None) -> int:
-    from ...crypt import hash32
-    if args is None:
-        import sys
-        args = sys.argv[1:]
+# def main(args:list=None) -> int:
+#     from ...crypt import hash32
+#     if args is None:
+#         import sys
+#         args = sys.argv[1:]
     
-    if not args:
-        args = ['brute_force_locals_cached3.py']
+#     if not args:
+#         args = ['brute_force_locals_cached3.py']
 
-    print('Loading brute-force locals...')
+#     print('Loading brute-force locals...')
 
-    bf = BruteForceSet('_', pre_postfixes=('',) + tuple(str(n) for n in range(1, 26)))
+#     bf = BruteForceSet('_', pre_postfixes=('',) + tuple(str(n) for n in range(1, 26)))
 
-    # # bf.add_pattern(*[ ((1,5), "a-z") ])
-    # bf.add_pattern(*[ ((1,4), "a-z") ])
-    # bf.compute(True)
-    # bf.min_len, bf.max_len
-    # bf.find_hash(0x633b371d, '@', '')
-    # bf.find_hash(crc32(b'_ret@'), '_', '', '')
-    # # bf.find_hash_defprefix(crc32(b'_ret@'), '', '')
-    bf.add_pattern( ((1,5), "a-z") )
-    # bf.add_pattern( ((5,5), "a-z") )
-    # bf.add_pattern( ((1,4), "a-z") )
-    ##bf.add_pattern( ("A-Za-z"), ((0,3), "a-z") )
+#     # # bf.add_pattern(*[ ((1,5), "a-z") ])
+#     # bf.add_pattern(*[ ((1,4), "a-z") ])
+#     # bf.compute(True)
+#     # bf.min_len, bf.max_len
+#     # bf.find_hash(0x633b371d, '@', '')
+#     # bf.find_hash(crc32(b'_ret@'), '_', '', '')
+#     # # bf.find_hash_defprefix(crc32(b'_ret@'), '', '')
+#     bf.add_pattern( ((1,5), "a-z") )
+#     # bf.add_pattern( ((5,5), "a-z") )
+#     # bf.add_pattern( ((1,4), "a-z") )
+#     ##bf.add_pattern( ("A-Za-z"), ((0,3), "a-z") )
 
-    # bf.add_pattern( ("A-Za-z"), ((0,3), "a-z"), ((0,1), "0-9") )
-    # bf.add_pattern( ("A-Za-z"), ((0,2), "a-z"), ((2), "0-9") )
+#     # bf.add_pattern( ("A-Za-z"), ((0,3), "a-z"), ((0,1), "0-9") )
+#     # bf.add_pattern( ("A-Za-z"), ((0,2), "a-z"), ((2), "0-9") )
 
-    print('Done!')
+#     print('Done!')
     
-    def do_find_local(name:str):
-        print(f'finding {name!r}... ', end='', flush=True)
-        print(bf.find_hash_defprefix(hash32(name), ''), flush=True)
+#     def do_find_local(name:str):
+#         print(f'finding {name!r}... ', end='', flush=True)
+#         print(bf.find_hash_defprefix(hash32(name), ''), flush=True)
 
-    def do_find_custom(name:str,prefix,postfix,group):
-        print(f'finding \'{prefix}{name}{postfix}@{group}\'... ', end='', flush=True)
-        print(bf.find_hash(hash32(f'{prefix}{name}{postfix}@{group}'),prefix,postfix,group), flush=True)
+#     def do_find_custom(name:str,prefix,postfix,group):
+#         print(f'finding \'{prefix}{name}{postfix}@{group}\'... ', end='', flush=True)
+#         print(bf.find_hash(hash32(f'{prefix}{name}{postfix}@{group}'),prefix,postfix,group), flush=True)
 
-    if args[0] in ('-l','--loc'):
-        for a in args[1:]:
-            do_find_local(f'_{a}@')
+#     if args[0] in ('-l','--loc'):
+#         for a in args[1:]:
+#             do_find_local(f'_{a}@')
 
-    elif args[0] in ('-f','--find'):
-        i = 1
-        from ...name import splitsymbols
-        for a in args[1:]:
-            do_find_custom(splitsymbols(a))
+#     elif args[0] in ('-f','--find'):
+#         i = 1
+#         from ...name import splitsymbols
+#         for a in args[1:]:
+#             do_find_custom(splitsymbols(a))
 
-    return 0
+#     return 0
 
 
-## MAIN CONDITION ##
+# ## MAIN CONDITION ##
 
-if __name__ == '__main__':
-    exit(main())
+# if __name__ == '__main__':
+#     exit(main())
+
 
 #######################################################################################
-
 
 del Dict, Iterator, List, Tuple, Union  # cleanup declaration-only imports

@@ -15,10 +15,10 @@ __all__ = ['RctImage', 'Rc8Image']
 ## runtime imports:
 # from ..crypt import initkey32, crypt32  # used by RctImage.read_pixels when encrypted
 
-import enum, io, os, shutil, threading
+import enum, io
 from collections import namedtuple
 from struct import calcsize, pack, unpack, iter_unpack, unpack_from, pack_into, Struct
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Dict, Tuple, Union
+from typing import Iterator, List, Dict, Tuple
 
 
 
@@ -28,20 +28,20 @@ from typing import Any, Callable, Iterable, Iterator, List, Optional, Dict, Tupl
 
 assert(b'\x98\x5a\x92\x9a'.decode('cp932') == '六丁')
 # "Rokucho"
-RCT_SIGNATURES:dict = {
+RCT_SIGNATURES:Dict[bytes, Tuple[int,bool]] = {
     b'\x98\x5a\x92\x9aTC00': (0, False), # version 0, decrypted
     b'\x98\x5a\x92\x9aTS00': (0, True),  # version 0, encrypted
     b'\x98\x5a\x92\x9aTC01': (1, False), # version 1, decrypted
     b'\x98\x5a\x92\x9aTS01': (1, True),  # version 1, encrypted
 }
-RC8_SIGNATURES:dict = {
+RC8_SIGNATURES:Dict[bytes, Tuple[int,bool]] = {
     b'\x98\x5a\x92\x9a8_00': (0, False), # version 0, decrypted
 }
-MJO_SIGNATURES:dict = {
+MJO_SIGNATURES:Dict[bytes, Tuple[int,bool]] = {
     b'MajiroObjV1.000\x00': (1, False), # version 1, decrypted
     b'MajiroObjX1.000\x00': (1, True),  # version 1, encrypted
 }
-ARC_SIGNATURES:dict = {
+ARC_SIGNATURES:Dict[bytes, Tuple[int,bool]] = {
     b'MajiroArcV1.000\x00': (1, False), # version 1, decrypted
     b'MajiroArcV2.000\x00': (2, False), # version 2, decrypted
     b'MajiroArcV3.000\x00': (3, False), # version 3, decrypted
@@ -94,12 +94,12 @@ showvals(fmt='{: 3d}',neg=True)
 
 #region ## SHIFT TABLES ##
 
-RC8_SHIFT_TABLE:List[int] = (
+RC8_SHIFT_TABLE:Tuple[int,...] = (
     -16, -32, -48, -64,
     49, 33, 17, 1, -15, -31, -47,
     34, 18, 2, -14, -30,
 )
-RCT_SHIFT_TABLE:List[int] = (
+RCT_SHIFT_TABLE:Tuple[int,...] = (
     -16, -32, -48, -64, -80, -96,
     49, 33, 17, 1, -15, -31, -47,
     50, 34, 18, 2, -14, -30, -46,
@@ -114,7 +114,7 @@ def _calc_shift(width:int, shift:int) -> int:
     # shift_row *= width
     # shift -= (shift_row * width)
 
-def init_shift_table(width:int, base_table:List[int]) -> List[int]:
+def init_shift_table(width:int, base_table:Tuple[int,...]) -> Tuple[int,...]:
     return tuple(_calc_shift(width, shift) for shift in base_table)
 
 #endregion
@@ -320,7 +320,7 @@ class RctImage:
 
     #region ## ROKUCHO READING ##
 
-    def load(self, reader:io.BufferedReader, key:str=None):
+    def load(self, reader:io.BufferedReader, key:str=None) -> bool:
         if isinstance(reader, str):
             with open(reader, 'rb') as file:
                 return self.load(file)
@@ -332,7 +332,7 @@ class RctImage:
         self.read_pixels(reader, key)
         return True
 
-    def read_header(self, reader:io.BufferedReader) -> Tuple[int, int]:
+    def read_header(self, reader:io.BufferedReader) -> None:
         reader.seek(0)
         signature, self.width, self.height, self.datasize = unpack('<8sIII', reader.read(20))
         self.version, self.encrypted = RCT_SIGNATURES[signature]
@@ -341,14 +341,14 @@ class RctImage:
         else:
             self.basename_len = 0
 
-    def read_basename(self, reader:io.BufferedReader) -> List[bytes]:
+    def read_basename(self, reader:io.BufferedReader) -> None:
         reader.seek(20)
         if self.basename_len:
             self.basename = reader.read(self.basename_len).rstrip(b'\x00').decode('cp932')
         else:
             self.basename = None
 
-    def read_pixels(self, reader:io.BufferedReader, key:str):
+    def read_pixels(self, reader:io.BufferedReader, key:str) -> None:
         print(self.width, self.height, self.version, self.encrypted, self.basename)
 
         reader.seek(20 + ((2 + self.basename_len) if self.version==1 else 0))
@@ -436,7 +436,7 @@ class RctImage:
 
     #region ## BITMAP WRITING ##
 
-    def save_bmp(self, writer:io.BufferedWriter):
+    def save_bmp(self, writer:io.BufferedWriter) -> None:
         if isinstance(writer, str):
             with open(writer, 'wb+') as file:
                 return self.save_bmp(file)
@@ -463,7 +463,7 @@ class RctImage:
 
         writer.flush()
 
-    def write_pixels(self, writer:io.BufferedWriter):
+    def write_pixels(self, writer:io.BufferedWriter) -> None:
         raw_stride = self.raw_stride
         stride = self.raw_stride
         for y in range(self.height - 1, -1, -1):
@@ -494,7 +494,7 @@ class Rc8Image:
 
     #region ## ROKUCHO READING ##
 
-    def load(self, reader:io.BufferedReader):
+    def load(self, reader:io.BufferedReader) -> bool:
         if isinstance(reader, str):
             with open(reader, 'rb') as file:
                 return self.load(file)
@@ -503,16 +503,16 @@ class Rc8Image:
         self.read_pixels(reader)
         return True
 
-    def read_header(self, reader:io.BufferedReader) -> Tuple[int, int]:
+    def read_header(self, reader:io.BufferedReader) -> None:
         reader.seek(0)
         signature, self.width, self.height, self.datasize = unpack('<8sIII', reader.read(20))
         self.version, self.encrypted = RC8_SIGNATURES[signature]
 
-    def read_palette(self, reader:io.BufferedReader) -> List[bytes]:
+    def read_palette(self, reader:io.BufferedReader) -> None:
         reader.seek(20)
         self.palette = unpack('<' + '3s'*256, reader.read(0x300))
 
-    def read_pixels(self, reader:io.BufferedReader):
+    def read_pixels(self, reader:io.BufferedReader) -> None:
         reader.seek(20 + 0x300)
         shift_tbl = init_shift_table(self.width, RC8_SHIFT_TABLE)
 
@@ -592,7 +592,7 @@ class Rc8Image:
 
     #region ## BITMAP WRITING ##
 
-    def save_bmp(self, writer:io.BufferedWriter):
+    def save_bmp(self, writer:io.BufferedWriter) -> None:
         if isinstance(writer, str):
             with open(writer, 'wb+') as file:
                 return self.save_bmp(file)
@@ -621,10 +621,10 @@ class Rc8Image:
 
         writer.flush()
 
-    def write_palette(self, writer:io.BufferedWriter):
+    def write_palette(self, writer:io.BufferedWriter) -> None:
         writer.write(pack('<' + '4s'*256, *[c+b'\xff' for c in self.palette]))
 
-    def write_pixels(self, writer:io.BufferedWriter):
+    def write_pixels(self, writer:io.BufferedWriter) -> None:
         raw_stride = self.raw_stride
         stride = self.raw_stride
         for y in range(self.height - 1, -1, -1):
@@ -635,3 +635,6 @@ class Rc8Image:
 #endregion
 
 
+#######################################################################################
+
+del namedtuple, enum, Struct, Iterator, List, Dict, Tuple  # cleanup declaration-only imports

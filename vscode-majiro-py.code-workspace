@@ -22,11 +22,11 @@
     ////////////////////////////////////////////////////////
     // PROGRAMMING FILE TYPES
 
-    "python.autoComplete.extraPaths": ["./src/mjotool"],
     "[python]": {
       "editor.insertSpaces": true,
       "editor.tabSize": 4,
-      "editor.wordWrap": "on"
+      "editor.wordWrap": "on",
+      "editor.trimAutoWhitespace": false  // this setting is a MAJOR double-edged sword, and may not be worth the effort
     },
 
     ////////////////////////////////////////////////////////
@@ -95,6 +95,13 @@
         "icon": "mjml",
         "extensions": ["mjil"]
       }
-    ]
+    ],
+
+    // Hexdump extension
+    "hexdump.littleEndian": true,
+
+    // Python
+    "python.autoComplete.extraPaths": ["./src/mjotool"],
+    "python.analysis.extraPaths": ["./src/mjotool"]
   }
 }

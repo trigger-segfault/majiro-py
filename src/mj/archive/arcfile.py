@@ -21,7 +21,7 @@ from struct import calcsize, pack, unpack
 from typing import Any, Callable, List, Optional, Dict, Tuple, Union
 
 from .arcextfile import MajiroArcExtFile
-from ..util.typecast import to_str
+from ..util.typecast import to_bytes, to_str
 
 
 
@@ -29,14 +29,19 @@ class MajiroArcEntry:
     """MajiroArcEntry(hash:int, offset:int, size:int=..., name:str=...)
     this class is immutable
     """
-    __slots__ = ('hash', 'offset', 'size', 'name')#, 'owner')
-    def __init__(self, hash:int, offset:int, size:int=..., name:str=...): #, *, owner:'MajiroArcFile'):
-        self.hash:int = hash
-        self.offset:int = offset
+    __slots__ = ('hash', 'offset', 'size', 'name')
+    hash:int
+    offset:int
+    size:int
+    name:str
+
+    def __init__(self, hash:int, offset:int, size:int=..., name:str=...):
+        self.hash = hash
+        self.offset = offset
         if size is not Ellipsis:
-            self.size:int = size
+            self.size = size
         if name is not Ellipsis:
-            self.name:str = name
+            self.name = name
 
     #region ## IMMUTABLE ##
 
@@ -53,7 +58,7 @@ class MajiroArcEntry:
         return f'{self.__class__.__name__}(0x{self.hash:08x}, {self.offset!r}{size}{name})'
         #size = f', size={self.size!r}' if hasattr(self, 'size') else ''
         #return f'{self.__class__.__name__}({self.name!r}, 0x{self.hash:08x}, {self.offset!r}{size})'
-    def __str__(self) -> str: return repr(self)
+    __str__ = __repr__
 
     @classmethod
     def read(cls, reader:io.BufferedReader, version:int) -> 'MajiroArcEntry':
@@ -143,10 +148,10 @@ class MajiroArcFile:
     fp = None  # Set here since __del__ checks it
     _windows_illegal_name_trans_table = None
 
-    def __init__(self, file, mode:str='r', entries:List[MajiroArcEntry]=None, *, version:int=None):
-        self.version:int = version
+    def __init__(self, file, mode:str='r', entries:List[MajiroArcEntry]=None, *, version:Optional[int]=None):
+        self.version = version
         self.mode = mode
-        self.entries:List[MajiroArcEntry] = [] if entries is None else entries
+        self.entries = [] if entries is None else entries  # type: List[MajiroArcEntry]
         if mode != 'r':
             raise ValueError(f'MajiroArcFile() only "r" mode is currently supported, got {mode!r}')
         # Check if we were passed a file-like object
@@ -499,7 +504,7 @@ class MajiroArcFile:
         if version is None:
             raise Exception(f'Invalid MajiroArc signature: {signature!r}')
 
-        entries:List[MajiroArcEntry] = []
+        entries = []  # type: List[MajiroArcEntry]
         for _ in range(count):
             entry = MajiroArcEntry.read(reader, version)
             if version == 1 and entries:
@@ -515,7 +520,7 @@ class MajiroArcFile:
         
         for entry in entries:
             null_idx = names_buf.index(b'\x00', names_pos)
-            entry.name = names_buf[names_pos:null_idx].decode('cp932')
+            entry.name = to_str(names_buf[names_pos:null_idx])
             names_pos = null_idx + 1
 
         self.version = version
@@ -526,7 +531,7 @@ class MajiroArcFile:
         version = self._V_LATEST if self.version is None else self.version
         signature = self._SIGNATURES_LOOKUP[version]
         #
-        names_buf = b'\x00'.join(e.name.encode('cp932') for e in self.entries) + b'\x00'
+        names_buf = b'\x00'.join(to_bytes(e.name) for e in self.entries) + b'\x00'
         entry_size = MajiroArcEntry.calcsize(version)
         table_size = entry_size * (len(self.entries) + int(version==1))
 
@@ -589,7 +594,7 @@ class MajiroArcFile:
 #       if zero == -1:
 #         break
 #       name_len = zero - names_pos
-#       name = names[names_pos:zero].decode('cp932')
+#       name = to_str(names[names_pos:zero])
 #       names_size -= name_len + 1
 #       names_pos = zero + 1
 #       offset = offset_next

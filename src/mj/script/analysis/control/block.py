@@ -10,23 +10,21 @@ __credits__ = '''Based off Meta Language implementation by Haeleth - 2005
 Converted to Python script with extended syntax by Robert Jordan - 2021
 '''
 
-__all__ = []
+__all__ = ['BasicBlock', 'Function']
 
 #######################################################################################
 
-import enum
-from collections import OrderedDict
-from itertools import chain
-from typing import Dict, Iterator, List, Optional, Union
-
-from abc import abstractproperty
+import abc
+from typing import List, Optional
 
 from ...flags import MjoType, MjoScope
 from ...instruction import Instruction
 from ...mjoscript import FunctionIndexEntry, MjoScript
 
 from ....identifier import HashValue, HashName
-from ....name import basename
+
+
+#######################################################################################
 
 # #region ## IMMUTABLE ##
 
@@ -40,11 +38,14 @@ from ....name import basename
 class _Block:
     """Base class for bytecode block analysis
     """
-    def __init__(self):
-        self.first_instruction_index:int = -1
-        self.last_instruction_index:int = -1
+    first_instruction_index:int
+    last_instruction_index:int
 
-    @abstractproperty
+    def __init__(self):
+        self.first_instruction_index = -1
+        self.last_instruction_index = -1
+
+    @abc.abstractproperty
     def script(self) -> MjoScript: raise NotImplementedError('_Block.script')
 
     @property
@@ -77,15 +78,23 @@ class _Block:
 class BasicBlock(_Block):
     """Simple block of instructions
     """
+    function:'Function'
+    #TODO: # name:str
+    is_entry_block:bool = False
+    is_exit_block:bool = False
+    is_dtor_block:bool = False
+    predecessors:List['BasicBlock']
+    successors:List['BasicBlock']
+
     def __init__(self, function:'Function'): #TODO: #, name:str):
         super().__init__()
-        self.function:'Function' = function
-        #TODO: # self.name:str = name
-        self.is_entry_block:bool = False
-        self.is_exit_block:bool = False
-        self.is_dtor_block:bool = False  # destructor {} syntax with op.847 (bsel.5)
-        self.predecessors:List['BasicBlock'] = []
-        self.successors:List['BasicBlock'] = []
+        self.function = function
+        #TODO: # self.name = name
+        self.is_entry_block = False
+        self.is_exit_block = False
+        self.is_dtor_block = False  # destructor {} syntax with op.847 (bsel.5)
+        self.predecessors = []
+        self.successors = []
     @property
     def script(self) -> MjoScript: return self.function._script
     @property
@@ -107,9 +116,11 @@ class BasicBlock(_Block):
 class _BlockContainer(_Block):
     """Block, and container for nested instruction blocks
     """
+    basic_blocks:List[BasicBlock]
+
     def __init__(self):
         super().__init__()
-        self.basic_blocks:List[BasicBlock] = []
+        self.basic_blocks = []
 
     def basic_block_from_offset(self, offset:int) -> BasicBlock:
         for block in self.basic_blocks:
@@ -120,14 +131,20 @@ class _BlockContainer(_Block):
 class Function(_BlockContainer):
     """Function block, containing nested instruction blocks
     """
+    func_info:FunctionIndexEntry
+    # hashname:int
+    entry_block:Optional[BasicBlock]
+    exit_blocks:Optional[List[BasicBlock]]
+    parameter_types:Optional[List[MjoType]]
+
     def __init__(self, script:MjoScript, func_info:FunctionIndexEntry):
         super().__init__()
-        self._script:MjoScript = script
-        self.func_info:FunctionIndexEntry = func_info
-        # self.hashname:int = hashname
-        self.entry_block:BasicBlock = None
-        self.exit_blocks:List[BasicBlock] = None
-        self.parameter_types:List[MjoType] = None
+        self._script = script
+        self.func_info = func_info
+        # self.hashname = hashname
+        self.entry_block = None
+        self.exit_blocks = None
+        self.parameter_types = None
     @property
     def hashname(self) -> HashName: return self.func_info.hashname
     @property
@@ -137,6 +154,9 @@ class Function(_BlockContainer):
     @property
     def script(self) -> MjoScript: return self._script
     @property
-    def is_entrypoint(self) -> bool:
-        return self.start_offset == self.script.main_offset
+    def is_entrypoint(self) -> bool: return self.start_offset == self.script.main_offset
 
+
+#######################################################################################
+
+del abc, List, Optional  # cleanup declaration-only imports

@@ -7,7 +7,7 @@ __version__ = '0.1.0'
 __date__    = '2021-05-06'
 __author__  = 'Robert Jordan'
 
-__all__ = []
+__all__ = ['MjoScript']
 
 #######################################################################################
 
@@ -16,13 +16,14 @@ __all__ = []
 
 import io
 from struct import calcsize, pack, unpack
-from typing import Any, Callable, List, Optional, Dict, Tuple, Union
+from typing import List, Union
 
-from .opcodes import Opcode
-from .flags import MjoFlags, MjoType
+from ..util.typecast import to_bytes, to_str
 from ..identifier import HashValue, HashName, IdentifierKind
 from .instruction import Instruction
 
+
+#######################################################################################
 
 # function entry type declared in table in MjoScript header before bytecode
 
@@ -32,6 +33,10 @@ class FunctionIndexEntry:
     this class is immutable
     """
     __slots__ = ('hashname', 'offset', 'is_entrypoint')
+    hashname:HashName
+    offset:int
+    is_entrypoint:bool
+
     def __init__(self, hashname:Union[HashName,int,str], offset:int, is_entrypoint:bool=False, *, lookup:bool=False):
         if isinstance(hashname, HashName):
             self.hashname = hashname
@@ -53,7 +58,7 @@ class FunctionIndexEntry:
     def __repr__(self) -> str:
         entrypoint = f', is_entrypoint={self.is_entrypoint!r}' if self.is_entrypoint else ''
         return f'FunctionIndexEntry({self.hashname.value!r}, {self.offset!r}{entrypoint})'
-    def __str__(self) -> str: return repr(self)
+    __str__ = __repr__
 
     @property
     def hash(self) -> HashValue:
@@ -71,17 +76,24 @@ class FunctionIndexEntry:
 class MjoScript:
     """Majiro .mjo script type and disassembler
     """
+    signature:bytes
+    main_offset:int
+    line_count:int
+    bytecode_size:int
+    functions:List[FunctionIndexEntry]
+    instructions:List[Instruction]
+    
     SIGNATURE_ENCRYPTED:bytes = b'MajiroObjX1.000\x00'  # encrypted bytecode
     SIGNATURE_DECRYPTED:bytes = b'MajiroObjV1.000\x00'  # decrypted bytecode (majiro)
     SIGNATURE_PLAIN:bytes = b'MjPlainBytecode\x00'  # decrypted bytecode (mjdisasm)
 
     def __init__(self, signature:bytes, main_offset:int, line_count:int, bytecode_size:int, functions:List[FunctionIndexEntry], instructions:List[Instruction]):
-        self.signature:bytes = signature
-        self.main_offset:int = main_offset
-        self.line_count:int = line_count
-        self.bytecode_size:int = bytecode_size
-        self.functions:List[FunctionIndexEntry] = functions
-        self.instructions:List[Instruction] = instructions
+        self.signature = signature
+        self.main_offset = main_offset
+        self.line_count = line_count
+        self.bytecode_size = bytecode_size
+        self.functions = functions
+        self.instructions = instructions
 
     @property
     def bytecode_offset(self) -> int:
@@ -130,11 +142,11 @@ class MjoScript:
     def read(cls, reader:io.BufferedReader, *, lookup:bool=False) -> 'MjoScript':
         # header:
         signature, main_offset, line_count, function_count = unpack('<16sIII', reader.read(28))
-        is_encrypted:bool = (signature == cls.SIGNATURE_ENCRYPTED)
+        is_encrypted = (signature == cls.SIGNATURE_ENCRYPTED)
         assert(is_encrypted ^ (signature in (cls.SIGNATURE_DECRYPTED, cls.SIGNATURE_PLAIN)))
 
         # functions table:
-        functions:List[FunctionIndexEntry] = []
+        functions = []  # type: List[FunctionIndexEntry]
         for _ in range(function_count):
             # func = FunctionIndexEntry.read(reader, main_offset)
             # if func.offset == main_offset:
@@ -143,26 +155,26 @@ class MjoScript:
             functions.append(FunctionIndexEntry.read(reader, main_offset, lookup=lookup))
 
         # bytecode:
-        bytecode_size:int = unpack('<I', reader.read(4))[0]
+        bytecode_size = unpack('<I', reader.read(4))[0]
 
-        # bytecode_offset:int = reader.tell()
-        bytecode:bytes = reader.read(bytecode_size)
+        # bytecode_offset = reader.tell()
+        bytecode = reader.read(bytecode_size)
         if len(bytecode) != bytecode_size:
             raise Exception('unexpected end of file before end of bytecode')
         if is_encrypted:
             from ..crypt import crypt32
             bytecode = crypt32(bytecode)  # decrypt bytecode
-        ms:io.BytesIO = io.BytesIO(bytecode)
-        instructions:List[Instruction] = cls.read_bytecode(ms, lookup=lookup)
+        ms = io.BytesIO(bytecode)
+        instructions = cls.read_bytecode(ms, lookup=lookup)
 
         return MjoScript(signature, main_offset, line_count, bytecode_size, functions, instructions)
 
     def write(self, writer:io.BufferedWriter) -> None:
         # header:
         if self.signature not in (self.SIGNATURE_ENCRYPTED, self.SIGNATURE_DECRYPTED):
-            raise Exception(f'{self.__class__.__name__} signature must be {self.SIGNATURE_ENCRYPTED.decode("cp932")!r} or {self.SIGNATURE_DECRYPTED.decode("cp932")!r}, not {self.signature.decode("cp932")!r}')
-        writer.write(pack('<16sIII', self.signature, self.main_offset, self.line_count, len(self.functions)))
-        is_encrypted:bool = (self.signature == self.SIGNATURE_ENCRYPTED)
+            raise Exception(f'{self.__class__.__name__} signature must be {to_str(self.SIGNATURE_ENCRYPTED)!r} or {to_str(self.SIGNATURE_DECRYPTED)!r}, not {to_str(self.signature)!r}')
+        writer.write(pack('<16sIII', to_bytes(self.signature), self.main_offset, self.line_count, len(self.functions)))
+        is_encrypted = (self.signature == self.SIGNATURE_ENCRYPTED)
         assert(is_encrypted ^ (self.signature in (self.SIGNATURE_DECRYPTED, self.SIGNATURE_PLAIN)))
 
         # functions table:
@@ -173,11 +185,11 @@ class MjoScript:
         writer.write(pack('<I', self.bytecode_size))
 
         # initialize full-length of bytecode ahead of time (is this actually efficient in Python?)
-        ms:io.BytesIO = io.BytesIO(bytes(self.bytecode_size))
+        ms = io.BytesIO(bytes(self.bytecode_size))
         self.write_bytecode(ms)
         ms.flush()
 
-        bytecode:bytes = ms.getvalue()
+        bytecode = ms.getvalue()
         if is_encrypted:
             from ..crypt import crypt32
             bytecode = crypt32(bytecode)  # encrypt bytecode
@@ -186,17 +198,14 @@ class MjoScript:
 
     @classmethod
     def read_bytecode(cls, reader:io.BufferedReader, *, lookup:bool=False) -> List[Instruction]:
-        # reader = StructIO(reader)
-
-        pos:int = reader.tell()
+        pos = reader.tell()
         length = reader.seek(0, 2) - pos
         reader.seek(pos)
-        # length:int = reader.length()
-        offset:int = reader.tell()
+        offset = reader.tell()
 
-        instructions:List[Instruction] = []
+        instructions = []  # type: List[Instruction]
         while offset != length:
-            instr:Instruction = Instruction.read(reader, offset, lookup=lookup)
+            instr = Instruction.read(reader, offset, lookup=lookup)
             instructions.append(instr)
             assert(offset + instr.size == reader.tell())
             offset = reader.tell()
@@ -219,3 +228,6 @@ class MjoScript:
         return -1
 
 
+#######################################################################################
+
+del List, Union  # cleanup declaration-only imports

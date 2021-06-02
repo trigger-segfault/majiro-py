@@ -17,10 +17,13 @@ __all__ = ['MjoType', 'MjoScope', 'MjoInvert', 'MjoModifier', 'MjoDimension', 'M
 import enum
 from collections import OrderedDict
 from itertools import chain
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
-from ..name import basename
+from .. import name as mj_name
+from ..name import postfixsymbol, prefixsymbol
 
+
+#######################################################################################
 
 #region ## MAJIRO FLAGS ##
 
@@ -34,10 +37,10 @@ class MjoType(enum.IntEnum):
     UNKNOWN      = -1 # ('?' postfix used internally to specify the name is unknown)
     #
     INT          = 0  #   '' postfix (int,         [i])  (also used for handles/function pointers)
-    FLOAT        = 1  #  '%' postfix (float,       [r])  (observed as '!' for syscall: $46b18379 "$rand!@MAJIRO_INTER")
+    FLOAT        = 1  #  '%' postfix (float,       [r])  (includes legacy postfix: '!')
     STRING       = 2  #  '$' postfix (string,      [s])
     INT_ARRAY    = 3  #  '#' postfix (intarray,    [iarr])
-    FLOAT_ARRAY  = 4  # '%#' postfix (floatarray,  [rarr])
+    FLOAT_ARRAY  = 4  # '%#' postfix (floatarray,  [rarr])  (includes legacy postfix: '!#')
     STRING_ARRAY = 5  # '$#' postfix (stringarray, [sarr])
     #
     #NOTE: WHAT THE HELL!??  (also possibly "any")
@@ -55,7 +58,7 @@ class MjoType(enum.IntEnum):
     #
     def getname(self, alias:bool=False) -> Optional[str]: return _flagname(self, alias)
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'MjoType': return _fromflagname(cls, name, default)
+    def fromname(cls, name:str, default:Any=...) -> 'MjoType': return _fromflagname(cls, name, default)
     #
     @property
     def postfix(self) -> str:
@@ -63,7 +66,7 @@ class MjoType(enum.IntEnum):
             return self._POSTFIXES_ALT[self]  # INTERNAL only has an alt type since we still don't really understand it
         return self._POSTFIXES[self]
     @classmethod
-    def frompostfix(cls, postfix:str, default=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
+    def frompostfix(cls, postfix:str, default:Any=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
         if not allow_unk and postfix == MjoType.UNKNOWN.postfix:
             if default is not Ellipsis:
                 return default
@@ -77,32 +80,32 @@ class MjoType(enum.IntEnum):
         else:
             return name if name is not None else cls._POSTFIX_LOOKUP[postfix]
     @classmethod
-    def frompostfix_name(cls, fullname:str, default=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
-        postfix = cls.getpostfix_fromname(fullname)
+    def frompostfix_name(cls, fullname:str, default:Any=..., *, allow_unk:bool=False, allow_alt:bool=False) -> 'MjoType':
+        postfix = postfixsymbol(fullname)
         return cls.frompostfix(postfix, default, allow_unk=allow_unk, allow_alt=allow_alt)
-    @classmethod
-    def getpostfix_fromname(cls, fullname:str) -> str:
-        # from name lookup behavior has to be hardcoded :(
-        # trim group name, if included
-        #NOTE: realistically identifiers should have at least two chars before group
-        name = basename(fullname)
-        at_idx = name.find('@', 1)
-        if at_idx != -1: name = name[:at_idx]
-        # keep consistent parsing with '' postfix (which doesn't care if there's no room for an actual name)
-        postfix = '' if len(name) > 0 else None
-        for i in range(len(name) - 1, -1, -1): # (i=len(name)-1; i >= 0; i--)
-            # consume as many postfix characters as possible to check invalid character usage
-            #                            normal        doc   MAJIRO_INTER
-            if i == 0 or name[i] not in ('%','$','#',  '?',  '!','~'): #cls._POSTFIX_LOOKUP:
-            # if i == 0 or name[i] not in ('%','$','#',  '?',  '!'): #,'~'): #cls._POSTFIX_LOOKUP:
-                postfix = name[i+1:]
-                break
-        return postfix
+    # @classmethod
+    # def getpostfix_fromname(cls, fullname:str) -> str:
+    #     # from name lookup behavior has to be hardcoded :(
+    #     # trim group name, if included
+    #     #NOTE: realistically identifiers should have at least two chars before group
+    #     name = basename(fullname)
+    #     at_idx = name.find('@', 1)
+    #     if at_idx != -1: name = name[:at_idx]
+    #     # keep consistent parsing with '' postfix (which doesn't care if there's no room for an actual name)
+    #     postfix = '' if len(name) > 0 else None
+    #     for i in range(len(name) - 1, -1, -1): # (i=len(name)-1; i >= 0; i--)
+    #         # consume as many postfix characters as possible to check invalid character usage
+    #         #                            normal        doc   MAJIRO_INTER
+    #         if i == 0 or name[i] not in ('%','$','#',  '?',  '!','~'): #cls._POSTFIX_LOOKUP:
+    #         # if i == 0 or name[i] not in ('%','$','#',  '?',  '!'): #,'~'): #cls._POSTFIX_LOOKUP:
+    #             postfix = name[i+1:]
+    #             break
+    #     return postfix
     #
     @property
     def python_type(self) -> type: return self._PYTHON_TYPES[self]
     @property
-    def is_native(self) -> bool: return (MjoType.INT <= self <= MjoType.FLOAT)
+    def is_numeric(self) -> bool: return (MjoType.INT <= self <= MjoType.FLOAT)
     @property
     def is_reference(self) -> bool: return (MjoType.STRING <= self <= MjoType.STRING_ARRAY)
     @property
@@ -111,11 +114,10 @@ class MjoType(enum.IntEnum):
     def is_array(self) -> bool: return (MjoType.INT_ARRAY <= self <= MjoType.STRING_ARRAY)
     @property
     def element(self) -> 'MjoType':
-        return MjoType(self.value & 0x3) if self.is_array else self
+        return MjoType(self.value - MjoType.INT_ARRAY.value) if self.is_array else self
     @property
     def array(self) -> 'MjoType':
-        if self is MjoType.UNKNOWN:
-            return None
+        if self is MjoType.UNKNOWN: return None
         return MjoType(self.value + MjoType.INT_ARRAY.value) if self.is_primitive else self
     #
     @property
@@ -123,7 +125,7 @@ class MjoType(enum.IntEnum):
         from ..identifier import Typedef
         return Typedef(self.value)
     @classmethod
-    def fromtypedef(cls, typedef:'Typedef', default=..., allow_unk:bool=False) -> 'MjoType':
+    def fromtypedef(cls, typedef:'Typedef', default:Any=..., allow_unk:bool=False) -> 'MjoType':
         basetype = typedef.basetype
         if basetype.value > MjoType.STRING_ARRAY.value or (not allow_unk and basetype.value == MjoType.UNKNOWN.value):
             if default is Ellipsis:
@@ -174,12 +176,12 @@ class MjoScope(enum.IntEnum):
     #
     def getname(self, alias:bool=False) -> Optional[str]: return _flagname(self, alias)
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'MjoScope': return _fromflagname(cls, name, default)
+    def fromname(cls, name:str, default:Any=...) -> 'MjoScope': return _fromflagname(cls, name, default)
     #
     @property
     def prefix(self) -> str: return self._PREFIXES[self]
     @classmethod
-    def fromprefix(cls, prefix:str, default=..., allow_unk:bool=False) -> 'MjoScope':
+    def fromprefix(cls, prefix:str, default:Any=..., allow_unk:bool=False) -> 'MjoScope':
         if not allow_unk and prefix == MjoScope.UNKNOWN.prefix:
             if default is not Ellipsis:
                 return default
@@ -188,11 +190,12 @@ class MjoScope(enum.IntEnum):
             return cls._PREFIX_LOOKUP.get(prefix, default)
         return cls._PREFIX_LOOKUP[prefix]
     @classmethod
-    def fromprefix_name(cls, name:str, default=..., allow_unk:bool=False) -> 'MjoScope':
-        if allow_unk and name[:1] not in cls._PREFIX_LOOKUP:
+    def fromprefix_name(cls, name:str, default:Any=..., allow_unk:bool=False) -> 'MjoScope':
+        prefix = prefixsymbol(name)
+        if allow_unk and prefix not in cls._PREFIX_LOOKUP:
             name = ''
-        return cls.fromprefix(name[:1], default, allow_unk=allow_unk)
-    # #
+        return cls.fromprefix(prefix, default, allow_unk=allow_unk)
+    #
     @property
     def is_var(self) -> bool: return (MjoScope.PERSISTENT <= self <= MjoScope.LOCAL)
     @property
@@ -216,7 +219,7 @@ class MjoScope(enum.IntEnum):
     # def fromidentifier(cls, kind:'IdentifierKind') -> 'MjoScope':
     #     return MjoScope(kind.value) if kind.is_var else MjoScope.UNKNOWN
     @classmethod
-    def fromidentifier(cls, kind:'IdentifierKind', default=..., allow_unk:bool=False) -> 'MjoScope':
+    def fromidentifier(cls, kind:'IdentifierKind', default:Any=..., allow_unk:bool=False) -> 'MjoScope':
         from ..identifier import IdentifierKind
         if kind is IdentifierKind.FUNCTION: return MjoScope.FUNCTION
         if kind is IdentifierKind.SYSCALL:  return MjoScope.SYSCALL
@@ -244,7 +247,7 @@ class MjoInvert(enum.IntEnum):
     #
     def getname(self, alias:bool=False) -> Optional[str]: return _flagname(self, alias)
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'MjoInvert': return _fromflagname(cls, name, default)
+    def fromname(cls, name:str, default:Any=...) -> 'MjoInvert': return _fromflagname(cls, name, default)
     #
     @property
     def operator(self) -> str: return self._OPERATORS[self]
@@ -274,7 +277,7 @@ class MjoModifier(enum.IntEnum):
     #
     def getname(self, alias:bool=False) -> Optional[str]: return _flagname(self, alias)
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'MjoModifier': return _fromflagname(cls, name, default)
+    def fromname(cls, name:str, default:Any=...) -> 'MjoModifier': return _fromflagname(cls, name, default)
     #
     @property
     def operator(self) -> str: return self._OPERATORS[self]
@@ -305,7 +308,7 @@ class MjoDimension(enum.IntEnum):
     #
     def getname(self, alias:bool=False) -> Optional[str]: return _flagname(self, alias)
     @classmethod
-    def fromname(cls, name:str, default=...) -> 'MjoDimension': return _fromflagname(cls, name, default)
+    def fromname(cls, name:str, default:Any=...) -> 'MjoDimension': return _fromflagname(cls, name, default)
     #
     @property
     def supports(self) -> MjoTypeMask:
@@ -350,20 +353,15 @@ class MjoFlags(int):
         if invert    is Ellipsis: invert    = self.invert
         return self.fromflags(scope=scope, type=type, dimension=dimension, modifier=modifier, invert=invert)
     @property
-    def modifier(self) -> MjoModifier:
-        return MjoModifier(self & 0x7)
+    def modifier(self) -> MjoModifier: return MjoModifier(self & 0x7)
     @property
-    def invert(self) -> MjoInvert:
-        return MjoInvert((self >> 3) & 0x3)
+    def invert(self) -> MjoInvert: return MjoInvert((self >> 3) & 0x3)
     @property
-    def scope(self) -> MjoScope:
-        return MjoScope((self >> 5) & 0x7)
+    def scope(self) -> MjoScope: return MjoScope((self >> 5) & 0x7)
     @property
-    def type(self) -> MjoType:
-        return MjoType((self >> 8) & 0x7)
+    def type(self) -> MjoType: return MjoType((self >> 8) & 0x7)
     @property
-    def dimension(self) -> MjoDimension:
-        return MjoDimension((self >> 11) & 0x3)
+    def dimension(self) -> MjoDimension: return MjoDimension((self >> 11) & 0x3)
 
 #endregion
 
@@ -372,7 +370,7 @@ class MjoFlags(int):
 #TODO: is there really any need to be using OrderedDict's here?
 
 # MjoType:
-MjoType._NAMES:Dict[MjoType,str] = OrderedDict({
+MjoType._NAMES = OrderedDict({
     MjoType.INT:          'int',
     MjoType.FLOAT:        'float',
     MjoType.STRING:       'string',
@@ -380,7 +378,7 @@ MjoType._NAMES:Dict[MjoType,str] = OrderedDict({
     MjoType.FLOAT_ARRAY:  'floatarray',
     MjoType.STRING_ARRAY: 'stringarray',
 })
-MjoType._ALIASES:Dict[MjoType,str] = OrderedDict({
+MjoType._ALIASES = OrderedDict({
     MjoType.INT:          'i',
     MjoType.FLOAT:        'r',
     MjoType.STRING:       's',
@@ -388,39 +386,39 @@ MjoType._ALIASES:Dict[MjoType,str] = OrderedDict({
     MjoType.FLOAT_ARRAY:  'rarr',
     MjoType.STRING_ARRAY: 'sarr',
 })
-MjoType._LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in chain(MjoType._NAMES.items(), MjoType._ALIASES.items()))
+MjoType._LOOKUP = OrderedDict((v,k) for k,v in chain(MjoType._NAMES.items(), MjoType._ALIASES.items()))
 
-MjoType._POSTFIXES:Dict[MjoType,str] = OrderedDict({
+MjoType._POSTFIXES = OrderedDict({
     #NOTE: not a real type flag <INTERNAL USE ONLY>
-    MjoType.UNKNOWN:      '?',
+    MjoType.UNKNOWN:      mj_name.DOC_POSTFIX_UNKNOWN,  # '?'
     #
-    MjoType.INT:          '',
-    MjoType.FLOAT:        '%',
-    MjoType.STRING:       '$',
-    MjoType.INT_ARRAY:    '#',
-    MjoType.FLOAT_ARRAY:  '%#',
-    MjoType.STRING_ARRAY: '$#',
+    MjoType.INT:          mj_name.POSTFIX_INT,          # ''
+    MjoType.FLOAT:        mj_name.POSTFIX_FLOAT,        # '%'
+    MjoType.STRING:       mj_name.POSTFIX_STRING,       # '$'
+    MjoType.INT_ARRAY:    mj_name.POSTFIX_INT_ARRAY,    # '#'
+    MjoType.FLOAT_ARRAY:  mj_name.POSTFIX_FLOAT_ARRAY,  # '%#'
+    MjoType.STRING_ARRAY: mj_name.POSTFIX_STRING_ARRAY, # '$#'
     #
     #NOTE: not a real type flag <INTERNAL USE ONLY>
-    MjoType.VOID:         '',
+    MjoType.VOID:         mj_name.POSTFIX_VOID,         # '' same as INT
 })
-MjoType._POSTFIXES_ALT:Dict[MjoType,str] = OrderedDict({
+MjoType._POSTFIXES_ALT = OrderedDict({
     #NOTE: legacy float type prefix '!', observed with 3 syscalls: 
     #       * $46b18379 "$rand!@MAJIRO_INTER"         (still present)
     #       * $2cd009af "$dim_create!#@MAJIRO_INTER"  (removed in releases after Mahjong [v1509])
     #       * $20caeb0e "$dim_release!#@MAJIRO_INTER" (removed in releases after Mahjong [v1509])
-    MjoType.FLOAT:        '!',
-    MjoType.FLOAT_ARRAY:  '!#',
+    MjoType.FLOAT:        mj_name.LEGACY_POSTFIX_FLOAT,       # '!'
+    MjoType.FLOAT_ARRAY:  mj_name.LEGACY_POSTFIX_FLOAT_ARRAY, # '!#'
     #
     # #NOTE: WHAT THE HELL!??
     # #      observed for var: $11f91fd3 "%Op_internalCase~@MAJIRO_INTER", may be a collision.
     # #      it's possible this is actually a post-postfix used to keep things internal, or it prevents access by MajiroCompile.exe.
-    MjoType.INTERNAL:     '~',
+    MjoType.INTERNAL:     mj_name.POSTFIX_INTERNAL, # '~'
 })
-MjoType._POSTFIX_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES.items() if k is not MjoType.VOID)
-MjoType._POSTFIX_ALT_LOOKUP:Dict[str,MjoType] = OrderedDict((v,k) for k,v in MjoType._POSTFIXES_ALT.items())
+MjoType._POSTFIX_LOOKUP = OrderedDict((v,k) for k,v in MjoType._POSTFIXES.items() if k is not MjoType.VOID)
+MjoType._POSTFIX_ALT_LOOKUP = OrderedDict((v,k) for k,v in MjoType._POSTFIXES_ALT.items())
 
-MjoType._PYTHON_TYPES:Dict[MjoType,type] = OrderedDict({
+MjoType._PYTHON_TYPES = OrderedDict({
     #NOTE: not a real type flag <INTERNAL USE ONLY>
     MjoType.UNKNOWN:      object,  # any type
     #
@@ -436,7 +434,7 @@ MjoType._PYTHON_TYPES:Dict[MjoType,type] = OrderedDict({
 })
 
 # MjoScope:
-MjoScope._NAMES:Dict[MjoScope,str] = OrderedDict({
+MjoScope._NAMES = OrderedDict({
     MjoScope.PERSISTENT: 'persistent',
     MjoScope.SAVEFILE:   'savefile',
     MjoScope.THREAD:     'thread',
@@ -445,38 +443,38 @@ MjoScope._NAMES:Dict[MjoScope,str] = OrderedDict({
     MjoScope.FUNCTION:   'call',
     MjoScope.SYSCALL:    'syscall',
 })
-MjoScope._ALIASES:Dict[MjoScope,str] = OrderedDict({
+MjoScope._ALIASES = OrderedDict({
     MjoScope.PERSISTENT: 'persist',
     MjoScope.SAVEFILE:   'save',
     # (no thread alias, already short enough for its infrequent usage)
     MjoScope.LOCAL:      'loc',
 })
-MjoScope._LOOKUP:Dict[str,MjoScope] = OrderedDict((v,k) for k,v in chain(MjoScope._NAMES.items(), MjoScope._ALIASES.items())) #if k is not MjoScope.FUNCTION)
+MjoScope._LOOKUP = OrderedDict((v,k) for k,v in chain(MjoScope._NAMES.items(), MjoScope._ALIASES.items())) #if k is not MjoScope.FUNCTION)
 
-MjoScope._PREFIXES:Dict[MjoScope,str] = OrderedDict({
+MjoScope._PREFIXES = OrderedDict({
     #NOTE: not a real scope flag <INTERNAL USE ONLY>
     MjoScope.UNKNOWN:    '',
     #
-    MjoScope.PERSISTENT: '#',
-    MjoScope.SAVEFILE:   '@',
-    MjoScope.THREAD:     '%',
-    MjoScope.LOCAL:      '_',
+    MjoScope.PERSISTENT: mj_name.PREFIX_PERSISTENT, # '#'
+    MjoScope.SAVEFILE:   mj_name.PREFIX_SAVEFILE,   # '@'
+    MjoScope.THREAD:     mj_name.PREFIX_THREAD,     # '%'
+    MjoScope.LOCAL:      mj_name.PREFIX_LOCAL,      # '_'
     # #NOTE: not a real scope flag <INTERNAL USE ONLY>
-    MjoScope.FUNCTION:   '$',
-    MjoScope.SYSCALL:    '$',
+    MjoScope.FUNCTION:   mj_name.PREFIX_FUNCTION,   # '$'
+    MjoScope.SYSCALL:    mj_name.PREFIX_FUNCTION,   # '$'
 })
-MjoScope._PREFIX_LOOKUP:Dict[str,MjoScope] = OrderedDict((v,k) for k,v in MjoScope._PREFIXES.items() if k is not MjoScope.SYSCALL)
+MjoScope._PREFIX_LOOKUP = OrderedDict((v,k) for k,v in MjoScope._PREFIXES.items() if k is not MjoScope.SYSCALL)
 
 # MjoInvert:
-MjoInvert._NAMES:Dict[MjoInvert,str] = OrderedDict({
+MjoInvert._NAMES = OrderedDict({
     #NOTE: these names will conflict with "notl" and "not" opcode mnemonics, be prepared when parsing MjIL
     MjoInvert.NUMERIC: 'neg',
     MjoInvert.BOOLEAN: 'notl',
     MjoInvert.BITWISE: 'not',
 })
-MjoInvert._LOOKUP:Dict[str,MjoInvert] = OrderedDict((v,k) for k,v in MjoInvert._NAMES.items())
+MjoInvert._LOOKUP = OrderedDict((v,k) for k,v in MjoInvert._NAMES.items())
 
-MjoInvert._OPERATORS:Dict[MjoInvert,str] = OrderedDict({
+MjoInvert._OPERATORS = OrderedDict({
     MjoInvert.NONE:    None,
     MjoInvert.NUMERIC: '-',
     MjoInvert.BOOLEAN: '!',
@@ -484,21 +482,21 @@ MjoInvert._OPERATORS:Dict[MjoInvert,str] = OrderedDict({
 })
 
 # MjoModifier:
-MjoModifier._NAMES:Dict[MjoModifier,str] = OrderedDict({
+MjoModifier._NAMES = OrderedDict({
     MjoModifier.PREINCREMENT:  'preinc',
     MjoModifier.PREDECREMENT:  'predec',
     MjoModifier.POSTINCREMENT: 'postinc',
     MjoModifier.POSTDECREMENT: 'postdec',
 })
-MjoModifier._ALIASES:Dict[MjoModifier,str] = OrderedDict({
+MjoModifier._ALIASES = OrderedDict({
     MjoModifier.PREINCREMENT:  'inc.x',
     MjoModifier.PREDECREMENT:  'dec.x',
     MjoModifier.POSTINCREMENT: 'x.inc',
     MjoModifier.POSTDECREMENT: 'x.dec',
 })
-MjoModifier._LOOKUP:Dict[str,MjoModifier] = OrderedDict((v,k) for k,v in chain(MjoModifier._NAMES.items(), MjoModifier._ALIASES.items()))
+MjoModifier._LOOKUP = OrderedDict((v,k) for k,v in chain(MjoModifier._NAMES.items(), MjoModifier._ALIASES.items()))
 
-MjoModifier._OPERATORS:Dict[MjoModifier,str] = OrderedDict({
+MjoModifier._OPERATORS = OrderedDict({
     MjoModifier.NONE:          None,
     MjoModifier.PREINCREMENT:  '++',
     MjoModifier.PREDECREMENT:  '--',
@@ -507,16 +505,16 @@ MjoModifier._OPERATORS:Dict[MjoModifier,str] = OrderedDict({
 })
 
 # MjoDimension:
-MjoDimension._NAMES:Dict[MjoDimension,str] = OrderedDict({
+MjoDimension._NAMES = OrderedDict({
     #MjoDimension.NONE:        'dim0', # useless alias, not required
     MjoDimension.DIMENSION_1: 'dim1',
     MjoDimension.DIMENSION_2: 'dim2',
     MjoDimension.DIMENSION_3: 'dim3',
 })
-MjoDimension._ALIASES:Dict[MjoDimension,str] = OrderedDict({
+MjoDimension._ALIASES = OrderedDict({
     MjoDimension.NONE:        'dim0', # useless alias, not required
 })
-MjoDimension._LOOKUP:Dict[str,MjoDimension] = OrderedDict((v,k) for k,v in chain(MjoDimension._NAMES.items(), MjoDimension._ALIASES.items()))
+MjoDimension._LOOKUP = OrderedDict((v,k) for k,v in chain(MjoDimension._NAMES.items(), MjoDimension._ALIASES.items()))
 
 #endregion
 
@@ -542,7 +540,7 @@ def _flagname(flag:Union[MjoScope,MjoType,MjoModifier,MjoInvert,MjoDimension,int
     else:
         raise TypeError(f'argument must be Mjo-Scope/Type/Modifier/Invert/Dimension or int object, not {flag.__class__.__name__}')
 
-def _fromflagname(cls, name:str, default=...) -> enum.Enum:
+def _fromflagname(cls, name:str, default:Any=...) -> enum.Enum:
     """Returns the flag enum from the the specified name
     
     when `default` argument is defined:
@@ -567,4 +565,6 @@ def _fromflagname(cls, name:str, default=...) -> enum.Enum:
 # print('MjoInvert._NAMES      :', ', '.join(MjoInvert._NAMES.values()))
 
 
-del chain, OrderedDict, Dict, Union  # cleanup declaration-only imports
+#######################################################################################
+
+del chain, OrderedDict, Any, Dict, Union  # cleanup declaration-only imports

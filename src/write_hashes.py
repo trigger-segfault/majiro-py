@@ -3,8 +3,8 @@
 """Read Majiro Engine hashes and names from a multitude of files and write to output files
 """
 
-__version__ = '1.1.0'
-__date__    = '2021-05-04'
+__version__ = '1.2.0'
+__date__    = '2021-06-02'
 __author__  = 'Robert Jordan'
 
 #######################################################################################
@@ -14,20 +14,20 @@ __author__  = 'Robert Jordan'
 
 #######################################################################################
 
-import io, json, os, re
+import io, json, os
 from collections import namedtuple
 from typing import Dict, Iterable, List, Set, Tuple
 
 # general use
-from mjotool._util import Fore as F, Style as S
-from mjotool.crypt import hash32
-# load hashes from mjs/mjh source scripts
-from mjotool.mjs.mjsreader import MjsReader
-# load hashes from Python mjotool.known_hashes module
-from mjotool import known_hashes
+from mj.util.color import Fore as F, Style as S
+from mj.crypt import hash32
+# load hashes from Python mj.database.hashes module
+from mj.database import hashes as known_hashes
 # load hashes from Google Sheets
-from mjotool.sheets.majirodata import SheetSyscalls, SheetGroups, SheetFunctions, SheetVariables, SheetLocals, SheetCallbacks
-from mjotool.sheets.rowtypes import Status
+from mj.database.sheets import SheetSyscalls, SheetGroups, SheetFunctions, SheetVariables, SheetLocals, SheetCallbacks, Status
+# load hashes from mjs/mjh source scripts
+from mjotool.mjs.mjsreader import MjsReader  # (only thing left still depending on mjotool package)
+
 
 
 # used by write_python_file(), write_json_file()
@@ -40,6 +40,7 @@ HR_FMT:str = '==HR==' # replace full line with only this to `PYTHON_HR` seen bel
 PYTHON_HR:str = '#######################################################################################'
 
 #######################################################################################
+
 
 #region ## SELECT AND SORT ##
 
@@ -183,7 +184,7 @@ def write_python_file(writer:io.TextIOBase, hash_items:List[HashSelection], grou
     # writer.write('#######################################################################################\n')
     writer.write(f'{PYTHON_HR}\n')
     writer.write('\n')
-    writer.write('from typing import Dict, Set\n')
+    writer.write('from typing import Dict, List\n')
 
     if hash_items:
         writer.write('\n')
@@ -200,13 +201,13 @@ def write_python_file(writer:io.TextIOBase, hash_items:List[HashSelection], grou
     for i,item in enumerate(group_items):
         group_list = group_lists[i]
         write_python_comment(writer, item.comment)
-        writer.write(f'\n{item.varname}:Set[{item.type.__name__}] = ')
+        writer.write(f'\n{item.varname}:List[{item.type.__name__}] = ')
         write_groups_list(writer, group_list, item.type is int, readable=False, python=True)
         writer.write('\n')
 
     # writer.write('\n\n#######################################################################################\n\n')
     writer.write(f'\n\n{PYTHON_HR}\n\n')
-    writer.write('del Dict, Set  # cleanup declaration-only imports\n')
+    writer.write('del Dict, List  # cleanup declaration-only imports\n')
 
 #endregion
 
@@ -487,7 +488,7 @@ def main(argv:list=None) -> int:
     parser.add_argument('-i', '--input', dest='inputs', metavar='MJSFILE', nargs='+', default=[], required=False, help='parse hashes and groups from mjs/mjh files')
     parser.add_argument('-I', '--input-mjs', dest='inputs2', action='store_const', const=DEFAULT_MJS, default=[], required=False, help='parse hashes and groups from all repo mjs/mjh files')
     parser.add_argument('-A', '--ame-mjs', dest='inputs3', action='store_const', const=AME_ORIGINALS, default=[], required=False, help='parse hashes and groups from all repo \"Ame no Marginal original\" script files (not included)')
-    parser.add_argument('-P', '--python', dest='python', default=False, action='store_true', required=False, help='read hashes from python mjotool.known_hashes module')
+    parser.add_argument('-P', '--python', dest='python', default=False, action='store_true', required=False, help='read hashes from python mj.database.hashes module')
     parser.add_argument('-G', '--google', dest='google', default=False, action='store_true', required=False, help='read hashes, groups, and callbacks from Google Sheets')
     parser.add_argument('-U', '--update', dest='update', default=False, action='store_true', required=False, help='update Google Sheet cached files and always download new copies')
     parser.add_argument('-H', '--hashes', metavar='JSONFILE', nargs='+', default=[], required=False, help='parse user-defined hashes from json files')

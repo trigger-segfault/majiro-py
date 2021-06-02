@@ -1,207 +1,175 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
-"""
+"""Identifier signature types for Majiro
 """
 
-__version__ = '0.1.0'
-__date__    = '2021-05-03'
+__version__ = '0.1.1'
+__date__    = '2021-06-02'
 __author__  = 'Robert Jordan'
 
-__all__ = ['IdentifierSig', 'VariableSig', 'LocalSig', 'ArgumentSig', 'FunctionSig', 'SyscallSig']#, 'FunctionReturn'
+__all__ = ['IdentifierSig', 'VariableSig', 'LocalSig', 'ArgumentSig', 'FunctionSig', 'SyscallSig', 'Typedef', 'IdentifierKind']
 
 #######################################################################################
 
 ## runtime imports:
-# from .crypt import hash32       # used by verify()
-# from .crypt import to_hash32    # used by HashName() when passed a str value
-# from .database.hashes import *  # used by HashValue.lookup*() functions
-# from .util.typecast import unsigned_I  # used by HashValue()
+# from .crypt import hash32  # used by IdentifierSig.hash
 
-#TODO: isolate this until needed
+#TODO: isolate re import, until needed?
 import re
-import enum #, re
-# from collections import namedtuple
-from itertools import chain
-from typing import Dict, List, Optional, Pattern, Tuple, Union
+from typing import List, Optional, Pattern, Tuple, Union
 
-# from .util.typecast import to_bytes, to_str, unsigned_I, unsigned_Q
-from .name import GROUP_LOCAL, GROUP_DEFAULT, GROUP_SYSCALL, splitgroup, joingroup, groupname, hasgroup, splitsymbols
-from .identifier import HashName, HashValue, IdentifierKind, Typedef
-
-# from ..flags import MjoType, MjoFlags, MjoScope
-
-
-#######################################################################################
-
-
+# from . import name as mj_name
+from .name import GROUP_LOCAL, GROUP_DEFAULT, GROUP_SYSCALL, GROUP_SEP
+from .name import PREFIX_PERSISTENT, PREFIX_SAVEFILE, PREFIX_THREAD, PREFIX_LOCAL, PREFIX_FUNCTION
+from .name import POSTFIX_INT, POSTFIX_ANY, POSTFIX_VOID, POSTFIX_FLOAT, LEGACY_POSTFIX_FLOAT, POSTFIX_STRING, POSTFIX_INT_ARRAY, POSTFIX_FLOAT_ARRAY, LEGACY_POSTFIX_FLOAT_ARRAY, POSTFIX_STRING_ARRAY, POSTFIX_INTERNAL, DOC_POSTFIX_UNKNOWN, DOC_POSTFIX_ANY
+from .name import splitgroup, joingroup, groupname, hasgroup, splitsymbols, prefixsymbol, postfixsymbol
+from .identifier import IdentifierKind, Typedef
 
 
 #######################################################################################
 
 class IdentifierSig:
-    """IdentifierSig(name:str, *, group:str=None, doc:str=None)
+    """IdentifierSig(name:str, *, group:Optional[str]=None, doc:Optional[str]=None)
 
     if name contains a '@' after the first character, group will be ignored
     """
     __slots__ = ('name', 'group', 'scope', 'type', 'doc')
+    name:str
+    group:Optional[str]
+    scope:IdentifierKind
+    type:Typedef
+    doc:Optional[str]
+
     # group will be resolved from name if found
-    def __init__(self, name:str, *, group:str=None, doc:str=None):
-        name, group = splitgroup(name)
+    def __init__(self, name:str, *, group:Optional[str]=None, doc:Optional[str]=None):
+        if group and group[0] == GROUP_SEP:
+            raise ValueError(f'group must not contain {GROUP_SEP!r} prefix, got {group}')
+
+        # name, namegroup = splitgroup(name)
         prefix, _, postfix, _ = splitsymbols(name, allow_doc=True)
-        self.name, self.group = splitgroup(name, group)
-        self.name:str = name
-        self.group:str = group
-        self.scope:IdentifierKind = IdentifierKind.UNKNOWN
-        self.type:Typedef = Typedef.UNKNOWN
-        self.doc:str = doc
-
-
-        if group and group[0] == '@':
-            raise ValueError(f'group must not contain \'@\' prefix, got {group}')
-
-        # realistically identifiers should have at least two chars before group
-        at_idx = name.find('@', 1)
-        if at_idx != -1: # group override from default
-            self.group = name[at_idx+1:]
-            self.name  = name[:at_idx]
+        self.name, self.group = splitgroup(name, group)  # group will be used as default if name is not fully-qualified
+        self.scope = IdentifierKind.UNKNOWN
+        self.type = Typedef.UNKNOWN
+        self.doc = doc
 
         # get scope / function:
         if prefix is not None:
-            if prefix == '$':
-                self.scope = IdentifierKind.FUNCTION
-            elif prefix == '#':
-                self.scope = IdentifierKind.PERSISTENT
-            elif prefix == '@':
-                self.scope = IdentifierKind.SAVEFILE
-            elif prefix == '%':
-                self.scope = IdentifierKind.THREAD
-            elif prefix == '_':
-                self.scope = IdentifierKind.LOCAL
-            else:
-                raise ValueError(f'Unknown prefix {prefix!r}')
+            if   prefix == PREFIX_FUNCTION:   self.scope = IdentifierKind.FUNCTION
+            elif prefix == PREFIX_PERSISTENT: self.scope = IdentifierKind.PERSISTENT
+            elif prefix == PREFIX_SAVEFILE:   self.scope = IdentifierKind.SAVEFILE
+            elif prefix == PREFIX_THREAD:     self.scope = IdentifierKind.THREAD
+            elif prefix == PREFIX_LOCAL:      self.scope = IdentifierKind.LOCAL
+            else: raise ValueError(f'Unknown prefix {prefix!r}')
         # self.scope = MjoScope.fromprefix_name(self.name, allow_unk=True)
         # get type / return type:
-        if postfix is not None and postfix != '?':
-            if postfix == '~':
-                self.type = Typedef.INTERNAL
-            elif postfix == '':
+        if postfix is not None and postfix != DOC_POSTFIX_UNKNOWN:
+            if   postfix == POSTFIX_INT:
                 self.type = Typedef.INT
-            elif postfix in ('%', '!'):
+            elif postfix in (POSTFIX_FLOAT,LEGACY_POSTFIX_FLOAT):
                 self.type = Typedef.FLOAT
-            elif postfix == '$':
+            elif postfix == POSTFIX_STRING:
                 self.type = Typedef.STRING
-            elif postfix == '#':
+            elif postfix == POSTFIX_INT_ARRAY:
                 self.type = Typedef.INT_ARRAY
-            elif postfix == '%#':
+            elif postfix in (POSTFIX_FLOAT_ARRAY, LEGACY_POSTFIX_FLOAT_ARRAY):
                 self.type = Typedef.FLOAT_ARRAY
-            elif postfix == '$#':
+            elif postfix == POSTFIX_STRING_ARRAY:
                 self.type = Typedef.STRING_ARRAY
-            else:
-                raise ValueError(f'Unknown postfix {postfix!r}')
+            elif postfix == POSTFIX_INTERNAL:
+                self.type = Typedef.INTERNAL
+            # elif postfix == DOC_POSTFIX_UNKNOWN:
+            #     self.type = Typedef.UNKNOWN
+            # elif postfix == DOC_POSTFIX_ANY:
+            #     self.type = Typedef.ANY
+            else: raise ValueError(f'Unknown postfix {postfix!r}')
         # self.type = MjoType.frompostfix_name(self.name, allow_unk=True, allow_alt=True)
 
     @property
-    def fullname(self) -> str:
-        return self.name if self.group is None else f'{self.name}@{self.group}'
+    def fullname(self) -> str: return joingroup(self.name, self.group)
     @property
-    def prefix(self) -> str:
-        return self.scope.prefix
+    def prefix(self) -> str: return prefixsymbol(self.name) #self.scope.prefix
     @property
-    def postfix(self) -> str:
-        # dumb hack to handle '!' float alias postfix
-        return self.name[-len(self.type.postfix):]  # return self.type.postfix
+    def postfix(self) -> str: return postfixsymbol(self.name)
+        # # dumb hack to handle '!','!#' float legacy postfixes
+        # return self.name[-len(self.type.postfix):]  # return self.type.postfix
     @property
-    def basename(self) -> str:
-        return self.name[len(self.scope.prefix):-len(self.type.postfix)]
+    def basename(self) -> str: return self.name[len(self.prefix):-len(self.postfix)]
     @property
-    def basename_noscope(self) -> str:
-        return self.name[len(self.scope.prefix):]
+    def basename_noscope(self) -> str: return self.name[len(self.prefix):]
     @property
-    def basename_notype(self) -> str:
-        return self.name[:-len(self.type.postfix)]
+    def basename_notype(self) -> str: return self.name[:-len(self.postfix)]
     @property
-    def is_func(self) -> bool:
-        return self.scope.is_func #(self.scope is MjoScope.FUNCTION)
+    def is_func(self) -> bool: return self.scope.is_func
     @property
-    def is_var(self) -> bool:
-        return self.scope.is_var #(MjoScope.PERSISTENT <= self.scope <= MjoScope.LOCAL)
+    def is_var(self) -> bool: return self.scope.is_var
     @property
-    def is_array(self) -> bool:
-        return self.type.is_array #(MjoType.INT_ARRAY <= self.type <= MjoType.STRING_ARRAY)
+    def is_array(self) -> bool: return self.type.is_array
     @property
     def hash(self) -> int:
         from .crypt import hash32
         return hash32(self.fullname)
     @property
-    def hashstr(self) -> str:
-        return f'${self.hash:08x}'
+    def hashstr(self) -> str: return f'${self.hash:08x}'
     @property
-    def definition_keyword(self) -> str:
-        return ''
+    def definition_keyword(self) -> str: return ''
 
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.fullname!r})'
-    def __str__(self) -> str:
-        return self.fullname
+    def __repr__(self) -> str: return f'{self.__class__.__name__}({self.fullname!r})'
+    def __str__(self) -> str: return self.fullname
 
 #######################################################################################
 
 class VariableSig(IdentifierSig):
     __slots__ = IdentifierSig.__slots__
-    def __init__(self, name:str, *, group:str=None, doc:str=None):
+    def __init__(self, name:str, *, group:Optional[str]=None, doc:Optional[str]=None):
         super().__init__(name, group=group, doc=doc)
 
     @property
-    def definition_keyword(self) -> str:
-        return 'var'
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.fullname!r})'
-    def __str__(self) -> str:
-        return f'{self.definition_keyword} {self.fullname}'
+    def definition_keyword(self) -> str: return 'var'
+
+    def __repr__(self) -> str: return f'{self.__class__.__name__}({self.fullname!r})'
+    def __str__(self) -> str: return f'{self.definition_keyword} {self.fullname}'
 
 class LocalSig(VariableSig):
     __slots__ = VariableSig.__slots__
-    def __init__(self, name:str, *, doc:str=None):
+    def __init__(self, name:str, *, doc:Optional[str]=None):
         super().__init__(name, group=GROUP_LOCAL, doc=doc) # local group
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.fullname!r})'
-    def __str__(self) -> str:
-        return f'{self.definition_keyword} {self.name}'
+
+    def __repr__(self) -> str: return f'{self.__class__.__name__}({self.fullname!r})'
+    def __str__(self) -> str: return f'{self.definition_keyword} {self.name}'
 
 #######################################################################################
 
 class ArgumentSig(LocalSig):
     __slots__ = LocalSig.__slots__ + ('optional', 'variadic', 'default', 'tuple_last')
-    def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:str=None, tuple_last:bool=False, doc:str=None):
+    optional:bool
+    variadic:bool
+    default:Optional[str]
+    tuple_last:bool
+
+    def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:Optional[str]=None, tuple_last:bool=False, doc:Optional[str]=None):
         super().__init__(name, doc=doc) # local group
-        self.optional:bool = optional
-        self.variadic:bool = variadic
-        self.default:str = default
-        self.tuple_last:bool = tuple_last
+        self.optional = optional
+        self.variadic = variadic
+        self.default = default
+        self.tuple_last = tuple_last
+
     @property
-    def definition_keyword(self) -> str:
-        return ''  # set back to empty
+    def definition_keyword(self) -> str: return ''  # set back to empty
     @property
-    def is_optional(self) -> bool: # alias to conform with naming
-        return self.optional
+    def is_optional(self) -> bool: return self.optional  # alias to conform with naming
     @property
-    def is_variadic(self) -> bool: # alias to conform with naming
-        return self.variadic
+    def is_variadic(self) -> bool: return self.variadic  # alias to conform with naming
     @property
-    def is_tuple_last(self) -> bool: # alias to conform with naming
-        return self.tuple_last
+    def is_tuple_last(self) -> bool: return self.tuple_last  # alias to conform with naming
     @property
-    def has_default(self) -> bool:
-        return self.default is not None
+    def has_default(self) -> bool: return self.default is not None
     @property
-    def default_repr(self) -> str:
-        return '' if self.default is None else f' = {self.default}'
+    def default_repr(self) -> str: return '' if self.default is None else f' = {self.default}'
     @property
-    def va_name(self) -> str:
-        return f'...{self.name}' if self.variadic else self.name
+    def va_name(self) -> str: return f'...{self.name}' if self.variadic else self.name
     @property
-    def default_name(self) -> str:
-        return self.name if self.default is None else f'{self.name} = {self.default}'
+    def default_name(self) -> str: return self.name if self.default is None else f'{self.name} = {self.default}'
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.fullname!r}, optional={self.optional!r}, variadic={self.variadic!r}, default={self.default!r}, tuple_last={self.tuple_last!r})'
     def __str__(self) -> str:
@@ -211,6 +179,9 @@ class ArgumentSig(LocalSig):
 
 class FunctionSig(IdentifierSig):
     __slots__ = IdentifierSig.__slots__ + ('is_void', '_arguments')
+    is_void:Optional[bool]
+    _ARG_TYPE = ArgumentSig
+
     _RE_EOL         = re.compile(r"^(\s*)$")
     _RE_WHITESPACE  = re.compile(r"^(\s+)")
     _RE_VARIADIC    = re.compile(r"^(\.\.\.)")
@@ -223,12 +194,11 @@ class FunctionSig(IdentifierSig):
                 _RE_PUNCTUATION,
                 _RE_DEFAULT,
                 _RE_ARGUMENT )
-    _ARG_TYPE = ArgumentSig
 
-    def __init__(self, name:str, arguments:Union[List[ArgumentSig],str]=(), *, is_void:Optional[bool]=None, group:str=None, doc:str=None):
+    def __init__(self, name:str, arguments:Union[List[ArgumentSig],str]=(), *, is_void:Optional[bool]=None, group:Optional[str]=None, doc:Optional[str]=None):
         super().__init__(name, group=group, doc=doc)
-        self.is_void:Optional[bool] = is_void
-        self._arguments:Union[List[ArgumentSig],str] = []
+        self.is_void = is_void
+        self._arguments = []  # type: Union[List[ArgumentSig],str]
         if arguments is None:
             pass
         elif isinstance(arguments, str):
@@ -296,10 +266,9 @@ class FunctionSig(IdentifierSig):
             return self._arguments.strip() not in ('', 'void')
         else:
             return bool(self._arguments)
+
     @property
-    def definition_keyword(self) -> str:
-        # only use void when confirmed(?)
-        return 'void' if self.is_void is False else 'func'
+    def definition_keyword(self) -> str: return 'void' if self.is_void is False else 'func'  # only use void when confirmed(?)
 
     @property
     def args_str(self) -> str:
@@ -309,7 +278,7 @@ class FunctionSig(IdentifierSig):
             return self._arguments
         if not self._arguments:
             return 'void'
-        arg_spans:List[Tuple[bool, str, list]] = []  # optional, variadic ('...' or ''), *args:List[str]
+        arg_spans = []  # type: List[Tuple[bool, str, list]]  # optional, variadic ('...' or ''), *args:List[str]
         optional = self._arguments[0].is_optional
         variadic = self._arguments[0].is_variadic
         arg_spans.append( (optional, '...' if variadic else '', []) )
@@ -342,8 +311,8 @@ class FunctionSig(IdentifierSig):
         if text is None or text.strip() in ('', 'void'):
             return  # no arguments :)
 
-        last_s:str = None
-        last_p:Pattern = None
+        last_s = None  # type: str
+        last_p = None  # type: Pattern
         optional      = variadic      = False
         next_optional = next_variadic = False
         next_arg      = next_default  = None
@@ -353,8 +322,8 @@ class FunctionSig(IdentifierSig):
             if not optional:
                 self.end_argument_tuple()
 
-        eol:bool = False
-        pos:int = 0
+        eol = False
+        pos = 0
         while not eol:
             m = None
             for p in self._RE_SET:
@@ -443,21 +412,21 @@ class FunctionSig(IdentifierSig):
 
 class SyscallArgumentSig(ArgumentSig):
     __slots__ = ArgumentSig.__slots__ + ('any', 'orig_name')
-    def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:str=None, tuple_last:bool=False, doc:str=None):
-        self.any:bool = name[-1] == '*' if name else False
-        self.orig_name:str = name
+    any:bool
+    orig_name:str
+
+    def __init__(self, name:str, *, optional:bool=False, variadic:bool=False, default:Optional[str]=None, tuple_last:bool=False, doc:Optional[str]=None):
+        self.any = name[-1] == DOC_POSTFIX_ANY if name else False
+        self.orig_name = name
         name = f'_{(name[:-1] if self.any else name)}'
         super().__init__(name, optional=optional, variadic=variadic, default=default, tuple_last=tuple_last, doc=doc) # local group
 
     @property
-    def is_any(self) -> bool: # alias to conform with naming
-        return self.any
+    def is_any(self) -> bool: return self.any   # alias to conform with naming
     @property
-    def default_name(self) -> str:
-        return self.orig_name if self.default is None else f'{self.orig_name} = {self.default}'
+    def default_name(self) -> str: return self.orig_name if self.default is None else f'{self.orig_name} = {self.default}'
     @property
-    def va_name(self) -> str:
-        return f'...{self.orig_name}' if self.variadic else self.orig_name
+    def va_name(self) -> str: return f'...{self.orig_name}' if self.variadic else self.orig_name
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.orig_name!r}, optional={self.optional!r}, variadic={self.variadic!r}, default={self.default!r}, tuple_last={self.tuple_last!r})'
@@ -467,19 +436,20 @@ class SyscallArgumentSig(ArgumentSig):
 class SyscallSig(FunctionSig):
     __slots__ = FunctionSig.__slots__
     _ARG_TYPE = SyscallArgumentSig
-    def __init__(self, name:str, arguments:Union[List[SyscallArgumentSig],str]=(), *, is_void:Optional[bool]=None, doc:str=None):
-        self._arguments:Union[List[SyscallArgumentSig],str] = []
+
+    def __init__(self, name:str, arguments:Union[List[SyscallArgumentSig],str]=(), *, is_void:Optional[bool]=None, doc:Optional[str]=None):
+        self._arguments = []  # type: Union[List[SyscallArgumentSig],str]
         super().__init__(name, arguments, is_void=is_void, group=GROUP_SYSCALL, doc=doc)
 
     @property
-    def definition_keyword(self) -> str:
-        return f'inter {super().definition_keyword}'
+    def definition_keyword(self) -> str: return f'inter {super().definition_keyword}'
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.name!r}, {self.args_repr!r}, is_void={self.is_void!r})'
     def __str__(self) -> str:
-        return f'{self.definition_keyword} {self.name}({self.args_str})'#full_args_repr})'
+        return f'{self.definition_keyword} {self.name}({self.args_str})'
+
 
 #######################################################################################
 
-
+del re, List, Optional, Pattern, Tuple, Union  # cleanup declaration-only imports

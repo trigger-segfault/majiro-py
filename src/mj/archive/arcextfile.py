@@ -60,15 +60,15 @@ class MajiroArcExtFile(io.BufferedIOBase):
             if fileobj.seekable():
                 # if offset is not Ellipsis:
                 #     fileobj.seek(offset)
-                self._orig_start:int = fileobj.tell() if offset is Ellipsis else offset
+                self._orig_start = fileobj.tell() if offset is Ellipsis else offset  # type: int
                 if size is Ellipsis:
                     self._orig_file_size = fileobj.seek(0, 2) - self._orig_start
                 else:
                     self._orig_file_size = size
                 fileobj.seek(self._orig_start)
 
-                # self._orig_compress_start:int = self._orig_start
-                # self._orig_compress_size:int = self._orig_start
+                # self._orig_compress_start = self._orig_start
+                # self._orig_compress_size = self._orig_start
 
                 # self._orig_file_size = zipinfo.file_size
                 self._seekable = True

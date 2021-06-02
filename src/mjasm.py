@@ -18,9 +18,9 @@ from mj.script.mjoscript import MjoScript
 from mj.script.disassembler import ILFormat
 from mj.script import disassembler
 from mj.script.analysis.control.flowpass import ControlFlowGraph
-# from .assembler import MjILAssembler
-from mj.database import hashes as known_hashes
 
+
+#######################################################################################
 
 ## READ / ANALYZE SCRIPT ##
 

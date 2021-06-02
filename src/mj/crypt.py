@@ -20,10 +20,12 @@ __all__ = ['crypt32', 'initkey32', 'hash32', 'hash64', 'invhash32', 'check_hashm
 #######################################################################################
 
 from struct import pack
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 from zlib import crc32 as _crc32
 from .util.typecast import to_bytes #, unsigned_I, unsigned_Q
 
+
+#######################################################################################
 
 #region ## TYPEDEFS AND HELPERS ##
 
@@ -109,11 +111,11 @@ def _index32(num:int, poly:int=CRC32_POLY) -> int:
 
 #region ## CRC TABLES ##
 
-CRC32_TABLE:List[int]  = tuple(_calc32(n) for n in range(256))
-CRC32_INVTABLE:List[int] = tuple(_invcalc32(n) for n in range(256))
+CRC32_TABLE:Tuple[int,...]  = tuple(_calc32(n) for n in range(256))
+CRC32_INVTABLE:Tuple[int,...] = tuple(_invcalc32(n) for n in range(256))
 # only used for backout_* functions, as a documentational approach (can be substituted with: CRC32_INVTABLE[n] & 0xff)
-CRC32_INDEX:List[int]  = tuple(_index32(n) for n in range(256))
-CRC64_TABLE:List[int]  = tuple(_calc64(n) for n in range(256))
+CRC32_INDEX:Tuple[int,...]  = tuple(_index32(n) for n in range(256))
+CRC64_TABLE:Tuple[int,...]  = tuple(_calc64(n) for n in range(256))
 # 1024-byte Majiro script XOR decryption key (standard CRC-32 table output in little-endian)
 CRYPT32_KEY:bytes = pack('<256I', *CRC32_TABLE)
 # 2048-byte Majiro script XOR decryption key (broken Majiro CRC-64 table output in little-endian)
@@ -323,7 +325,7 @@ def check_hashdiffs(value1A:IntBytes, value2A:IntBytes, value1B:IntBytes, value2
 
 #region ## CRC-32 BACKOUT UNHASHING ##
 
-def backout_indices(init:IntBytes, count:int) -> list:
+def backout_indices(init:IntBytes, count:int) -> List[int]:
     """backout_indices(hash32(b'$rgb'), 3) -> [0xd1, 0xd1, 0x3c]
 
     the returned indices are equal to (least-significant accumulator byte XOR the input byte) each iteration.
@@ -352,7 +354,7 @@ def backout_data(init:IntBytes, orig_init:IntBytes, count:int) -> bytes:
     back out count (1 to 4) known bytes from the result of a CRC-32 operation.
     """
     # back out up to 4 indices:
-    indices:list = backout_indices(init, count)
+    indices = backout_indices(init, count)
     TBL=CRC32_TABLE
     # forward crc for init to get data from indices:
     crc = to_hash32(orig_init) ^ 0xffffffff  # xorout
@@ -374,4 +376,6 @@ def backout_data(init:IntBytes, orig_init:IntBytes, count:int) -> bytes:
 #endregion
 
 
-del Optional, Union  # cleanup declaration-only imports
+#######################################################################################
+
+del List, Optional, Tuple, Union  # cleanup declaration-only imports

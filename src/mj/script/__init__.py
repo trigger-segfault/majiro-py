@@ -17,7 +17,7 @@ __version__ = '1.0.0'
 __date__    = '2021-05-04'
 __author__  = 'Robert Jordan'
 
-# __all__ = ['MjoType', 'MjoScope', 'MjoModifier', 'MjoInvert', 'MjoDimension', 'MjoFlags', 'Opcode', 'Instruction', 'FunctionIndexEntry', 'MjoScript']
+__all__ = ['MjoType', 'MjoScope', 'MjoModifier', 'MjoInvert', 'MjoDimension', 'MjoFlags', 'Opcode', 'Instruction', 'FunctionIndexEntry', 'MjoScript']
 
 #######################################################################################
 

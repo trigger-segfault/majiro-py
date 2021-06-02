@@ -219,7 +219,7 @@ Colors = dict(**Fore.__dict__, **Style.__dict__)
 
 #endregion
 
-#######################################################################################
 
+#######################################################################################
 
 del SimpleNamespace, Optional, Tuple, Union  # cleanup declaration-only imports

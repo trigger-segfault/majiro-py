@@ -10,69 +10,104 @@ __credits__ = '''Original C# implementation by AtomCrafty - 2021
 Converted to Python library by Robert Jordan - 2021
 '''
 
-__all__ = ['Instruction', 'MjoScript', 'BasicBlock', 'Function']
+__all__ = ['Instruction', 'MjoScript', 'BasicBlock', 'Function', 'disassemble_script']
 
 #######################################################################################
 
-import io, math, os, re  # math used for isnan()
-from abc import abstractproperty
-from collections import namedtuple
-from struct import calcsize, pack, unpack
-from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, Union  # for hinting in declarations
+## runtime imports:
+# import re                      # used in ILFormat.needs_explicit_hash() and format_string()
+# from ..database import hashes  # used by multiple methods for lookup
+
+import math, os  # math used for isnan()
+from typing import Dict, List, Optional, Set, Tuple  # for hinting in declarations
 
 from ..util.typecast import signed_i, unsigned_I
 from ..util.color import DummyColors, Colors
-# from ..util import StructIO, DummyColors, Colors, signed_i, unsigned_I
 from .flags import MjoType, MjoScope, MjoInvert, MjoModifier, MjoDimension, MjoFlags
-from .opcodes import Opcode
 from .mjoscript import MjoScript, FunctionIndexEntry
-from .instruction import BasicBlock, Instruction
-from .analysis.control.block import BasicBlock, Function
-from .analysis.control.flowpass import ControlFlowGraph
+from .instruction import Instruction
+from .analysis.control import BasicBlock, Function, ControlFlowGraph
 from ..identifier import HashValue, HashName, IdentifierKind
-from ..database import hashes as known_hashes
-from .. import crypt
+from ..name import LOCALVAR_NUMPARAMS, THREADVAR_INTERNALCASE
+
+
+#######################################################################################
 
 ## FORMAT OPTIONS ##
 
 #NOTE: This is a temporary class until the real formatter module is complete
 
 class ILFormat:
+    color:bool   # print colors to the console
+    braces:bool  # add braces around functions
+    known_hashes:bool 
+    annotations:bool   # ; $known_hash, _knownvar, etc. [when: inline_hash=False]
+                       # ; $XXXXXXXX [when: inline_hash=True]
+    inline_hash:bool   # $hashname (when known) [requires: known_hashes=True]
+    explicit_inline_hash:bool   # ${hashname}  [requires: inline_hash=True]
+    syscall_inline_hash:bool    # include inline hashing for syscalls
+                                # this will lose backwards compatibility as known hash names are updated
+    int_inline_hash:bool        # inline hashes for integer literals
+    group_directive:Optional[str]    # default group to disassemble with (removes @GROUPNAME when found)
+    resfile_directive:Optional[str]  # output all `text` opcode lines to a csv file with the given name
+    _resfile_path:Optional[str]      # defined by __main__ for quick access
+    explicit_inline_resource:bool    # %{hashname}  [requires: resfile_directive="anything"]
+    implicit_local_groups:bool       # always exclude empty group name from known local names
+    annotate_hex:bool                # enables/disables ; $XXXXXXXX annotations when using inline hashes
+
+    # aliasing and operands:
+    modifier_aliases:bool    # (variable flags) inc.x, dec.x, x.inc, x.dec
+    invert_aliases:bool      # (variable flags) -, -, -, -  (NOTE: there are no aliases, added for conformity)
+    scope_aliases:bool       # (variable flags) persist, save, -, -
+    vartype_aliases:bool     # (variable flags) i, r, s, iarr, rarr, sarr
+    typelist_aliases:bool    # (typelist operand) i, r, s, iarr, rarr, sarr
+    functype_aliases:bool    # (function declaration) i, r, s, iarr, rarr, sarr
+    explicit_dim0:bool       # (variable flags) always include dim0 flag  #WHY WOULD YOU WANT THIS?
+    explicit_varoffset:bool  # always include -1 for non-local var offsets
+
+    # space-savers:
+    address_len:int      # len of XXXXX: addresses before every opcode
+    address_labels:bool  # include address labels at all before every opcode
+    opcode_padding:int   # number of EXTRA spaces to pad opcodes with (from the start of the opcode)
+                         # one mandatory space is always added AFTER this for operands
+
     # very lazy storage for default options
     DEFAULT:'ILFormat' = None
+
+
     def __init__(self):
-        self.color:bool = False  # print colors to the console
-        self.braces:bool = True  # add braces around functions
-        self.known_hashes:bool = True
-        self.annotations:bool = True   # ; $known_hash, _knownvar, etc. [when: inline_hash=False]
-                                       # ; $XXXXXXXX [when: inline_hash=True]
-        self.inline_hash:bool = False  # $hashname (when known) [requires: known_hashes=True]
-        self.explicit_inline_hash:bool = False  # ${hashname}  [requires: inline_hash=True]
-        self.syscall_inline_hash:bool = False  # include inline hashing for syscalls
-                                               # this will lose backwards compatibility as known hash names are updated
-        self.int_inline_hash:bool = True  # inline hashes for integer literals
-        self.group_directive:str = None  # default group to disassemble with (removes @GROUPNAME when found)
-        self.resfile_directive:str = None  # output all `text` opcode lines to a csv file with the given name
-        self._resfile_path:str = None  # defined by __main__ for quick access
-        self.explicit_inline_resource:bool = False  # %{hashname}  [requires: resfile_directive="anything"]
-        self.implicit_local_groups:bool = False  # always exclude empty group name from known local names
-        self.annotate_hex:bool     = True  # enables/disables ; $XXXXXXXX annotations when using inline hashes
+        self.color = False  # print colors to the console
+        self.braces = True  # add braces around functions
+        self.known_hashes = True
+        self.annotations  = True   # ; $known_hash, _knownvar, etc. [when: inline_hash=False]
+                                   # ; $XXXXXXXX [when: inline_hash=True]
+        self.inline_hash  = False  # $hashname (when known) [requires: known_hashes=True]
+        self.explicit_inline_hash = False  # ${hashname}  [requires: inline_hash=True]
+        self.syscall_inline_hash  = False  # include inline hashing for syscalls
+                                           # this will lose backwards compatibility as known hash names are updated
+        self.int_inline_hash   = True  # inline hashes for integer literals
+        self.group_directive   = None  # default group to disassemble with (removes @GROUPNAME when found)
+        self.resfile_directive = None  # output all `text` opcode lines to a csv file with the given name
+        self._resfile_path     = None  # defined by __main__ for quick access
+        self.explicit_inline_resource = False  # %{hashname}  [requires: resfile_directive="anything"]
+        self.implicit_local_groups    = False  # always exclude empty group name from known local names
+        self.annotate_hex             = True   # enables/disables ; $XXXXXXXX annotations when using inline hashes
 
         # aliasing and operands:
-        self.modifier_aliases:bool = False  # (variable flags) inc.x, dec.x, x.inc, x.dec
-        self.invert_aliases:bool   = False  # (variable flags) -, -, -, -  (NOTE: there are no aliases, added for conformity)
-        self.scope_aliases:bool    = False  # (variable flags) persist, save, -, -
-        self.vartype_aliases:bool  = False  # (variable flags) i, r, s, iarr, rarr, sarr
-        self.typelist_aliases:bool = False  # (typelist operand) i, r, s, iarr, rarr, sarr
-        self.functype_aliases:bool = False  # (function declaration) i, r, s, iarr, rarr, sarr
-        self.explicit_dim0:bool    = False  # (variable flags) always include dim0 flag  #WHY WOULD YOU WANT THIS?
-        self.explicit_varoffset:bool = False  # always include -1 for non-local var offsets
+        self.modifier_aliases   = False  # (variable flags) inc.x, dec.x, x.inc, x.dec
+        self.invert_aliases     = False  # (variable flags) -, -, -, -  (NOTE: there are no aliases, added for conformity)
+        self.scope_aliases      = False  # (variable flags) persist, save, -, -
+        self.vartype_aliases    = False  # (variable flags) i, r, s, iarr, rarr, sarr
+        self.typelist_aliases   = False  # (typelist operand) i, r, s, iarr, rarr, sarr
+        self.functype_aliases   = False  # (function declaration) i, r, s, iarr, rarr, sarr
+        self.explicit_dim0      = False  # (variable flags) always include dim0 flag  #WHY WOULD YOU WANT THIS?
+        self.explicit_varoffset = False  # always include -1 for non-local var offsets
         
         # space-savers:
-        self.address_len:int       = 5     # len of XXXXX: addresses before every opcode
-        self.address_labels:bool   = True  # include address labels at all before every opcode
-        self.opcode_padding:int    = 13    # number of EXTRA spaces to pad opcodes with (from the start of the opcode)
-                                           # one mandatory space is always added AFTER this for operands
+        self.address_len    = 5     # len of XXXXX: addresses before every opcode
+        self.address_labels = True  # include address labels at all before every opcode
+        self.opcode_padding = 13    # number of EXTRA spaces to pad opcodes with (from the start of the opcode)
+                                    # one mandatory space is always added AFTER this for operands
 
     def set_address_len(self, bytecode_size:int) -> None:
         self.address_len = max(2, len(f'{bytecode_size:x}'))
@@ -92,8 +127,7 @@ class ILFormat:
         return [k for k in ILFormat.DEFAULT.__dict__.keys() if k[0] != '_' and k != 'group_directive']  # quick dumb handling
 
     @property
-    def colors(self) -> dict:
-        return Colors if self.color else DummyColors
+    def colors(self) -> dict: return Colors if self.color else DummyColors
 
 ILFormat.DEFAULT = ILFormat()
 
@@ -149,7 +183,7 @@ ILFormat.DEFAULT = ILFormat()
 
 def format_string(string:str, *, options:ILFormat=ILFormat.DEFAULT) -> str:
     import re
-    colors:dict = options.colors
+    colors = options.colors
     # unescape single quotes and escape double-quotes
     # string = repr(string)[1:-1].replace('\\\'', '\'').replace('\"', '\\\"')
     string = repr(string)[1:-1]
@@ -184,34 +218,35 @@ def check_hash_group(name:str, syscall:bool=False, *, options:ILFormat=ILFormat.
     return name
 
 def check_known_hash(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT) -> Optional[Tuple[str, bool]]: # (name, is_syscall)
+    from ..database.hashes import SYSCALLS, FUNCTIONS, VARIABLES
     name, syscall = (None, False)  # not an opcode that relates to hashes
     if self.is_syscall:
-        name = known_hashes.SYSCALLS.get(self.hash, None)
+        name = SYSCALLS.get(self.hash, None)
         syscall = True
     elif self.is_call:
-        name = known_hashes.FUNCTIONS.get(self.hash, None)
+        name = FUNCTIONS.get(self.hash, None)
     elif self.is_load or self.is_store:
         # TODO: this could be optimized to use the type flags
         #       and search in the scope-independent dicts
-        name = known_hashes.VARIABLES.get(self.hash, None)
+        name = VARIABLES.get(self.hash, None)
     elif self.opcode.value == 0x800: ##mnemonic == "ldc.i": # 0x800
-        name = known_hashes.FUNCTIONS.get(unsigned_I(self.integer), None)
+        name = FUNCTIONS.get(unsigned_I(self.integer), None)
         # TODO: Uncomment if it's observed that int literals
         #       will use hashes for types other than usercalls
         if name is None:
-            name = known_hashes.VARIABLES.get(unsigned_I(self.integer), None)
+            name = VARIABLES.get(unsigned_I(self.integer), None)
         if name is None:
-            name = known_hashes.SYSCALLS.get(unsigned_I(self.integer), None)
+            name = SYSCALLS.get(unsigned_I(self.integer), None)
             syscall = True
 
     return (check_hash_group(name, syscall, options=options), syscall)
 
-def print_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, script_functions:Set[int]=None, **kwargs) -> None:
+def print_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:Optional[str]=None, script_functions:Optional[Set[int]]=None, **kwargs) -> None:
     print(format_instruction(self, options=options, resource_key=resource_key), script_functions=script_functions, **kwargs)
 
-def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:str=None, script_functions:Set[int]=None) -> str:
-    colors:dict = options.colors
-    sb:str = ''
+def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, resource_key:Optional[str]=None, script_functions:Optional[Set[int]]=None) -> str:
+    colors = options.colors
+    sb = ''
 
     if options.address_labels:
         address = options.address_fmt(self.offset)
@@ -252,7 +287,7 @@ def format_instruction(self:Instruction, *, options:ILFormat=ILFormat.DEFAULT, r
         elif operand == 'f':
             # flags
             flags = self.flags
-            keywords:list = []
+            keywords = []
             keywords.append(flags.scope.getname(options.scope_aliases))
             keywords.append(flags.type.getname(options.vartype_aliases))
             if flags.dimension or options.explicit_dim0:  #NOTE: dim0 is legal, just not required or recommended
@@ -422,7 +457,7 @@ def print_readmark(self:MjoScript, *, options:ILFormat=ILFormat.DEFAULT, **kwarg
     print(format_readmark(self, options=options), **kwargs)
 def format_readmark(self:MjoScript, *, options:ILFormat=ILFormat.DEFAULT) -> str:
     #FIXME: temp solution to print all directives in one go
-    colors:dict = options.colors
+    colors = options.colors
     setting = ('{GREEN}enable' if self.is_readmark else '{RED}disable').format(**colors)
     s = '{DIM}{YELLOW}readmark{RESET_ALL} {BRIGHT}{}{RESET_ALL}'.format(setting, **colors)
     s += '\n'
@@ -440,7 +475,7 @@ def format_readmark(self:MjoScript, *, options:ILFormat=ILFormat.DEFAULT) -> str
 def print_basic_block(self:BasicBlock, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
     print(format_basic_block(self, options=options), **kwargs)
 def format_basic_block(self:BasicBlock, *, options:ILFormat=ILFormat.DEFAULT) -> str:
-    colors:dict = options.colors
+    colors = options.colors
     return '{BRIGHT}{MAGENTA}{.name}:{RESET_ALL}'.format(self, **colors)
 
 #########################################
@@ -448,14 +483,15 @@ def format_basic_block(self:BasicBlock, *, options:ILFormat=ILFormat.DEFAULT) ->
 def print_function(self:Function, *, options:ILFormat=ILFormat.DEFAULT, **kwargs) -> None:
     print(format_function(self, options=options), **kwargs)
 def format_function(self:Function, *, options:ILFormat=ILFormat.DEFAULT) -> str:
-    colors:dict = options.colors
+    colors = options.colors
 
     # always "func" as, "void" can only be confirmed by all-zero return values
     s = '{BRIGHT}{BLUE}func '.format(**colors)
 
-    known_hash:str = None
+    known_hash = None  # type: Optional[str]
     if options.known_hashes:
-        known_hash = known_hashes.FUNCTIONS.get(self.hash, None)
+        from ..database.hashes import FUNCTIONS
+        known_hash = FUNCTIONS.get(self.hash, None)
     if known_hash is not None:
         #TODO: move check hash function somewhere more fitting
         known_hash = check_hash_group(known_hash, False, options=options)
@@ -509,10 +545,10 @@ def analyze_script(script:MjoScript) -> ControlFlowGraph:
         script = read_script(script)
     return ControlFlowGraph.build_from_script(script)
 
-def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DEFAULT):
+def print_script(filename:str, script:MjoScript, *, options:ILFormat=ILFormat.DEFAULT) -> None:
     """Print analyzed script IL instructions and blocks to console (PRINTS A LOT OF LINE)
     """
-    cfg:ControlFlowGraph = analyze_script(script)
+    cfg = analyze_script(script)
     options.set_address_len(script.bytecode_size)
     colors = options.colors
 
@@ -543,12 +579,18 @@ _bruteforceset = None
 
 class AnyVariable:
     __slots__ = ('scope', 'var_offset', 'hash', 'type', 'name')
-    def __init__(self, scope:MjoScope, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
-        self.scope:MjoScope = MjoScope(scope)
-        self.var_offset:int = var_offset
-        self.hash:HashValue = HashValue(hash) if hash is not None else None
-        self.type:MjoType = MjoType(type) if type is not None else None #MjoType.UNKNOWN
-        self.name:str = name
+    scope:MjoScope
+    var_offset:int
+    hash:Optional[HashValue]
+    type:Optional[MjoType]
+    name:Optional[str]
+
+    def __init__(self, scope:MjoScope, var_offset:int, hash:Optional[HashValue]=None, type:Optional[MjoType]=None, name:Optional[str]=None):
+        self.scope = MjoScope(scope)
+        self.var_offset = var_offset
+        self.hash = HashValue(hash) if hash is not None else None
+        self.type = MjoType(type) if type is not None else None #MjoType.UNKNOWN
+        self.name = name
 
     @property
     def namedisasm(self) -> str:
@@ -562,7 +604,7 @@ class AnyVariable:
         scopestr = self.scope.getname() if self.scope is not None else '<?scope>'
         return f'<Variable: {scopestr} {typestr} {namerepr}{locrepr}>'
         # return f'<Variable: {self.scope.getname()} {self.type.getname()} {namerepr}{locrepr}>'
-    def __str__(self) -> str: return repr(self)
+    __str__ = __repr__
 
 class GlobalVariable(AnyVariable):
     def __init__(self, scope:MjoScope, hash:HashValue=None, type:MjoType=None, name:str=None):
@@ -572,19 +614,19 @@ class LocalVariable(AnyVariable):
     def __init__(self, var_offset:int, hash:HashValue=None, type:MjoType=None, name:str=None):
         super().__init__(MjoScope.LOCAL, var_offset, hash, type, name)
 
-def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT):
+def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, options:ILFormat=ILFormat.DEFAULT) -> None:
     """Write analyzed script IL instructions and blocks to .mjil file
     """
     global _bruteforceset
     options.color = False
     options.set_address_len(script.bytecode_size)
     import csv
-    cfg:ControlFlowGraph = analyze_script(script)
+    cfg = analyze_script(script)
 
     resfile = reswriter = None
     if _bruteforceset is None:
         print('Loading brute-force locals...', end='', flush=True)
-        from ..database.hashes.brute_force import BruteForceSet
+        from ..database.unhashers import BruteForceSet
         brute_force = BruteForceSet('_', pre_postfixes=('',) + tuple(str(n) for n in range(1, 16)))
         brute_force.add_pattern( ((1,4), "a-z") )
         brute_force.compute(True) #False)
@@ -593,7 +635,8 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
     else:
         brute_force = _bruteforceset
 
-    groupname:str = known_hashes.GROUPS.get(script.main_function.hash)
+    from ..database.hashes import GROUPS, PERSISTENT_VARS, SAVEFILE_VARS, THREAD_VARS, LOCAL_VARS, FUNCTIONS, SYSCALLS
+    groupname:str = GROUPS.get(script.main_function.hash)
 
     with open(outfilename, 'wt+', encoding='utf-8') as writer:
       try:
@@ -614,41 +657,41 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
         from ..crypt import hash32
         # from ..name import splitgroup, splitpostfix, splitprefix, splitsymbols, joingroup, joinsymbols
         from .. import name as mj_name
-        function_hashes:Dict[int, Function] = {}
+        function_hashes = {}  # type: Dict[int, Function]
         for function in cfg.functions:
             function_hashes[function.hash] = function
 
-        found_names:Dict[int,str] = {}
-        notfound_names:Set[str] = set()
+        found_names = {}  # type: Dict[int,str]
+        notfound_names = set()  # type: Set[str]
 
         from ..util.color import Fore as F, Style as S
 
         for function in cfg.functions:
             writer.write('\n')
-            variable_store:Dict[int, AnyVariable] = {}
-            offset_vars:Dict[int, LocalVariable] = {} # {-1: LocalVariable(-1, HashValue(hash32('__SYS__NumParams@')), MjoType.INT, '__SYS__NumParams@')}
-            writes_vars:Dict[int,AnyVariable] = {}
-            reads_vars:Dict[int,AnyVariable] = {}
-            accesses_vars:Dict[int,AnyVariable] = {}
-            modifies_vars:Dict[int,AnyVariable] = {}
-            # writes_vars:Set[AnyVariable] = set()
-            # reads_vars:Set[AnyVariable] = set()
-            # accesses_vars:Set[AnyVariable] = set()
-            # modifies_vars:Set[AnyVariable] = set()
+            variable_store = {}  # type: Dict[int, AnyVariable]
+            offset_vars   = {}  # type: Dict[int, LocalVariable]  #{-1: LocalVariable(-1, HashValue(hash32(LOCALVAR_NUMPARAMS)), MjoType.INT, LOCALVAR_NUMPARAMS)}
+            writes_vars   = {}  # type: Dict[int,AnyVariable]
+            reads_vars    = {}  # type: Dict[int,AnyVariable]
+            accesses_vars = {}  # type: Dict[int,AnyVariable]
+            modifies_vars = {}  # type: Dict[int,AnyVariable]
+            # writes_vars   = set()  # type: Set[AnyVariable]
+            # reads_vars    = set()  # type: Set[AnyVariable]
+            # accesses_vars = set()  # type: Set[AnyVariable]
+            # modifies_vars = set()  # type: Set[AnyVariable]
             # def offset_unk(var_offset:int) -> LocalVariable:
             #     return LocalVariable(var_offset, HashValue(0))
             def offset_get(var_offset:int) -> LocalVariable:
                 localvar = offset_vars.get(var_offset)
                 if localvar is None and var_offset == -1:
-                    return local_update(var_offset, hash32('__SYS__NumParams@'), MjoType.INT, '__SYS__NumParams@')
+                    return local_update(var_offset, hash32(LOCALVAR_NUMPARAMS), MjoType.INT, LOCALVAR_NUMPARAMS)
                 return local_update(var_offset)
                 # return offset_unk(var_offset) if localvar is None else localvar
-            def local_vars() -> List[LocalVariable]:
+            def local_vars():  # return: List[LocalVariable]
                 if not offset_vars: return []
                 maxoff = max(offset_vars.keys())
                 # maxoff = max(v.var_offset for v in offset_vars.values())
                 return [offset_get(i) for i in range(0, maxoff+1)]
-            def param_vars() -> List[LocalVariable]:
+            def param_vars():  # return: List[LocalVariable]
                 if not offset_vars: return []
                 minoff = min(offset_vars.keys())
                 # minoff = min(v.var_offset for v in offset_vars.values())
@@ -675,11 +718,11 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                 if globalvar.name is None and globalvar.hash not in notfound_names:
                     globalvar.name = found_names.get(globalvar.hash)
                     if globalvar.scope is MjoScope.SAVEFILE:
-                        globalvar.name = known_hashes.SAVEFILE_VARS.get(globalvar.hash)
+                        globalvar.name = SAVEFILE_VARS.get(globalvar.hash)
                     elif scope is MjoScope.PERSISTENT:
-                        globalvar.name = known_hashes.PERSISTENT_VARS.get(globalvar.hash)
+                        globalvar.name = PERSISTENT_VARS.get(globalvar.hash)
                     elif scope is MjoScope.THREAD:
-                        globalvar.name = known_hashes.THREAD_VARS.get(globalvar.hash)
+                        globalvar.name = THREAD_VARS.get(globalvar.hash)
                     if globalvar.name is None:
                         notfound_names.add(globalvar.hash)
                     if globalvar.name is None and globalvar.type is not None:
@@ -740,7 +783,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                 if localvar.name is None and localvar.hash is not None and localvar.hash not in notfound_names:
                     localvar.name = found_names.get(localvar.hash)
                     if localvar.name is None:
-                        localvar.name = known_hashes.LOCAL_VARS.get(localvar.hash)
+                        localvar.name = LOCAL_VARS.get(localvar.hash)
                     if localvar.name is None and localvar.type is not None:
                         results = brute_force.find_hash(localvar.hash, localvar.scope.prefix, localvar.type.postfix, '')
                         if not results:
@@ -770,10 +813,10 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
 
 
             # param_vars = []
-            # local_vars:List[Tuple[]] = []
+            # local_vars = []  # type: List[Tuple[]]
             for i in range(function.first_instruction_index, function.last_instruction_index + 1):
                 is_first, is_last = (i==function.first_instruction_index), (i==function.last_instruction_index)
-                instr:Instruction = script.instructions[i]
+                instr = script.instructions[i]  # type: Instruction
                 myvar = None
                 if instr.is_argcheck:
                     for j,t in enumerate(instr.type_list):
@@ -795,16 +838,15 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                         type = type.array
                     if scope is MjoScope.LOCAL:
                         myvar = local_update(var_offset, hash, type)
-                        # name = known_hashes.LOCAL_VARS.get(hash)
+                        # name = LOCAL_VARS.get(hash)
                     else:
                         myvar = global_update(scope, hash, type)
                     #     if scope is MjoScope.SAVEFILE:
-                    #         name = known_hashes.SAVEFILE_VARS.get(hash)
+                    #         name = SAVEFILE_VARS.get(hash)
                     #     elif scope is MjoScope.PERSISTENT:
-                    #         name = known_hashes.PERSISTENT_VARS.get(hash)
+                    #         name = PERSISTENT_VARS.get(hash)
                     #     elif scope is MjoScope.THREAD:
-                    #         name = known_hashes.THREAD_VARS.get(hash)
-                    # known_hashes
+                    #         name = THREAD_VARS.get(hash)
 
                     # if instr.is_store or flags.modifier is not MjoModifier.NONE:
                     #     if instr.is_element:
@@ -841,7 +883,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
                 # instruction.
 
 
-            def repr_var(myvar:AnyVariable):
+            def repr_var(myvar:AnyVariable) -> str:
                 # modes = []
                 mode = rmode = wmode = ''
                 if myvar.hash in reads_vars:    rmode += 'R'
@@ -903,4 +945,7 @@ def disassemble_script(filename:str, script:MjoScript, outfilename:str, *, optio
             #reswriter.close()
             resfile.close()
 
-del abstractproperty, namedtuple, Iterator, Tuple  # cleanup declaration-only imports
+
+#######################################################################################
+
+del Dict, List, Optional, Set, Tuple  # cleanup declaration-only imports

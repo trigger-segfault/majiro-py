@@ -14,11 +14,10 @@ __all__ = ['MjFunction', 'MjProject']
 
 #######################################################################################
 
-
 import os
 from .mjproject import MjFunction, MjProject, MjoType
 from ..script import MjoScript, MjoScope, Instruction, Opcode
-from typing import Any, Callable, List, Optional, Dict, Tuple, Union
+from typing import List
 
 
 def save_project(projroot:str, projname:str='mjproject.json') -> MjProject:
@@ -28,14 +27,13 @@ def save_project(projroot:str, projname:str='mjproject.json') -> MjProject:
     return proj
 
 def create_project(projroot:str) -> MjProject:
-
     proj = MjProject()
     dirs = ['']
     def read_script(fullname:str, relfile:str):
         relfile = relfile.replace('\\', '/')
         relname = os.path.splitext(relfile)[0]
         script = MjoScript.open(fullname, lookup=True)
-        functions:List[MjFunction] = []
+        functions = []  # type: List[MjFunction]
         for funcidx in script.functions:
             func = MjFunction(funcidx.hashname, relname)
             idx = script.instruction_index_from_offset(funcidx.offset)
@@ -60,3 +58,8 @@ def create_project(projroot:str) -> MjProject:
                 read_script(fullname, relname)
 
     return proj
+
+
+#######################################################################################
+
+del List  # cleanup declaration-only imports
